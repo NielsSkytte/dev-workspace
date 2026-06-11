@@ -1,0 +1,193 @@
+{
+  // ─────────────────────────────────────────────────────────────
+  //  DEV — Claude Code project launcher
+  //
+  //  Usage: Ctrl+Shift+P → "Tasks: Run Task" → pick a project
+  //
+  //  Adding a new project:
+  //    1. Copy one of the project blocks below
+  //    2. Update "label" → "Claude · [category/ProjectName]"
+  //    3. Update "cwd"   → path relative to ${workspaceFolder}
+  //    4. Save and the task appears immediately — no reload needed
+  // ─────────────────────────────────────────────────────────────
+  "version": "2.0.0",
+  "tasks": [
+
+    // ── Workspace root ─────────────────────────────────────────
+    {
+      "label": "Claude · DEV root",
+      "detail": "Launch Claude Code at workspace root (global context only)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    // ── own/ projects ──────────────────────────────────────────
+    {
+      "label": "Claude · own/MetaAtomic",
+      "detail": "MetaAtomic project",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/MetaAtomic"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · own/DeployFabric",
+      "detail": "Fabric workspace provisioning tool",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/DeployFabric"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · own/SoWSkill",
+      "detail": "SoW generation skill",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/SoWSkill"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · own/AtomicCortex",
+      "detail": "Karpathy-style wiki LLM for the Atomic Fabric data team",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/AtomicCortex"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · own/DevFramework",
+      "detail": "DEV workspace operating model — agents, skills, templates, conventions",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/DevFramework"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    // ── customers/ projects ────────────────────────────────────
+    {
+      "label": "Claude · customers/JoeAndTheJuice/SoW",
+      "detail": "Joe & The Juice — SoW (delivered)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/JoeAndTheJuice/SoW"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Tystofte/PowerPortal",
+      "detail": "Tystofte — PowerPortal delivery",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Tystofte/PowerPortal"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Matas/DataCompare",
+      "detail": "Matas — compare entities across AX, NAV/BC, and D365 F&O",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Matas/DataCompare"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    }
+
+    // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────
+    // Template to copy:
+    //
+    // ,{
+    //   "label": "Claude · [own|customers|scratch]/[ProjectName]",
+    //   "detail": "One-line description",
+    //   "type": "shell",
+    //   "command": "claude",
+    //   "options": {
+    //     "cwd": "${workspaceFolder}/[path/to/project]"
+    //   },
+    //   "presentation": {
+    //     "panel": "dedicated",
+    //     "reveal": "always",
+    //     "group": "claude",
+    //     "close": false
+    //   },
+    //   "problemMatcher": []
+    // }
+
+  ]
+}

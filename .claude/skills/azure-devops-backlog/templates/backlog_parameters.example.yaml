@@ -1,0 +1,150 @@
+# ----------------------------------------------------------------------------
+# Pingala Datahub backlog — parameters file
+# ----------------------------------------------------------------------------
+# This file is the ONLY file you edit per project. The push_backlog.py script
+# reads it, expands it into the full standard Datahub backlog (business area
+# epics + generic Shared masterdata / Data platform / Data excellence epics),
+# and pushes everything to Azure DevOps in parallel.
+#
+# Generic items (Data platform internals, Data excellence features, Shared
+# masterdata workspaces, etc.) are built automatically from the template.
+# Only the customer-specific variables below need to be filled in.
+#
+# Credentials are NOT stored here — set them via env vars or a .env file:
+#   AZDO_ORG_URL=https://dev.azure.com/my-org
+#   AZDO_PROJECT=CustomerX-Datahub
+#   AZDO_PAT=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# ----------------------------------------------------------------------------
+
+project:
+  # Optional — overrides env var AZDO_ORG_URL if set
+  # org_url: "https://dev.azure.com/pingala"
+  # Optional — overrides env var AZDO_PROJECT if set
+  # name: "CustomerX-Datahub"
+  # Optional — applied to every work item. Defaults to project name.
+  # area_path: "CustomerX-Datahub\\Data Platform"
+  # Optional — applied to every work item. Defaults to project name.
+  # iteration_path: "CustomerX-Datahub"
+
+# ----------------------------------------------------------------------------
+# BUSINESS AREAS
+# ----------------------------------------------------------------------------
+# Each business area generates:
+#   Epic: Business area: {name}
+#     Feature: Power BI Reports: {name}
+#       Work Package: Report: <each report>
+#     Feature: Semantic model: {name}
+#       Work Package: {name}: Relationships
+#         Task: <each relationship>
+#       Work Package: {name}: Business measures
+#         Task: {name} measures: <each measure>
+#       Work Package: {name}: Row-level-Security
+#     Feature: Curated: {name}
+#       Work Package: Dimension table: <each dim>
+#       Work Package: Fact table: <each fact>
+#       Work Package: Bridge table: <each bridge>
+#
+# It also drives tasks in the generic Util & platform workspaces section:
+#   Task: {name} data workspace
+#   Task: {name} reporting workspace
+# ----------------------------------------------------------------------------
+business_areas:
+  - name: Sales
+    power_bi_reports:
+      - "Sales Overview"
+      - "Monthly Pipeline"
+    dim_tables:
+      - DimCustomer
+      - DimProduct
+      - DimSalesRep
+    fact_tables:
+      - FactSales
+    bridge_tables: []
+    relationships:
+      - "DimCustomer -> FactSales"
+      - "DimDate -> FactSales"
+      - "DimProduct -> FactSales"
+      - "DimSalesRep -> FactSales"
+    measures:
+      - "Revenue"
+      - "Gross margin"
+      - "Units sold"
+
+  - name: Finance
+    power_bi_reports:
+      - "P&L Statement"
+      - "Balance Sheet"
+    dim_tables:
+      - DimAccount
+      - DimCostCenter
+    fact_tables:
+      - FactGL
+    relationships:
+      - "DimAccount -> FactGL"
+      - "DimCostCenter -> FactGL"
+      - "DimDate -> FactGL"
+    measures:
+      - "Net income"
+      - "Operating expense"
+
+# ----------------------------------------------------------------------------
+# DATA SOURCES
+# ----------------------------------------------------------------------------
+# Each source generates:
+#   User Story: Landing zone: {name}  (inside Feature: Landing zone)
+#     + standard 3 tasks (ingest, access, data store)
+#   User Story: Raw: {name}           (inside Feature: Raw)
+#     + standard 3 tasks (load+type2, PII direct load, data store)
+#   Work Package: Enriched: {name}    (inside Feature: Enriched)
+#     Task: {name}: <each entity>
+# ----------------------------------------------------------------------------
+data_sources:
+  - name: AX09
+    entities:
+      - CustTable
+      - SalesLine
+      - SalesTable
+      - GeneralJournalAccountEntry
+      - DimensionFinancialTag
+  - name: SAP
+    entities:
+      - KNA1
+      - VBAK
+
+# ----------------------------------------------------------------------------
+# SHARED MASTERDATA (optional customer additions)
+# ----------------------------------------------------------------------------
+# The generic structure (Dimension table: Department, Dimension table: Calendar,
+# plus the three Semantic Model work packages) is always added automatically.
+# Use the lists below only to ADD customer-specific relationships/measures on
+# top of the generic structure.
+# ----------------------------------------------------------------------------
+shared_masterdata:
+  relationships: []
+  # Example:
+  #   - "DimDepartment -> DimCalendar"
+  measures: []
+  # Example:
+  #   - "Headcount"
+
+# ----------------------------------------------------------------------------
+# EXTRA ITEMS (optional)
+# ----------------------------------------------------------------------------
+# Anything here is appended verbatim to the backlog. Use this for one-off
+# additions that don't fit the standard template.
+#
+# Schema for each item:
+#   type: Epic | Feature | Work Package | User Story | Task
+#   title: "..."
+#   description: "..."            # optional, plain text or HTML
+#   acceptance_criteria: []       # optional, list of strings
+#   children: []                  # optional, recursive — same schema
+# ----------------------------------------------------------------------------
+extra_items: []
+# Example:
+#   - type: Epic
+#     title: "Data migration from legacy BI"
+#     description: "One-off epic to sunset the old QlikView platform."
+#     children:
+#       - type: Feature
+#         title: "QlikView report inventory"

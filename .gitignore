@@ -1,0 +1,3 @@
+# Project subfolders are their own git repositories — not tracked by the workspace repo
+/customers/
+/own/
