@@ -2,7 +2,7 @@
 
 The workspace-level queue of **business work in flight** — across every project, in one place. This is the **Output** stage of the ICOR pipeline (Input → Control → Output → Refine):
 
-- **Input** — `/park` drops raw items into `.claude/INBOX.md` (capture, zero friction).
+- **Input** — `/todo` drops raw items into `ops/TODO.md` (capture, zero friction).
 - **Control** — triage promotes an inbox item into a structured task here (the deciding/routing step).
 - **Output** — *this store*: tracked, actionable tasks with state and context.
 - **Refine** — review / session log / automation (later).

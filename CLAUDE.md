@@ -1,5 +1,7 @@
 # DEV — Global Workspace
 
+> **LLM-agnostic workspace.** The tool-neutral source of truth is [`AGENTS.md`](AGENTS.md) — read it. This `CLAUDE.md` is the Claude Code bootstrap/accelerator; nothing load-bearing should live only here (see Guardrail 7).
+
 ## Owner
 Solo workspace. All work is business-oriented — development, content, strategy, and customer delivery.
 Default audience: Danish, unless overridden in project CLAUDE.md.
@@ -10,15 +12,18 @@ Default audience: Danish, unless overridden in project CLAUDE.md.
 
 ```
 DEV/
-├── CLAUDE.md              ← you are here (global rules)
+├── AGENTS.md              ← tool-neutral source of truth (LLM-agnostic) — read first
+├── CLAUDE.md              ← Claude Code bootstrap → points to AGENTS.md
 ├── _templates/            ← project scaffolding (content/, function/)
 ├── .vscode/               ← tasks.json for project switching
-├── .claude/
+├── .claude/               ← Claude harness (accelerators, not load-bearing)
 │   ├── agents/            ← agent definitions (fabric, content, architect, M, Q)
-│   ├── commands/          ← slash commands (/brief, /handoff, /park, /task, etc.)
-│   ├── skills/            ← Agent Skills (folder per skill, SKILL.md + assets)
-│   ├── INBOX.md           ← workspace capture inbox (/park) — ICOR Input
-│   └── tasks/             ← workspace task store (/task) — ICOR Output; open/in-progress/done/cancelled
+│   ├── commands/          ← slash commands (/brief, /handoff, /todo, /task, etc.)
+│   └── skills/            ← Agent Skills (folder per skill, SKILL.md + assets)
+├── ops/                   ← cross-project operating substrate (LLM-agnostic)
+│   ├── TODO.md            ← workspace action capture (/todo) — ICOR Input
+│   ├── tasks/             ← workspace task store (/task) — ICOR Output; open/in-progress/done/cancelled
+│   └── log/sessions.md    ← session log (/log) — ICOR Refine; continuity across sessions
 ├── customers/
 │   └── [client]/
 │       └── [project]/
@@ -99,7 +104,7 @@ Five agents are available from any project. Agents are roles with domain knowled
 | **fabric** | Fabric/pipeline/infrastructure builder | Building in Microsoft Fabric ecosystem |
 | **content** | Document and presentation specialist | Creating structured documents, presentations, SoWs |
 | **architect** | Design decision maker | Architecture choices, project structure, ADRs |
-| **M** | Head of operations — dispatches agents, manages the roster | "M, do we have someone for this?" or "M, we need to hire a new agent" |
+| **M** | Head of operations — dispatches agents, manages the roster, runs the continuity loop (session-start walk, session-end log) | "M, do we have someone for this?" or "M, we need to hire a new agent" |
 | **Q** | Quartermaster — builds and refines agents and skills | "Q, build me an agent for X" or when M identifies a gap |
 
 Agent definitions live in `.claude/agents/`. Reusable capabilities live in two places depending on form:
@@ -167,6 +172,10 @@ Claude Code must enforce these across all projects:
 5. **Spike graduation** — if a spike project spans multiple sessions or develops significant structure (multiple subfolders, growing file count), prompt: *"This spike may be ready to graduate to project scale. Want to expand its scaffolding?"*
 6. **Notebook Purpose cell** — every Fabric notebook carries a `## Purpose` synthesis as its **first cell**: a short, general statement of what it does and where it sits in the flow (not step-by-step detail). Create it when authoring; **update it only on major functional changes** (new/removed outputs, changed role, restructured logic) — *not* on bug fixes or minor tweaks. In Fabric `notebook-content.py` this is a markdown cell — `# MARKDOWN ********************`, then markdown lines each prefixed with `# `, placed after the notebook-level `# METADATA` block and before the first `# CELL`. Applies to all notebook work under `C:\Dev`.
 
+7. **LLM-agnostic substrate** — durable content (knowledge, inbox, tasks, ADRs, conventions) stays as plain markdown in tool-neutral locations; Claude-specific harness (slash commands, skills, this file, the memory store) is a non-load-bearing *accelerator* only. Tool-specific *bootstrap/initialization* is permitted. Acid test: deleting `.claude/` + `CLAUDE.md` must lose no knowledge or capability. **Auto-triggers (hooks, scheduled agents) are permitted accelerators — they may add automation and determinism, but no decision logic or knowledge that isn't also in the substrate: a hook is a dumb executor of a documented routine, never the source of one.** Canonical statement: [`AGENTS.md`](AGENTS.md).
+8. **Continuity loop** — session start is **context-scoped**: at the workspace root (`C:\Dev`) perform the *workspace walk* (read `ops/tasks/{in-progress,open}`, unchecked `ops/TODO.md`, latest `ops/log/sessions.md`) and surface open work before the first request; inside a project (`customers/…`, `own/…`) instead read that project's `CONTEXT.md` and surface unread `INBOX.md`. At session end / when wrapping up, offer to append a session-log entry (`/log`). A `SessionStart` hook in `C:\Dev\.claude` fires the workspace walk automatically at root (hooks don't cascade, so it stays root-only); this cascading `CLAUDE.md` carries the project-walk rule into project sessions. Canonical routine: [`AGENTS.md`](AGENTS.md) > Continuity loop; owned by M.
+9. **Scripts are ASCII-only** — any script run under Windows PowerShell 5.1 (hooks, `.ps1`) must use ASCII punctuation (`-`, straight quotes, `...`); non-ASCII in a BOM-less file breaks PS 5.1's parser. Full rationale: [`AGENTS.md`](AGENTS.md) > Conventions.
+
 ---
 
 ## Starting a New Project
@@ -185,3 +194,7 @@ Claude Code must enforce these across all projects:
 Use **VS Code Tasks** (`Ctrl+Shift+P` → `Tasks: Run Task`) to launch Claude Code in a project.
 Each project has a dedicated task that opens a named terminal panel rooted at the project folder.
 This ensures Claude Code picks up the correct CLAUDE.md chain: project → DEV root.
+
+## Other context
+When a CONTEXT.md contains a "Related contexts" section, read those files 
+at session start before proceeding.

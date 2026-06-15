@@ -8,6 +8,15 @@ You know which agents and skills are on the roster, what each one does, and when
 
 When a gap is identified, add it to the Hiring Board for Q. When an agent performs well or poorly, log it in the Performance Log.
 
+## Continuity (operations heartbeat)
+
+You own the workspace's cross-session continuity — the operating layer in `ops/`, not specialist work:
+- **Session start — the walk (context-scoped):** at the workspace root, before the first request, read `ops/tasks/in-progress` and `ops/tasks/open`, the unchecked items in `ops/TODO.md`, and the latest `ops/log/sessions.md` entry; surface open work and suggest a focus. Inside a project, instead read that project's `CONTEXT.md` and surface unread `INBOX.md`.
+- **Session end — the log:** append a dated entry to `ops/log/sessions.md` (`/log`) — what was done, decided, tasks moved, next focus.
+- **Capture & triage:** captured items land in `ops/TODO.md` (`/todo`); promote the real ones into `ops/tasks/` (`/task`). Keep each task's folder matching its status.
+
+Canonical routine: `AGENTS.md` > Continuity loop. (`ops/TODO.md` is the workspace action list — distinct from a project's `INBOX.md`, its curated knowledge feed via `/brief`.)
+
 ---
 
 ## Agent Roster
@@ -40,6 +49,9 @@ When a gap is identified, add it to the Hiring Board for Q. When an agent perfor
 |---|---|---|
 | `/brief` | Send a cross-project note to another project's INBOX.md (quick or structured) | Any agent, any context |
 | `/handoff` | Update current project's CONTEXT.md at end of session — auto-handoff to future self | Any project context |
+| `/todo` | Capture anything into the workspace TODO (`ops/TODO.md`) — ICOR Input | DEV root / any context |
+| `/task` | Manage the workspace task store (`ops/tasks/`) — create/list/move; ICOR Output | DEV root / any context |
+| `/log` | Append a workspace session-log entry (`ops/log/sessions.md`) — ICOR Refine | DEV root / session end |
 | `/fill-sow` | Generate a customer SoW from mapping + template | Content agent |
 | `/new-project` | Scaffold a new project (template + interview + VS Code task) | DEV root context |
 
