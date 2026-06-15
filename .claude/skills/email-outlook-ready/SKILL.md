@@ -35,12 +35,16 @@ Whenever you draft an email the user will send:
 
 ## The copy workflow (relay this to the user)
 
-> Open the `.html` file in a browser (Edge/Chrome) → **Ctrl+A** → **Ctrl+C** → click into the
-> Outlook message body → **Ctrl+V**. Set the recipients and paste the subject line separately,
-> then send.
+The user renders the HTML **inside VS Code** (no browser) and copies from there:
 
-The browser is what places rich text on the clipboard, so Outlook receives formatted content
-rather than raw HTML.
+> Open the `.html` in VS Code → press **Ctrl+Alt+V** (renders it in the embedded Live Preview) →
+> click into the preview → **Ctrl+A** → **Ctrl+C** → paste into the Outlook message body
+> (**Ctrl+V**). Set recipients and paste the subject line separately, then send.
+
+After producing the file, **open it for the user** with `code -r "<path>.html"` so it's ready;
+they press Ctrl+Alt+V. The embedded preview is a real browser render, so it puts rich text on
+the clipboard — Outlook keeps the formatting. The explicit black-on-white styles in the template
+matter here: a Markdown preview under a dark theme can paste invisible light-grey text.
 
 ## HTML template (inline styles — body only)
 
@@ -84,9 +88,13 @@ Outlook default. Keep it simple: `<p>`, `<strong>`, `<ul>/<li>`, `<a>`, and `<ta
 - No external CSS, no `<style>` blocks, no classes, no web fonts.
 - Sizes in `pt`, not `px`.
 
-## Note — direct-clipboard option (secondary, often unavailable)
+## One-time prerequisites (already set up on this machine)
 
-A one-step "paste straight into Outlook" is possible by putting HTML on the Windows clipboard
-via `System.Windows.Forms.Clipboard.SetText($html, [Windows.Forms.TextDataFormat]::Html)`
-(requires an STA PowerShell session). This frequently fails from non-interactive / background
-sessions, so the **HTML-file-and-copy workflow above is the reliable default**.
+- VS Code extension **`ms-vscode.live-server`** (Live Preview) — renders HTML inside VS Code.
+- Keybinding in `…/Code/User/keybindings.json`: **Ctrl+Alt+V** →
+  `livePreview.start.internalPreview.atFile`, scoped `when: resourceExtname == .html`.
+
+If either is missing, install with `code --install-extension ms-vscode.live-server` and add the
+keybinding. Note: Live Preview contributes no custom editor and no URI handler, so a file
+**cannot be auto-rendered on open** from the CLI — the Ctrl+Alt+V keystroke is the closest to
+"automatic" that's achievable.
