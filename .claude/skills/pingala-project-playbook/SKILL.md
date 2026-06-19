@@ -1,5 +1,6 @@
 ---
 name: pingala-project-playbook
+bundle: custom
 description: >
   The core playbook for how Pingala sets up and runs customer projects end-to-end.
   Use this skill whenever someone asks about project setup, onboarding a new customer project,
@@ -238,7 +239,9 @@ Use an Azure DevOps query to export the entire backlog, including:
 - Sprint assignments
 - Capacity allocations
 
-This export serves as the documentation for the customer presentation.
+This export serves as the documentation for the customer presentation. For the branded
+presentation deliverable itself, use the `pingala-visual-identity` skill so colors, fonts,
+and Microsoft Fabric icons follow Pingala standards.
 
 ### 6.2 Present to the customer
 
@@ -276,3 +279,16 @@ plan before delivery begins.
 
 Phases 1 and 2 can run in parallel since they have no mutual dependency. Phase 3 onward is
 sequential.
+
+---
+
+## Related skills
+
+This playbook covers project *setup* (Phases 1–6, ending at backlog approval). The technical
+*delivery* that follows is documented separately:
+
+- **pingala-fabric-platform** — how Pingala actually builds and operates the Fabric data
+  platform (workspaces, Pingala Atomic, medallion layers, CI/CD) once the plan is approved.
+- **fabric-project-access** — the Phase 1 detail (Entra ID groups, service principal, Key
+  Vault, licences).
+- **azure-devops-backlog** — the Phase 4 backlog generation.

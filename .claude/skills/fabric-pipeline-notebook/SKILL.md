@@ -1,5 +1,6 @@
 ---
 name: fabric-pipeline-notebook
+bundle: custom
 description: Best practices for designing and debugging Microsoft Fabric pipelines that orchestrate notebooks. Use this skill whenever building, migrating, or troubleshooting any Fabric pipeline that includes notebook activities, JSON ingestion, Delta table writes, or REST API data extraction. Also use when diagnosing unexpected data volumes, silent data loss, or notebook behaviour that differs between interactive and pipeline-triggered runs.
 ---
 
@@ -49,8 +50,9 @@ raw_df = spark.read.json(file_list)
 ### Always Verify Page Count
 After ingestion, flag suspiciously round numbers that match your maxResults setting:
 ```python
+MAX_RESULTS = 1000  # set to your API's pagination page size
 num_rows = int(df.count())
-if num_rows > 0 and num_rows % <maxResults> == 0:
+if num_rows > 0 and num_rows % MAX_RESULTS == 0:
     print(f"WARNING: Exactly {num_rows} rows — possible pagination truncation")
 ```
 
@@ -141,3 +143,11 @@ For incremental pipelines processing small-to-medium batches, Python notebooks a
 | Best for | Large batch, complex transforms | Incremental, simple transforms |
 
 Use PySpark only when batch sizes or transformation complexity genuinely justify the overhead.
+
+---
+
+## Related skills
+
+- **timestamp-timezone-pipelines** — the watermark `>=` vs `>` rule and the UTC/DST handling for the date filters these pipelines send to APIs. Reach for it whenever a watermark drifts or records go missing in a specific time window.
+- **medallion-migration-validation** — go-live validation, tracking-table design, and the silent-failure catalogue these pipeline bugs feed into; use it when validating a migrated pipeline or backfilling a gap.
+- **spark-operations-cli** (Microsoft) — when a pipeline-triggered notebook fails at the *engine* level (OOM, data skew, stuck/dead Livy session), hand off to this diagnostic skill. This skill covers the *silent data-loss logic* bugs; that one covers *engine* failures.

@@ -1,5 +1,6 @@
 ---
 name: fabric-project-access
+bundle: custom
 description: >
   Use this skill whenever setting up access rights, user accounts, Entra ID groups, service
   principals, licences, Azure Key Vault, or role assignments for a new Pingala Fabric project.
@@ -26,7 +27,7 @@ It is the detailed reference for **Phase 1 — Users & Access** of the Pingala P
 
 ## Overview
 
-Setting up access for a Fabric project involves seven workstreams. They can be requested from
+Setting up access for a Fabric project involves eight workstreams. They can be requested from
 the customer in parallel but all must be completed before Fabric configuration can begin.
 
 ```
@@ -306,7 +307,8 @@ Ask for (if not already known):
 
 Using the template above, substitute the actual consultant names and email addresses into
 each section. Present the full access request as a structured document or email that can be
-sent to the customer's IT department.
+sent to the customer's IT department. When delivering it as an email, hand the body to the
+`email-outlook-ready` skill so the bold/bullets/tables survive the paste into Outlook.
 
 ### Step 3: Track completion
 

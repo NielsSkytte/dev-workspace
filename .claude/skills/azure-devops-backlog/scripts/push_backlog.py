@@ -328,19 +328,14 @@ def _build_data_excellence_epic() -> Item:
         title="Data excellence",
         description=_load_data_excellence_html(),
     )
+    # Mirrors the 6-step maturity journey in templates/data_excellence_description.html
     features = [
-        "1. Data culture",
-        "2. Executive sponsor",
-        "3. Business alignment",
-        "4. Content ownership and management",
-        "5. Content delivery scope",
-        "6. Center of Excellence",
-        "7. Governance",
-        "8. Mentoring and user enablement",
-        "9. Community of practice",
-        "10. User support",
-        "11. System oversight",
-        "12. Change management",
+        "1. Automate",
+        "2. Align & elaborate",
+        "3. Validate",
+        "4. Adopt",
+        "5. Integrate",
+        "6. Transform",
     ]
     for name in features:
         epic.children.append(Item(type="Feature", title=name))

@@ -1,5 +1,6 @@
 ---
 name: azure-devops-backlog
+bundle: custom
 description: >
   Use this skill whenever the user wants to create, plan, or structure an Azure DevOps backlog
   from a project brief or document. Triggers on phrases like "create a backlog", "set up backlog",
@@ -80,18 +81,12 @@ Project
 │       └── Work Package: Environments (Dev / Test / Prod)
 │
 └── Epic: Data excellence                               [GENERIC — HTML maturity-journey description]
-    ├── Feature: 1. Data culture
-    ├── Feature: 2. Executive sponsor
-    ├── Feature: 3. Business alignment
-    ├── Feature: 4. Content ownership and management
-    ├── Feature: 5. Content delivery scope
-    ├── Feature: 6. Center of Excellence
-    ├── Feature: 7. Governance
-    ├── Feature: 8. Mentoring and user enablement
-    ├── Feature: 9. Community of practice
-    ├── Feature: 10. User support
-    ├── Feature: 11. System oversight
-    └── Feature: 12. Change management
+    ├── Feature: 1. Automate
+    ├── Feature: 2. Align & elaborate
+    ├── Feature: 3. Validate
+    ├── Feature: 4. Adopt
+    ├── Feature: 5. Integrate
+    └── Feature: 6. Transform
 ```
 
 ---
