@@ -1,4 +1,4 @@
-Append an entry to the workspace session log (`ops/log/sessions.md`) — the chronological record of what happened across the workspace each working session. This is the **Refine** stage of ICOR and the other half of the continuity loop: the session-start walk reads the latest entry. See `AGENTS.md` > Continuity loop.
+Append an entry to the workspace session log (`ops/log/sessions.md`) — the chronological record of what happened across the workspace each working session. This is the **Refine** stage of ICOR and the other half of the continuity loop: the session-start walk reads the latest entry. It also **distills the day's raw memory stream** (`ops/memory/daily/`) into the curated store (`ops/memory/store/`). See `AGENTS.md` > Continuity loop and > Memory.
 
 Usage:
   /log [optional note]     ← write a session-log entry for today
@@ -19,5 +19,6 @@ Usage:
    - **Tasks:** …
    - **Next:** …
    ```
-3. Keep it concise and factual — this is continuity, not a transcript.
-4. Confirm in one line.
+3. **Distill the day's memory.** Review today's raw stream `ops/memory/daily/<date>.md` (per-turn records written by the `Stop` hook). Promote durable keepers — facts, decisions, and skill observations (`type: evaluative`) — into curated `ops/memory/store/<id>.md` records (record shape in `ops/memory/README.md`), set their `status: distilled`, and add a line to `store/MEMORY.md`. Skip noise; the daily stream stays as the raw archive. If `ops/memory/daily/` has no entry for today, note it (the capture hook may not be firing).
+4. Keep it concise and factual — this is continuity, not a transcript.
+5. Confirm in one line.

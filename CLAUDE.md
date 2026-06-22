@@ -1,200 +1,35 @@
-# DEV — Global Workspace
+# CLAUDE.md — Claude Code Bootstrap
 
-> **LLM-agnostic workspace.** The tool-neutral source of truth is [`AGENTS.md`](AGENTS.md) — read it. This `CLAUDE.md` is the Claude Code bootstrap/accelerator; nothing load-bearing should live only here (see Guardrail 7).
+> **Read [`AGENTS.md`](AGENTS.md) first — it is the complete, tool-neutral source of truth** for how this workspace operates (structure, projects, agents, knowledge flow, continuity loop, conventions, guardrails). This file is a Claude Code *bootstrap* only: it points there and maps the Claude-specific harness onto it. Nothing load-bearing lives here (Guardrail 7 — deleting `.claude/` + this file must lose no knowledge or capability).
 
-## Owner
-Solo workspace. All work is business-oriented — development, content, strategy, and customer delivery.
-Default audience: Danish, unless overridden in project CLAUDE.md.
+## Claude harness map
 
----
+The harness *accelerates* routines that are fully described in `AGENTS.md`. Where the pieces live:
 
-## Folder Structure
-
-```
-DEV/
-├── AGENTS.md              ← tool-neutral source of truth (LLM-agnostic) — read first
-├── CLAUDE.md              ← Claude Code bootstrap → points to AGENTS.md
-├── _templates/            ← project scaffolding (content/, function/)
-├── .vscode/               ← tasks.json for project switching
-├── .claude/               ← Claude harness (accelerators, not load-bearing)
-│   ├── agents/            ← agent definitions (fabric, content, architect, M, Q)
-│   ├── commands/          ← slash commands (/brief, /handoff, /todo, /task, etc.)
-│   └── skills/            ← Agent Skills (folder per skill, SKILL.md + assets)
-├── ops/                   ← cross-project operating substrate (LLM-agnostic)
-│   ├── TODO.md            ← workspace action capture (/todo) — ICOR Input
-│   ├── tasks/             ← workspace task store (/task) — ICOR Output; open/in-progress/done/cancelled
-│   └── log/sessions.md    ← session log (/log) — ICOR Refine; continuity across sessions
-├── customers/
-│   └── [client]/
-│       └── [project]/
-└── own/
-    └── [project]/
-```
-
-**Two buckets — the only rule is delivery obligation:**
-- `customers/` — someone external is waiting for output
-- `own/` — discretionary work, no external obligation
-
----
-
-## Every Project Must Have
-
-| File | Purpose |
-|---|---|
-| `CLAUDE.md` | Project identity, type, rules, lineage |
-| `CONTEXT.md` | Live state — current focus, open threads, next actions |
-
-These two files are the context-switching primitive. Always keep CONTEXT.md current.
-
-Optional:
-| File | Purpose |
-|---|---|
-| `INBOX.md` | Cross-project knowledge feed — written by `/brief` from other sessions |
-
----
-
-## Project Types
-
-Two primary types, declared as `type:` in project CLAUDE.md:
-
-| Type | What it produces |
-|---|---|
-| `content` | Documents — wiki, slides, Word, markdown, presentations |
-| `function` | Executable things — pipelines, notebooks, scripts, APIs, tools |
-
-The `focus:` field in the Identity block provides the sub-classification (e.g., `sales`, `educational`, `architecture`, `notebook code`). The Purpose section elaborates.
-
-### Scale
-
-| Scale | Use |
-|---|---|
-| `spike` | Days. Quick experiment or exploration. Minimal docs. |
-| `project` | Weeks+. Structured work. Full CLAUDE.md + CONTEXT.md. |
-
-Spike graduation rule: if a spike spans multiple sessions or develops significant structure, prompt to upgrade to project scale.
-
----
-
-## Identity Block
-
-Every project CLAUDE.md starts with:
-
-```yaml
-## Identity
-type: content | function
-focus:
-scale: spike | project
-status: active | paused | delivered | archived
-owner: own | customers/[client]
-lineage:
-  - from:
-  - to:
-initiated_by: self | team | [name]
-language: da | en
-```
-
----
-
-## Agents
-
-Five agents are available from any project. Agents are roles with domain knowledge — they make judgment calls, not just follow steps.
-
-| Agent | Role | Invoke when |
+| Harness piece | Location | Wraps (neutral routine in AGENTS.md) |
 |---|---|---|
-| **fabric** | Fabric/pipeline/infrastructure builder | Building in Microsoft Fabric ecosystem |
-| **content** | Document and presentation specialist | Creating structured documents, presentations, SoWs |
-| **architect** | Design decision maker | Architecture choices, project structure, ADRs |
-| **M** | Head of operations — dispatches agents, manages the roster, runs the continuity loop (session-start walk, session-end log) | "M, do we have someone for this?" or "M, we need to hire a new agent" |
-| **Q** | Quartermaster — builds and refines agents and skills | "Q, build me an agent for X" or when M identifies a gap |
+| Agents (`fabric`, `content`, `architect`, `M`, `Q`) | `.claude/agents/` | *Agents — the roster* |
+| Slash commands (`/todo`, `/task`, `/log`, `/brief`, `/handoff`, `/new-project`, …) | `.claude/commands/` | *Continuity loop*, *Knowledge flow*, *Working with projects* |
+| Agent Skills (auto-invoked by context) | `.claude/skills/` | *Building new capabilities* |
+| Memory hooks (`capture_turn.py` = per-turn capture; `build_snapshot.py` = session-start injection) | `.claude/hooks/` | *Memory* (substrate lives at `ops/memory/`) |
 
-Agent definitions live in `.claude/agents/`. Reusable capabilities live in two places depending on form:
+**Reach for a slash command** for a short recipe you trigger on demand; **reach for an Agent Skill** when it carries domain knowledge or files and should fire automatically by context. Before creating any skill/command/agent, apply the justification rubric in `AGENTS.md` > *Building new capabilities*.
 
-| Form | Location | How it runs |
-|---|---|---|
-| **Slash command** | `.claude/commands/<name>.md` | A single markdown file. You invoke it explicitly by typing `/<name>` (e.g. `/brief`, `/handoff`). |
-| **Agent Skill** | `.claude/skills/<name>/SKILL.md` | A folder holding `SKILL.md` (with `name`/`description` frontmatter) plus any supporting scripts/assets/templates. Claude auto-invokes it when the description matches the task. |
+## Continuity loop — Claude triggers
 
-Reach for a **slash command** when it's a short recipe you trigger on demand. Reach for an **Agent Skill** when it carries domain knowledge or supporting files and should fire automatically by context (e.g. `pingala-visual-identity`, `azure-devops-backlog`).
+The routine and its knowledge live in `AGENTS.md` > *Continuity loop*. Claude's two triggers:
 
-**Skill vs Agent:** A skill is a verb — a recipe for a specific task. An agent is a role — a domain expert with knowledge and opinions. Agents may use skills.
+- **Workspace walk (root):** a `SessionStart` hook in `C:\Dev\.claude` fires it automatically at `C:\Dev` and emits the capped **memory snapshot**. Hooks inject context and do not auto-generate a reply — the walk runs on the first reply of the session.
+- **Project walk (inside a project):** hooks don't cascade, so this rule rides this cascading `CLAUDE.md` into project sessions — **when a session starts inside `customers/…` or `own/…`, read that project's `CONTEXT.md` (and any "Related contexts" it names) and surface unread `INBOX.md` before the first request.**
 
-## Evaluating new constructs
+At session end / when wrapping up, offer to append a session-log entry (`/log`), which also distills the day's memory.
 
-A skill, command, or agent must justify its existence. When I propose creating one, challenge me before agreeing.
+## Memory — Claude accelerators
 
-| Construct | Axis | Core challenge |
-|---|---|---|
-| **Skill** | depth | What does the LLM get wrong today without it? Show the failure. |
-| **Command** | repeatability | Which inputs change between runs? What structure stays fixed? |
-| **Agent** | scope | What decision does it make mid-task that earlier results would change? |
+The memory substrate lives at `ops/memory/` (see `AGENTS.md` > *Memory*). Claude accelerates it: a `Stop` hook (`.claude/hooks/capture_turn.py`) captures each turn to `ops/memory/daily/`; the `SessionStart` hook injects the snapshot (`build_snapshot.py`); native Claude auto-memory is **disabled** (`autoMemoryEnabled: false` in `.claude/settings.json`) so `ops/memory/` is the only home.
 
-These are three different axes, not three stages on one scale. A gap on any axis pushes toward a different construct.
+## Reminders
 
-**Don't confuse the skill axis (depth) with the command axis (repeatability).** A skill is justified by a *demonstrated* failure — one concrete instance where the LLM got it wrong without the knowledge is sufficient. It does NOT need to recur first; "it's only happened once / it's a one-off" is a repeatability argument and belongs to the command decision, not the skill decision. If you catch yourself deferring a skill because it hasn't happened twice yet, you're applying the wrong test.
-
-**Graduation signals — when one is growing into another:**
-- Skill repeatedly reloaded with parameters → may be a command
-- Command with conditional branches on earlier output → may be an agent
-- Agent whose role has split into two distinct goals → decompose into specialists
-
-**Behavioural triggers:**
-- When I significantly correct your output, pause and ask whether the correction should become a new skill, modify an existing skill, become a command, or trigger a new specialist agent. Route the answer to Q.
-- **When you auto-correct your own work mid-task and the fix revealed a non-obvious failure mode, treat that as the depth evidence a skill needs — surface it and propose capturing it.** The failure already happened; you don't get to wait for it to happen again. (See the depth-vs-repeatability note above.)
-- At the end of a working session, ask whether any of what we covered should become a skill, command, or new specialist agent.
-
-## Fabric scope note
-
-Fabric is OS-scale (pipelines, notebooks, lakehouse, warehouse, semantic models, real-time intelligence, governance, Power BI). A single `fabric` agent may grow too broad. When fabric-domain work reveals distinct goals with non-overlapping knowledge, raise to M whether a new specialist should be spawned rather than further loading `fabric`.
----
-
-## Knowledge Flow
-
-Projects spawn from and feed into each other. Two mechanisms:
-
-1. **Lineage** (in Identity block): tracks where a project came from and what it serves
-2. **INBOX.md** + `/brief` skill: cross-project knowledge transfer without context switching
-
-Workflow:
-- Working in Project A, discover something relevant to Project B
-- `/brief ProjectB "the insight"` — validated against B's scope, appended to B's INBOX.md
-- When opening Project B, Claude surfaces inbox entries first
-
----
-
-## Guardrails
-
-Claude Code must enforce these across all projects:
-
-1. **No root-level drift** — flag any file or folder created directly under `DEV/` that is not in the defined structure above.
-2. **CONTEXT.md freshness** — at the end of any session where meaningful progress was made, prompt to update `CONTEXT.md` before closing.
-3. **Lineage tracking** — never delete the lineage field, even if empty.
-4. **Type conformance** — if a project's work diverges significantly from its declared type, flag it and ask before proceeding.
-5. **Spike graduation** — if a spike project spans multiple sessions or develops significant structure (multiple subfolders, growing file count), prompt: *"This spike may be ready to graduate to project scale. Want to expand its scaffolding?"*
-6. **Notebook Purpose cell** — every Fabric notebook carries a `## Purpose` synthesis as its **first cell**: a short, general statement of what it does and where it sits in the flow (not step-by-step detail). Create it when authoring; **update it only on major functional changes** (new/removed outputs, changed role, restructured logic) — *not* on bug fixes or minor tweaks. In Fabric `notebook-content.py` this is a markdown cell — `# MARKDOWN ********************`, then markdown lines each prefixed with `# `, placed after the notebook-level `# METADATA` block and before the first `# CELL`. Applies to all notebook work under `C:\Dev`.
-
-7. **LLM-agnostic substrate** — durable content (knowledge, inbox, tasks, ADRs, conventions) stays as plain markdown in tool-neutral locations; Claude-specific harness (slash commands, skills, this file, the memory store) is a non-load-bearing *accelerator* only. Tool-specific *bootstrap/initialization* is permitted. Acid test: deleting `.claude/` + `CLAUDE.md` must lose no knowledge or capability. **Auto-triggers (hooks, scheduled agents) are permitted accelerators — they may add automation and determinism, but no decision logic or knowledge that isn't also in the substrate: a hook is a dumb executor of a documented routine, never the source of one.** Canonical statement: [`AGENTS.md`](AGENTS.md).
-8. **Continuity loop** — session start is **context-scoped**: at the workspace root (`C:\Dev`) perform the *workspace walk* (read `ops/tasks/{in-progress,open}`, unchecked `ops/TODO.md`, latest `ops/log/sessions.md`) and surface open work before the first request; inside a project (`customers/…`, `own/…`) instead read that project's `CONTEXT.md` and surface unread `INBOX.md`. At session end / when wrapping up, offer to append a session-log entry (`/log`). A `SessionStart` hook in `C:\Dev\.claude` fires the workspace walk automatically at root (hooks don't cascade, so it stays root-only); this cascading `CLAUDE.md` carries the project-walk rule into project sessions. Canonical routine: [`AGENTS.md`](AGENTS.md) > Continuity loop; owned by M.
-9. **Scripts are ASCII-only** — any script run under Windows PowerShell 5.1 (hooks, `.ps1`) must use ASCII punctuation (`-`, straight quotes, `...`); non-ASCII in a BOM-less file breaks PS 5.1's parser. Full rationale: [`AGENTS.md`](AGENTS.md) > Conventions.
-
----
-
-## Starting a New Project
-
-1. Decide: `customers/[client]/[project]` or `own/[project]`
-2. Copy `_templates/[type]/` into the target location
-3. Claude interviews you to fill in the CLAUDE.md (the template is a minimal scaffold — the interview adds project-specific detail)
-4. Create CONTEXT.md from template
-5. Add a task entry to `.vscode/tasks.json`
-6. Open Claude Code via the new task
-
----
-
-## Switching Projects
-
-Use **VS Code Tasks** (`Ctrl+Shift+P` → `Tasks: Run Task`) to launch Claude Code in a project.
-Each project has a dedicated task that opens a named terminal panel rooted at the project folder.
-This ensures Claude Code picks up the correct CLAUDE.md chain: project → DEV root.
-
-## Other context
-When a CONTEXT.md contains a "Related contexts" section, read those files 
-at session start before proceeding.
+- **Scripts are ASCII-only** under Windows PowerShell 5.1 (hooks, `.ps1`). See `AGENTS.md` > *Conventions* for the why.
+- **Project context chain:** open sessions rooted at the project folder so the chain resolves project → workspace root. Use the per-project VS Code Task (`Ctrl+Shift+P` → `Tasks: Run Task`).
+- **Switching to / starting projects, guardrails, identity block, all conventions:** see `AGENTS.md`.

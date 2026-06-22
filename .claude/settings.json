@@ -1,4 +1,5 @@
 {
+  "autoMemoryEnabled": false,
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +8,16 @@
           {
             "type": "command",
             "command": "powershell -NoProfile -File \"C:\\Dev\\.claude\\hooks\\session-start.ps1\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:\\Dev\\.claude\\hooks\\capture_turn.py\""
           }
         ]
       }

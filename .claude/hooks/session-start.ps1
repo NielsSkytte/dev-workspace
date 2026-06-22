@@ -1,4 +1,14 @@
 $ErrorActionPreference = 'SilentlyContinue'
+
+# Injection: capped memory snapshot (built by Python from ops/memory/store; ASCII output).
+# Native Claude auto-memory is disabled (autoMemoryEnabled:false), so this is the only injection.
+$snap = & python "C:\Dev\.claude\hooks\build_snapshot.py" 2>$null
+if ($snap) {
+    Write-Output ($snap -join "`n")
+    Write-Output ""
+}
+
+# Workspace walk: open-work counts (Continuity loop).
 $ops = 'C:\Dev\ops'
 $inprog = @(Get-ChildItem -Path (Join-Path $ops 'tasks\in-progress') -Filter *.md -File)
 $open   = @(Get-ChildItem -Path (Join-Path $ops 'tasks\open') -Filter *.md -File)
