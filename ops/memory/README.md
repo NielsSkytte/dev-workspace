@@ -62,8 +62,12 @@ recall-miss proves keyword is insufficient.
 ## By-hand recipes — the capability the harness accelerates
 
 **STORAGE / capture.** Append a record to today's `daily/<date>.md`. The `Stop` hook writes one
-per turn automatically (`status: raw`, `source: turn-hook`); by hand, write a record in the shape
-above with `source: manual`.
+per turn automatically (`status: raw`, `source: turn-hook`) - keyed by (date, session, user
+message), so repeated `Stop` firings within one turn **replace** that turn's record in place
+rather than piling up duplicates. The assistant body is summarized by a **tiny local Ollama
+model** (`MEMORY_SUMMARY_MODEL`, default `qwen3:1.7b`, zero cost / fully local); if Ollama is
+unreachable it falls back to a deterministic truncated extract. By hand, write a record in the
+shape above with `source: manual`.
 
 **STORAGE / distill.** When a raw daily record is worth keeping, copy it into `store/<id>.md`
 (`status: distilled`), refine the body, and add a line to `store/MEMORY.md`. `/log` does this for
@@ -92,4 +96,6 @@ edit. See `store/skill-usage-evaluation.md`.
 - `AGENTS.md` > Conventions stays **canonical** for operating conventions; store records
   cross-reference it rather than restating it.
 - Claude's native auto-memory (`~/.claude/.../memory/`) is **disabled** (`autoMemoryEnabled: false`)
-  so there is exactly one memory home: this folder.
+  so there is exactly one memory home: this folder. (The disable stops auto-memory's autonomous
+  *writes* — the real collision — but not its ~11-16k-token system-prompt preamble, an open Claude
+  Code bug #63903; see `store/claude-auto-memory-disable.md`.)

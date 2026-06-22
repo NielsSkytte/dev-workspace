@@ -1,3 +1,6 @@
 # Project subfolders are their own git repositories — not tracked by the workspace repo
 /customers/
 /own/
+
+# Per-turn capture hook state (harness runtime, not portable substrate)
+.claude/hooks/.capture_state.json

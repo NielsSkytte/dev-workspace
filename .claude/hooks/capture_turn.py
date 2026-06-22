@@ -3,14 +3,22 @@
 
 Robust by design: reads the hook JSON from stdin, extracts the last user+assistant
 exchange from the transcript, writes a record in the workspace record shape, and ALWAYS
-exits 0 (never blocks or errors a turn). Summarizes via Haiku only if ANTHROPIC_API_KEY is
-set; otherwise falls back to a deterministic truncated extract so capture always succeeds.
+exits 0 (never blocks or errors a turn). Summarizes via a tiny local Ollama model; if Ollama
+is unreachable it falls back to a deterministic truncated extract so capture always succeeds.
 See C:\\Dev\\ops\\memory\\README.md for the model and record shape.
 """
-import sys, os, json, datetime
+import sys, os, json, datetime, hashlib
 
 DAILY_DIR = os.environ.get("MEMORY_DAILY_DIR", r"C:\Dev\ops\memory\daily")
-HAIKU_MODEL = "claude-haiku-4-5-20251001"
+STATE_FILE = os.environ.get(
+    "MEMORY_STATE_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".capture_state.json"),
+)
+# Summarizer: a tiny local Ollama model (zero cost, fully local). If Ollama is unreachable
+# the caller falls back to a deterministic truncated extract.
+SUMMARY_URL = os.environ.get("MEMORY_SUMMARY_URL", "http://localhost:11434/api/chat")
+SUMMARY_MODEL = os.environ.get("MEMORY_SUMMARY_MODEL", "qwen3:1.7b")
+SUMMARY_TIMEOUT = int(os.environ.get("MEMORY_SUMMARY_TIMEOUT", "20"))
 
 
 def scope_from_cwd(cwd):
@@ -65,43 +73,79 @@ def extract_turn(transcript_path):
     return user_text, asst_text
 
 
-def summarize(user_text, asst_text):
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key or not (user_text or asst_text):
-        return ""
+PROMPT_TMPL = (
+    "Summarize this assistant turn in 1-2 sentences for a memory log. Capture the concrete "
+    "action, decision, or fact - not pleasantries. Reply with only the summary.\n\n"
+    "User: %s\n\nAssistant: %s"
+)
+
+
+def _post_json(url, body, headers, timeout):
+    import urllib.request
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def _summarize_local(prompt):
+    """Ollama /api/chat - zero cost, fully local. Empty string on any failure (caller truncates)."""
     try:
-        import urllib.request
-        prompt = (
-            "Summarize this assistant turn in 1-2 sentences for a memory log. "
-            "Capture the concrete action, decision, or fact - not pleasantries.\n\n"
-            "User: %s\n\nAssistant: %s" % (user_text[:2000], asst_text[:4000])
-        )
-        body = json.dumps({
-            "model": HAIKU_MODEL,
-            "max_tokens": 160,
-            "messages": [{"role": "user", "content": prompt}],
-        }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=body,
-            headers={
-                "content-type": "application/json",
-                "x-api-key": key,
-                "anthropic-version": "2023-06-01",
+        data = _post_json(
+            SUMMARY_URL,
+            {
+                "model": SUMMARY_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "think": False,  # don't let a thinking model spend its budget before the answer
+                "options": {"num_predict": 160, "temperature": 0.2},
             },
+            {"content-type": "application/json"},
+            SUMMARY_TIMEOUT,
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        return "".join(
-            b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
-        ).strip()
+        return ((data.get("message") or {}).get("content") or "").strip()
     except Exception:
         return ""
+
+
+def summarize(user_text, asst_text):
+    """Local Ollama summary, or "" so the caller truncates."""
+    if not (user_text or asst_text):
+        return ""
+    prompt = PROMPT_TMPL % (user_text[:2000], asst_text[:4000])
+    return _summarize_local(prompt)
 
 
 def trunc(s, n):
     s = (s or "").strip().replace("\r", " ")
     return (s[:n] + "...") if len(s) > n else s
+
+
+def _hash(s):
+    return hashlib.sha1((s or "").encode("utf-8")).hexdigest()
+
+
+def load_state():
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_state(state):
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+
+
+def header_bytes(date):
+    return (
+        "# Daily memory stream - %s\n\n"
+        "Raw per-turn records (STORAGE tier 1), written by the Stop hook. "
+        "Distilled into store/ by /log. See ../README.md.\n\n---\n\n" % date
+    ).encode("utf-8")
 
 
 def main():
@@ -122,6 +166,19 @@ def main():
     rid = now.strftime("%Y%m%dT%H%M%SZ") + "-" + sid[:8]
     scope = scope_from_cwd(cwd)
 
+    # One record per user turn: a turn is keyed by (date, session, user message). The Stop
+    # hook can fire several times within one turn (the agent yields, then continues) - those
+    # share the same user message, so we REPLACE the prior record in place rather than append.
+    user_h, asst_h = _hash(user_text), _hash(asst_text)
+    state = load_state()
+    same_turn = (
+        state.get("date") == date
+        and state.get("session") == sid
+        and state.get("user_hash") == user_h
+    )
+    if same_turn and state.get("asst_hash") == asst_h:
+        return  # duplicate Stop, assistant unchanged - nothing new to record
+
     summary = summarize(user_text, asst_text)
     body_user = trunc(user_text, 500)
     body_asst = summary if summary else trunc(asst_text, 700)
@@ -141,20 +198,29 @@ def main():
         "**User:** %s\n\n" % body_user +
         "**Assistant:** %s\n\n" % body_asst +
         "---\n\n"
-    )
+    ).encode("utf-8")
 
     try:
         os.makedirs(DAILY_DIR, exist_ok=True)
         path = os.path.join(DAILY_DIR, date + ".md")
-        new = not os.path.exists(path)
-        with open(path, "a", encoding="utf-8", newline="\n") as f:
-            if new:
-                f.write(
-                    "# Daily memory stream - %s\n\n"
-                    "Raw per-turn records (STORAGE tier 1), written by the Stop hook. "
-                    "Distilled into store/ by /log. See ../README.md.\n\n---\n\n" % date
-                )
-            f.write(rec)
+        existing = b""
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                existing = f.read()
+        offset = state.get("offset", 0)
+        if same_turn and existing and 0 <= offset <= len(existing):
+            base = existing[:offset]   # same turn: drop the prior record, keep everything before
+        elif existing:
+            base = existing            # new turn: append to today's stream
+        else:
+            base = header_bytes(date)  # first record of the day
+        record_start = len(base)
+        with open(path, "wb") as f:    # binary write preserves the explicit "\n" line endings
+            f.write(base + rec)
+        save_state({
+            "date": date, "session": sid,
+            "user_hash": user_h, "asst_hash": asst_h, "offset": record_start,
+        })
     except Exception:
         pass
 
