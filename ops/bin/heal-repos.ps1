@@ -7,7 +7,11 @@
     C:\Dev\customers\<Customer> = one LOCAL repo per customer (backup + privacy unit)
     C:\Dev\own                  = one LOCAL repo (same role)
     <unit>\<project>            = LOCAL project  (plain folder, tracked by the unit repo)
-                                  or DEVOPS project (its own repo w/ remote, ignored by the unit)
+                                  or DEVOPS project (its own repo w/ remote): the unit repo ignores
+                                  its CONTENTS but backs up its internal metadata (CLAUDE.md,
+                                  CONTEXT.md, CONTEXT_*.md, INBOX.md) via hard links in
+                                  <unit>\.project-meta\<sub>\ - code lives in DevOps, context
+                                  lives in the personal unit repo (decided 2026-07-06)
 
   For every repo unit (each customers\* dir, plus own) this ensures:
     1. git init if it is not yet a repo
@@ -121,7 +125,9 @@ function Set-ManagedIgnore($unit, $subrepos) {
     "**/venv/", "**/.venv/", "__pycache__/")
   if ($subrepos.Count -gt 0) {
     $block += ""
-    $block += "# Nested project repos with their own remote (DevOps/wiki): backed up there, not here"
+    $block += "# Nested project repos with their own remote (DevOps/wiki): code backed up there, not here."
+    $block += "# Their internal metadata (CLAUDE/CONTEXT/INBOX) IS backed up here - hard-linked into"
+    $block += "# .project-meta/<sub>/ (tracked), since git refuses paths inside a nested repo."
     foreach ($s in $subrepos) { $block += "/$s/" }
   }
   $block += $end
@@ -140,6 +146,33 @@ function Set-ManagedIgnore($unit, $subrepos) {
   if ($out.Count -gt 0) { $out.Add("") }
   foreach ($b in $block) { $out.Add($b) }
   Set-Content -Path $giPath -Value $out -Encoding utf8
+}
+
+function Sync-SubrepoMeta($unit, $subDirs) {
+  # A DevOps sub-repo's internal metadata (CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) is
+  # excluded from the DevOps remote (Ensure-Excludes) AND cannot be tracked by the unit repo
+  # directly (git refuses paths inside a nested repo). Backup: HARD-LINK each metadata file
+  # into <unit>\.project-meta\<sub>\ - a tracked shadow path. Same bytes, no sync step; the
+  # file in the project folder is the source of truth. Self-heal: if an atomic save broke the
+  # link (hashes differ), relink from the project file. (Same trick as settings.json above.)
+  foreach ($d in $subDirs) {
+    $names = @("CLAUDE.md", "CONTEXT.md", "INBOX.md") + `
+      (Get-ChildItem $d.FullName -File -Filter "CONTEXT_*.md" | ForEach-Object { $_.Name })
+    $metaFiles = $names | Where-Object { Test-Path (Join-Path $d.FullName $_) } | Select-Object -Unique
+    if ($metaFiles.Count -eq 0) { continue }
+    $shadowDir = Join-Path $unit (".project-meta\" + $d.Name)
+    if (-not (Test-Path $shadowDir)) { New-Item -ItemType Directory -Path $shadowDir | Out-Null }
+    foreach ($n in $metaFiles) {
+      $srcFile = Join-Path $d.FullName $n
+      $shadow = Join-Path $shadowDir $n
+      if (Test-Path $shadow) {
+        if ((Get-FileHash $shadow).Hash -eq (Get-FileHash $srcFile).Hash) { continue }
+        Remove-Item $shadow -Force
+      }
+      New-Item -ItemType HardLink -Path $shadow -Target $srcFile | Out-Null
+      Write-Host "     meta linked: .project-meta\$($d.Name)\$n"
+    }
+  }
 }
 
 function Heal-Unit($unit) {
@@ -166,10 +199,11 @@ function Heal-Unit($unit) {
     Link-Harness $sp | Out-Null
     switch (Get-RemoteClass $sp) {
       "customer" { Ensure-Excludes $sp; Write-Host "     $($d.Name): customer-facing -> ignored + guarded" }
-      "internal" { Write-Host "     $($d.Name): internal remote -> ignored (not guarded)" }
+      "internal" { Ensure-Excludes $sp; Write-Host "     $($d.Name): internal remote -> ignored + guarded (wiki/shared: internal metadata still excluded)" }
       "none"     { Write-Host "     $($d.Name): WARN no remote -> fold into the unit repo or add a remote" }
     }
   }
+  Sync-SubrepoMeta $unit $subDirs
 
   $head = git -C $unit rev-parse --verify --quiet HEAD 2>$null
   if (-not $head) {
