@@ -75,9 +75,69 @@ def extract_turn(transcript_path):
 
 PROMPT_TMPL = (
     "Summarize this assistant turn in 1-2 sentences for a memory log. Capture the concrete "
-    "action, decision, or fact - not pleasantries. Reply with only the summary.\n\n"
+    "action, decision, or fact - not pleasantries. Respond in English only. "
+    "Reply with only the summary.\n\n"
     "User: %s\n\nAssistant: %s"
 )
+
+# --- Output validation (see ops/memory/README.md > Output validation) -----------------
+# Model output feeds future prompts (snapshot injection, recall, distillation), so every
+# summary is validated deterministically before it is written. On ANY violation the summary
+# is rejected and the caller falls back to the truncated verbatim extract (quoted session
+# content, not novel model text). Rules live in the README (Guardrail 7: this is the dumb
+# executor of a documented routine).
+
+# Allowed: ASCII printable + Latin-1 letters (covers Danish) + common typographic punctuation.
+_EXTRA_OK = set(u"\u2013\u2014\u2018\u2019\u201c\u201d\u2026\u00a0")
+_INJECTION_MARKERS = (
+    "ignore previous instructions", "ignore all previous", "disregard previous",
+    "<system-reminder", "<command-name", "you are now", "new instructions:",
+)
+
+
+def _charset_ok(ch):
+    o = ord(ch)
+    if 32 <= o <= 126 or ch in ("\n", "\t"):
+        return True
+    if 0x00C0 <= o <= 0x00FF:  # Latin-1 letters incl. aeoeaa
+        return True
+    return ch in _EXTRA_OK
+
+
+def sanitize_summary(s):
+    """Return the summary if it passes all checks, else "" (caller truncates verbatim)."""
+    s = (s or "").strip()
+    if not s:
+        return ""
+    if len(s) > 600:
+        return ""
+    if any(not _charset_ok(ch) for ch in s):
+        return ""  # non-Latin script or control chars: model went off-script
+    low = s.lower()
+    if any(m in low for m in _INJECTION_MARKERS):
+        return ""  # instruction-like text has no place in a summary
+    return s
+
+
+def command_invocation(user_text):
+    """If the user message is an expanded slash command, return '/name args' else ''.
+    Command turns store the command's full help text as the user message - noise. We record
+    the invocation itself instead."""
+    t = user_text or ""
+    if "<command-name>" not in t:
+        return ""
+    def _tag(tag):
+        a = t.find("<%s>" % tag)
+        if a == -1:
+            return ""
+        a += len(tag) + 2
+        b = t.find("</%s>" % tag, a)
+        return t[a:b].strip() if b != -1 else ""
+    name = _tag("command-name")
+    args = _tag("command-args")
+    if not name:
+        return ""
+    return (name + " " + args).strip() if args else name
 
 
 def _post_json(url, body, headers, timeout):
@@ -108,11 +168,11 @@ def _summarize_local(prompt):
 
 
 def summarize(user_text, asst_text):
-    """Local Ollama summary, or "" so the caller truncates."""
+    """Local Ollama summary, validated; or "" so the caller truncates."""
     if not (user_text or asst_text):
         return ""
     prompt = PROMPT_TMPL % (user_text[:2000], asst_text[:4000])
-    return _summarize_local(prompt)
+    return sanitize_summary(_summarize_local(prompt))
 
 
 def trunc(s, n):
@@ -179,8 +239,9 @@ def main():
     if same_turn and state.get("asst_hash") == asst_h:
         return  # duplicate Stop, assistant unchanged - nothing new to record
 
+    cmd = command_invocation(user_text)
     summary = summarize(user_text, asst_text)
-    body_user = trunc(user_text, 500)
+    body_user = cmd if cmd else trunc(user_text, 500)
     body_asst = summary if summary else trunc(asst_text, 700)
     if not (body_user or body_asst):
         body_asst = "(turn captured; no text extracted from transcript)"

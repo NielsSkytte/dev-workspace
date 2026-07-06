@@ -131,7 +131,7 @@ language: da | en
 
 ## Agents — the roster
 
-Seven agents (roles, not scripts) are available from any project. An agent is a **role with domain knowledge** that makes judgment calls — not just a checklist. The Fabric domain is split in three around the semantic model — the model is the contract between backend and frontend.
+Eight agents (roles, not scripts) are available from any project. An agent is a **role with domain knowledge** that makes judgment calls — not just a checklist. The Fabric domain is split in three around the semantic model — the model is the contract between backend and frontend.
 
 | Agent | Role | Invoke when |
 |---|---|---|
@@ -142,6 +142,7 @@ Seven agents (roles, not scripts) are available from any project. An agent is a 
 | **architect** | Design decision maker | Architecture choices, project structure, ADRs |
 | **M** | Head of operations — dispatches agents, manages the roster, runs the continuity loop | "M, do we have someone for this?" / "M, we need to hire an agent" |
 | **Q** | Quartermaster — builds and refines agents and skills | "Q, build me an agent for X" / when M identifies a gap |
+| **Sentinel** | Output vetting — reviews everything a LOCAL model writes into the substrate before it can feed future prompts (memory daily stream today; any local-model output tomorrow) | At `/log` before distillation; after a summarizer model/prompt change; whenever local-model output looks odd, however small (added 2026-07-06 — local-model output is untrusted input, see `ops/memory/README.md` > Output validation) |
 
 Every agent definition names the skills at its disposal and delegates exploration/research to subagents to preserve the main context for judgment.
 

@@ -62,6 +62,11 @@ The Fabric domain is split in three around the semantic model (the model is the 
 - **Deploy when**: a new agent or skill needs to be created, or an existing one needs refinement based on performance feedback
 - **Strengths**: knows the agent/skill formats, interviews users to define the right tool, decides skill vs agent
 
+### Sentinel (`sentinel`)
+- **Domain**: vetting locally-generated LLM output before it enters the substrate/prompt loop — memory daily records (Ollama summarizer) today, any local-model output tomorrow
+- **Deploy when**: at `/log` before distillation; after changing the local summarizer model or prompt; any anomaly in local-model output, however small
+- **Strengths**: file+line verdicts (re-summarize / truncate / drop / fine); fact-only reporting; sits above the deterministic sanitizer in `capture_turn.py`
+
 ---
 
 ## Capability Inventory

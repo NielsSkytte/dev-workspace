@@ -87,6 +87,31 @@ write an evaluative record (`type: evaluative`, tag the skill name). Periodicall
 `/update-skills`) group evaluative records by skill; N consistent observations -> a concrete skill
 edit. See `store/skill-usage-evaluation.md`.
 
+## Output validation — local-model output is untrusted input (decided 2026-07-06)
+
+Memory records **feed future prompts** (snapshot injection, recall, distillation), so anything a
+local model writes into them is a potential injection path into later sessions. Every summary from
+the local summarizer is therefore validated **deterministically, per turn**, before it is written
+(`capture_turn.py > sanitize_summary`). On any violation the summary is rejected and the record
+falls back to a truncated verbatim extract (quoted session content, not novel model text).
+
+The rules (the hook is the dumb executor; this list is the source of truth):
+1. **Charset**: printable ASCII + Latin-1 letters (Danish covered) + en/em dash, curly quotes,
+   ellipsis, nbsp. Any other script or control character -> reject. (Observed once 2026-07-06:
+   `qwen3:1.7b` mixed a Chinese phrase into an otherwise-correct summary, `daily/2026-07-06.md`.)
+2. **Injection markers**: instruction-like text ("ignore previous instructions", "you are now",
+   `<system-reminder`, `<command-name`, "new instructions:") -> reject.
+3. **Bounds**: empty or > 600 chars -> reject.
+4. **Command turns** are recorded as the invocation (`/todo <args>`), never the command's expanded
+   help text (that was the main daily-stream noise source pre-2026-07-06).
+
+**Second layer — the `sentinel` agent** reviews the day's daily file at `/log` (before distillation)
+and any other locally-generated LLM output on demand: language violations the charset rule can't
+judge, instruction-like phrasing that dodges the marker list, summaries that contradict their turn,
+anything odd however small. Verdicts are file+line specific; suspect records are re-summarized or
+truncated, never distilled as-is. **By hand:** grep `daily/` for non-Latin characters and the
+marker list above, and read the day's records before promoting any of them to `store/`.
+
 ## No duplicate functionality — how this relates to the rest of `ops/`
 
 - `ops/TODO.md` (actions) and `ops/tasks/` (work-state) are **not** memory — untouched.

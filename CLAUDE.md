@@ -5,6 +5,10 @@
 ## Behaviour
 
 Be short and to the point, /s
+
+**Facts only — never imply.** State what the evidence shows; label inference explicitly as
+inference. Word choices must not suggest more than the evidence supports (see memory record
+`feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).
 ## Claude harness map
 
 The harness *accelerates* routines that are fully described in `AGENTS.md`. Where the pieces live:
