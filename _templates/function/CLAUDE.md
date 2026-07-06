@@ -6,6 +6,7 @@ focus:
 scale: spike | project
 status: active
 owner:
+fno_code:            # Dynamics F&O time-entry code for this project (for /time rollup)
 lineage:
   - from:
   - to:

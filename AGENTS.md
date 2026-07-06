@@ -28,14 +28,16 @@ This is the **tool-portability** half of the AtomicCortex portability constraint
 DEV/
 ├── AGENTS.md              ← tool-neutral source of truth (this file) — read first
 ├── CLAUDE.md              ← Claude Code bootstrap → points here
-├── _templates/            ← project scaffolding (content/, function/)
+├── _templates/            ← project scaffolding (content/, function/, customer/)
 ├── ops/                   ← cross-project operating substrate (LLM-agnostic)
 │   ├── TODO.md            ← workspace action capture (ICOR Input)
 │   ├── tasks/             ← workspace task store (ICOR Output): open/ in-progress/ done/ cancelled/
 │   ├── log/sessions.md    ← session log (ICOR Refine); continuity across sessions
-│   └── memory/            ← memory substrate (Storage/Injection/Recall + skill-eval): store/ daily/ README.md
+│   ├── memory/            ← memory substrate (Storage/Injection/Recall + skill-eval): store/ daily/ README.md
+│   └── time/              ← time-tracking substrate (heartbeats -> timesheets): heartbeats/ timesheet/ README.md
 ├── customers/
-│   └── [client]/[project]/
+│   └── [client]/           ← customer node (CLAUDE.md + CONTEXT.md): profile + project index
+│       └── [project]/      ← the unit of work (CLAUDE.md + CONTEXT.md); time & tasks attach here
 ├── own/
 │   └── [project]/
 ├── .vscode/               ← tasks.json for project switching (Claude/VS Code accelerator)
@@ -63,6 +65,23 @@ The only rule separating them is **delivery obligation**:
 Optional: `INBOX.md` — cross-project knowledge feed, written by the `/brief` routine from other sessions.
 
 (The per-project `CLAUDE.md` filename is a convention inherited from the harness; its *content* — the identity block below — is portable knowledge any LLM can read.)
+
+### Customer nodes (`customers/` is two-tier)
+
+Under `customers/`, context is **two-tier**: a **customer node** wraps one or more **projects**.
+
+- **Customer node** (`customers/<client>/CLAUDE.md` + `CONTEXT.md`) — the customer *map*: profile,
+  key contacts, shared infrastructure (Fabric capacity, Entra tenant, Azure DevOps org), and a
+  **project index** (one row per project + a one-line status). `CONTEXT.md` holds live
+  *customer-level* state — what is moving across projects. Scaffold from `_templates/customer/`.
+- **Project** (`customers/<client>/<project>/…`) — the unit of work, unchanged: full identity block,
+  its own live `CONTEXT.md`, and **the only thing time and tasks attach to**.
+
+**A customer node is never a project.** It carries no `type:`/`scale:`/`fno_code:` and is never a
+billing target — work always bills to a project (and, for `customers/…`, a task within it). The node
+exists so overall customer context is available at the customer root even before a project is chosen.
+Every `customers/<client>/` has a customer node; a single-project customer still gets one (its index
+has one row). `own/` is single-tier — an `own/<project>` is just a project, no customer wrapper.
 
 ### Project types
 
@@ -95,6 +114,7 @@ focus:
 scale: spike | project
 status: active | paused | delivered | archived
 owner: own | customers/[client]
+fno_code:                  # Dynamics F&O time-entry code (drives /time rollup; see Time tracking)
 lineage:
   - from:
   - to:
@@ -104,15 +124,19 @@ language: da | en
 
 ## Agents — the roster
 
-Five agents (roles, not scripts) are available from any project. An agent is a **role with domain knowledge** that makes judgment calls — not just a checklist.
+Seven agents (roles, not scripts) are available from any project. An agent is a **role with domain knowledge** that makes judgment calls — not just a checklist. The Fabric domain is split in three around the semantic model — the model is the contract between backend and frontend.
 
 | Agent | Role | Invoke when |
 |---|---|---|
-| **fabric** | Fabric/pipeline/infrastructure builder | Building in the Microsoft Fabric ecosystem |
+| **fabric-back** | Fabric backend builder — pipelines, notebooks, lakehouses, warehouses, provisioning | Building/debugging from source extraction up to the curated (gold) layer |
+| **semantic** | Semantic modelling specialist — relationships, measures, Direct Lake/refresh, optimization, model docs, data agents | Anything between the curated layer and reports; shared surface with the fabric-front colleague |
+| **fabric-front** | Power BI frontend — reports, visuals, layout, theming (colleague-owned domain) | Creating/reviewing reports; handover prep |
 | **content** | Document and presentation specialist | Creating structured documents, presentations, SoWs |
 | **architect** | Design decision maker | Architecture choices, project structure, ADRs |
 | **M** | Head of operations — dispatches agents, manages the roster, runs the continuity loop | "M, do we have someone for this?" / "M, we need to hire an agent" |
 | **Q** | Quartermaster — builds and refines agents and skills | "Q, build me an agent for X" / when M identifies a gap |
+
+Every agent definition names the skills at its disposal and delegates exploration/research to subagents to preserve the main context for judgment.
 
 The Claude harness implements these as definitions in `.claude/agents/`; another LLM would express the same roles its own way. The roster and what each role decides is the portable part.
 
@@ -151,7 +175,7 @@ These are three different axes, not three stages on one scale. A gap on any axis
 
 ### Fabric scope note
 
-Fabric is OS-scale (pipelines, notebooks, lakehouse, warehouse, semantic models, real-time intelligence, governance, Power BI). A single `fabric` agent may grow too broad. When fabric work reveals distinct goals with non-overlapping knowledge, raise whether a new specialist should be spawned rather than further loading `fabric`.
+Fabric is OS-scale (pipelines, notebooks, lakehouse, warehouse, semantic models, real-time intelligence, governance, Power BI). This predicted split happened 2026-07-06: the single `fabric` agent became `fabric-back` / `semantic` / `fabric-front`, cut at the semantic model because it is the contract between backend and frontend (and the collaboration surface with the frontend colleague). The principle stands for further growth: when work inside one of the three reveals distinct goals with non-overlapping knowledge (e.g. real-time intelligence, governance), raise whether a new specialist should be spawned rather than further loading an existing agent.
 
 ## Knowledge flow
 
@@ -175,7 +199,8 @@ The workspace remembers across sessions through three plain-markdown artifacts i
 **Session start is context-scoped — read where you are, then surface what's open there:**
 
 - **Workspace root (`C:\Dev`)** → the *workspace walk*: read `ops/tasks/in-progress` and `ops/tasks/open`, the unchecked items in `ops/TODO.md`, and the latest `ops/log/sessions.md` entry; surface open work and suggest a focus.
-- **Inside a project (`customers/…` or `own/…`)** → the *project walk*: read that project's `CONTEXT.md` (plus any "Related contexts" it names) and surface unread `INBOX.md` entries before the first request. The workspace store is not re-walked here — the project is the frame.
+- **Customer root (`customers/<client>/`, no project selected)** → the *customer walk*: read the customer node's `CONTEXT.md` and the project index in its `CLAUDE.md`; surface the customer's projects and their statuses. Because work always attaches to a project, **prompt which project this session is for**, then hand off to that project's *project walk* (below). If the customer has exactly one project, name it and confirm rather than listing.
+- **Inside a project (`customers/…/<project>` or `own/…`)** → the *project walk*: read that project's `CONTEXT.md` (plus any "Related contexts" it names) and surface unread `INBOX.md` entries before the first request. The workspace store is not re-walked here — the project is the frame. **For a `customers/…` project that has any open/in-progress task (matched by the task's `project:` field), also ask which of those tasks this session's time bills to and set it active (the `/switch-task` routine) — customer work is registered per task. `own/…` projects skip this; they have no task-level detail and bill to the project.**
 
 **Session end — the log:** append a dated entry to `ops/log/sessions.md` — what was done, decided (link ADRs), tasks created/moved, and next focus — and distill the day's raw memory stream (`ops/memory/daily/`) into curated records (`ops/memory/store/`). See *Memory*.
 
@@ -194,9 +219,40 @@ Every record carries one shape (`id, ts, type, scope, source, tags, status`) —
 
 The Claude harness accelerates it: a `Stop` hook (`capture_turn.py`) writes the per-turn record; the `SessionStart` hook (`build_snapshot.py`) emits the snapshot; `/log` distills the day. Native Claude auto-memory is **disabled** (`autoMemoryEnabled: false` in `.claude/settings.json`) so `ops/memory/` is the single home. Owned by M.
 
+## Time tracking
+
+A dedicated **time substrate** lives at `ops/time/` — a peer system to memory, tracking active working
+time **per project** (the level that has its own `CLAUDE.md`): `Dev` (this workspace setup itself; absorbs
+`ops/` work), each `customers/<client>/<project>`, each `own/<project>`. Optionally **per task** within a
+project (opt-in via `/task start`). Time in `ops/` is not its own project — it rolls into `Dev`.
+
+Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **timesheets** (reviewed truth).
+
+- **Capture** — every turn emits a heartbeat (`{ts_start, ts_end, project, session, task}`) to
+  `ops/time/heartbeats/<utc-date>.jsonl`. `project` is the session's working directory (attribution is
+  by cwd by default); `task` is set only while a task is "started". **One override at the review gate:
+  `Dev`-rooted time that is clearly a single project's work is reassigned to that project — only ever
+  out of `Dev` into a project, never between two named projects** (see `ops/time/README.md` §2).
+- **Rollup (the 15+5 model)** — per (local day, project, task): merge heartbeats into active *stretches*,
+  splitting wherever an idle gap exceeds **15 min** (stale gaps are never counted — this is what makes a
+  session left open for days cost nothing); each stretch = its span **+ 5 min** tail buffer; sum and round
+  to **0.25 h**, then floored to a **0.5 h** minimum (any logged work on a project that day counts as at
+  least 0.5 h). Idle hours/days between stretches are discarded.
+- **F&O dimensions** — a Dynamics time line is **Project ID → Activity → Task** (Task fed from Azure DevOps). The project's `CLAUDE.md` `## Identity` `fno_code:` is the **Project ID** (always applies; `Dev` → `INTERNAL-RND`, missing → `UNSET`); a tagged task **adds** its `activity:` and `fno_task:` (the DevOps work-item id) *beneath* the project id — additive, not an override. Some projects register only at activity level, some down to task. Rows group by the finest dimension present; billable = `customers/…`.
+- **Cadence / review gate** — `/log` finalizes every complete past day that has no timesheet yet
+  (**catch-up** for missed days); the user reviews and corrects by editing `ops/time/timesheet/<YYYY-MM>/<date>.md`
+  (never the heartbeats). Daily files are the unit of F&O entry (entered per day); there is no weekly aggregate —
+  pull a whole week or month by date with `/time week` / `/time month`. `/time` shows the live running tally
+  without writing.
+
+The full spec and the **by-hand recipe** live in **`ops/time/README.md`** — that file plus the data is the
+whole system, runnable by any LLM with no harness. The Claude harness accelerates it: the `track_time.py`
+hook (`UserPromptSubmit` stamps the turn start; `Stop` writes the heartbeat) captures; `ops/time/rollup.py`
+computes; `/time` and `/log` wrap it. Owned by M.
+
 ## Conventions
 
-- **A referenced customer always has a project.** The moment work references a customer with no folder under `customers/<Customer>/`, scaffold at least a **placeholder** project (`CLAUDE.md` + `CONTEXT.md` from the templates, fields inferred from context and marked `PLACEHOLDER`, plus a VS Code task entry) before proceeding — don't leave the work orphaned at workspace level or block on a full interview. The placeholder is a stub to be fleshed out later via the `/new-project` interview, not a finished project. This keeps every customer obligation anchored to a real project home. (Decided 2026-06-15 during a `/task` triage that named "Melbye" with no project.)
+- **A referenced customer always has a customer node and a project.** The moment work references a customer with no folder under `customers/<Customer>/`, scaffold both the **customer node** (`CLAUDE.md` + `CONTEXT.md` from `_templates/customer/`) and at least a **placeholder** project (`CLAUDE.md` + `CONTEXT.md` from the project templates, fields inferred from context and marked `PLACEHOLDER`, plus a VS Code task entry) before proceeding — don't leave the work orphaned at workspace level or block on a full interview. The placeholder is a stub to be fleshed out later via the `/new-project` interview, not a finished project. This keeps every customer obligation anchored to a real project home. (Decided 2026-06-15 during a `/task` triage that named "Melbye" with no project.)
 
 - **Scripts are ASCII-only.** Anything this workspace executes under Windows PowerShell 5.1 — `SessionStart` hooks, `.ps1` files, any script PS parses — must use ASCII punctuation: plain `-` (not `—`), straight quotes (not `“ ” ‘ ’`), `...` (not `…`). PS 5.1 reads BOM-less UTF-8 as Windows-1252, where an em-dash's bytes decode to a smart quote `”` that the tokenizer treats as a string delimiter, silently corrupting the parse. (Found 2026-06-15: the session-start hook had this latent bug and never ran.) Encoding-proof alternative if non-ASCII is unavoidable: save as UTF-8 *with* BOM. ASCII-only is simpler — prefer it.
 
@@ -213,13 +269,14 @@ The operating LLM must enforce these across all projects:
 5. **Spike graduation** — if a spike spans multiple sessions or grows significant structure, prompt to graduate it to project scale.
 6. **Notebook Purpose cell** — every Fabric notebook carries a `## Purpose` synthesis as its **first cell**: a short, general statement of what it does and where it sits in the flow (not step-by-step detail). Create it when authoring; **update it only on major functional changes** (new/removed outputs, changed role, restructured logic) — *not* on bug fixes or minor tweaks. In Fabric `notebook-content.py` this is a markdown cell (`# MARKDOWN ********************`, then markdown lines each prefixed with `# `), placed after the notebook-level `# METADATA` block and before the first `# CELL`. Applies to all notebook work under `C:\Dev`.
 7. **LLM-agnostic substrate** — durable content (knowledge, inbox, tasks, ADRs, conventions, **memory**) stays as plain markdown in tool-neutral locations; tool-specific harness (slash commands, skills, `CLAUDE.md`, hooks) is a non-load-bearing accelerator only. Tool-specific bootstrap/initialization is permitted. Auto-triggers (hooks, scheduled agents) are permitted accelerators — they may add automation and determinism, but no decision logic or knowledge that isn't also in the substrate. Acid test: deleting `.claude/` + `CLAUDE.md` must lose no knowledge or capability. (Full statement: Governing principle, above.)
-8. **Continuity loop** — session start is context-scoped (workspace walk at root, project walk inside a project); session end offers a session-log entry. The Claude harness accelerates this via the `SessionStart` hook (root) and the cascading `CLAUDE.md` (project walk); the routine itself is in *Continuity loop*, above. Owned by M. The **memory substrate** (Storage/Injection/Recall + skill-eval) is a peer system at `ops/memory/` — see *Memory*.
+8. **Continuity loop** — session start is context-scoped (workspace walk at root, customer walk at a customer root, project walk inside a project); session end offers a session-log entry. The Claude harness accelerates this via the `SessionStart` hook (root) and the cascading `CLAUDE.md` (project walk); the routine itself is in *Continuity loop*, above. Owned by M. The **memory substrate** (Storage/Injection/Recall + skill-eval) is a peer system at `ops/memory/` — see *Memory*.
 9. **Scripts are ASCII-only** — any script run under Windows PowerShell 5.1 must use ASCII punctuation (see *Conventions*, above).
+10. **Customer-repo isolation** — a customer-facing repo (one with an external customer remote) contains **only** code/deliverables the customer may see. Internal info (context, memory, decisions, `INBOX.md`, `.claude`) is **never a child** of it — it lives as a parent/sibling in the internal (customer) repo. Enforced structurally (internal stays outside the code repo) and backstopped by `ops/bin/heal-repos.ps1`, which adds the internal-only names (`.claude/`, `CONTEXT.md`, `CONTEXT_*.md`, `INBOX.md`) to each customer-facing repo's local `.git/info/exclude`. Two independent axes: *internal sharing* (solo now → per-customer, team-scoped repos later) is separate from *customer isolation* (this rule — always on).
 
 ## Working with projects
 
 **Starting a new project:**
-1. Decide the home: `customers/[client]/[project]` or `own/[project]`.
+1. Decide the home: `customers/[client]/[project]` or `own/[project]`. For `customers/…`, ensure the **customer node** exists first (`_templates/customer/` → `customers/[client]/CLAUDE.md` + `CONTEXT.md`); add the new project as a row in its project index.
 2. Copy `_templates/[type]/` into the target location.
 3. Interview the owner to fill in `CLAUDE.md` (the template is a minimal scaffold; the interview adds project-specific detail).
 4. Create `CONTEXT.md` from the template.

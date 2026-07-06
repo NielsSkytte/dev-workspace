@@ -2,5 +2,16 @@
 /customers/
 /own/
 
+# Archived .git dirs from repos folded into their customer repo (preserved history, recoverable)
+/_git-archive/
+
 # Per-turn capture hook state (harness runtime, not portable substrate)
 .claude/hooks/.capture_state.json
+.claude/hooks/.track_time_state.json
+.claude/hooks/__pycache__/
+
+# Time-tracking DATA is operational output, regenerable from heartbeats — not versioned.
+# (The system itself — ops/time/README.md + rollup.py — stays tracked.)
+/ops/time/heartbeats/
+/ops/time/timesheet/
+/ops/time/active-task
