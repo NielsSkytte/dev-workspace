@@ -201,6 +201,7 @@ The workspace remembers across sessions through three plain-markdown artifacts i
 
 - `ops/TODO.md` — raw action capture (ICOR **Input**). Anything to act on later. (`/todo`)
 - `ops/tasks/` — tracked work, state-by-folder: `open/ → in-progress/ → done/ | cancelled/` (ICOR **Output**). (`/task`)
+  **No double-engineering with Azure DevOps (decided 2026-07-06):** for customer projects, *DevOps is the delivery backlog* — Niels is assigned to work items there, and this store never mirrors them. A workspace task for customer work is only the **thin binder** that carries `activity:`/`fno_task:` (the DevOps work-item id) so time bills to the right F&O line, plus private context DevOps shouldn't hold. Pre-DevOps motions (offers, access requests, follow-ups) and `own/`/workspace work live fully here.
 - `ops/log/sessions.md` — chronological record of what happened/decided each session (ICOR **Refine**). (`/log`)
 
 **Session start is context-scoped — read where you are, then surface what's open there:**

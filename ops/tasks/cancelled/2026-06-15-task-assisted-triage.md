@@ -1,6 +1,6 @@
 ---
 title: Assisted triage — promote TODO.md captures into routed tasks
-status: open
+status: cancelled
 created: 2026-06-15
 project:                # workspace-level (the ops substrate itself)
 owner: Q                # refines the /task + /todo commands and the triage routine
@@ -26,3 +26,8 @@ This is the missing half of the capture pipe. `/todo` makes capture frictionless
 
 ## Log
 - 2026-06-15 — created (triaged from TODO.md)
+- 2026-07-06 — **cancelled** at the v1 Gate-3 interview. Superseded by two decisions: (1) the
+  no-double-engineering doctrine (AGENTS.md > Continuity loop: DevOps is the delivery backlog for
+  customer work; ops/tasks is only the thin F&O binder + pre-DevOps motions + own/workspace work),
+  which shrinks the triage surface to a size manual triage handles; (2) the 2026-07-06 hand triage
+  that cleared the accumulated pile. Revisit only if the TODO pile demonstrably rots again.
