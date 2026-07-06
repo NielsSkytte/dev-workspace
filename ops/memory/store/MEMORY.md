@@ -24,6 +24,8 @@ and the record shape live in [`../README.md`](../README.md).
 - [atomiccortex-vision](atomiccortex-vision.md) — LLM second brain; full-ICOR, portability-first (tool + scale), markdown+git, three horizons (solo->team of 10->org of 150)
 - [skill-usage-evaluation](skill-usage-evaluation.md) — core goal: capture which skills fire/don't-fire/help and feed back into skill revision; the evaluative layer this memory system enables
 - [time-tracking-system](time-tracking-system.md) — per-project time tracking at ops/time/; heartbeat+15/5 idle model, deterministic rollup, F&O codes, data gitignored (ADR-002)
+- [workspace-v1-frozen](workspace-v1-frozen.md) — v1.0 tagged 2026-07-06; setup phase OVER; freeze rule binding (no new capability without a demonstrated failure); success metric = INTERNAL-RND share collapsing
+- [eval-2026-07-06-artifact-design](eval-2026-07-06-artifact-design.md) — evaluative: artifact-design fired+helped at the v1 review; domain skills correctly silent on a setup day
 - [skill-writing-voice](skill-writing-voice.md) — writing-voice skill (DA/EN); subtraction-first AI-smell removal; built from Niels's thesis + email voice
 - [skill-pingala-offer](skill-pingala-offer.md) — pingala-offer skill; trusted-advisor doctrine (no questions/decisions, build out, customer-state interview, budget-holder altitude, no capacity location)
 - [skill-fabric-licensing](skill-fabric-licensing.md) — fabric-licensing skill; broad MS-Learn-cited Fabric licensing; owns the licensing facts (replaces the voice-example single-source)
