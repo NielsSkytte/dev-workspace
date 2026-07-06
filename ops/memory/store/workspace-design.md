@@ -17,4 +17,8 @@ DEV workspace uses a two-bucket model based on delivery obligation:
 
 **How to apply:** Never suggest scratch/ or team/ buckets. Scale (spike/project) replaces the old scratch concept. Track origin via `initiated_by:` field, not folder location.
 
-Related: [[agent-framework]], [[knowledge-flow]]
+**Update (2026-07-06):** `customers/` is now **two-tier** — a customer node (`customers/<client>/`
+CLAUDE.md + CONTEXT.md; a map, never a billing target) wraps its projects (the work unit). See
+[[customer-project-two-tier]].
+
+Related: [[agent-framework]], [[knowledge-flow]], [[customer-project-two-tier]]

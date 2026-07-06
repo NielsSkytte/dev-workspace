@@ -1,6 +1,6 @@
 ---
 title: Complete the LLM-agnostic substrate/harness split
-status: in-progress
+status: done
 created: 2026-06-11
 project:
 owner: architect
@@ -26,3 +26,4 @@ The content is already portable, but the *structure* leaks into Claude-specific 
 ## Log
 - 2026-06-11 — created after a Claude-specificity audit flagged the inbox/tasks nesting and CLAUDE.md-bound conventions
 - 2026-06-11 — chose `ops/` as the neutral location; relocated inbox + task store there and repointed commands/docs (part 1 done). Part 2 (migrate conventions `CLAUDE.md` → `AGENTS.md`) remains. Moved to in-progress.
+- 2026-06-15 — Part 2 done. Migrated all operational content (owner, folder structure, buckets, project files/types/scale/identity, agent roster, capability rubric, fabric note, knowledge flow, guardrails 1-9, start/switch process) into `AGENTS.md` as the full operational doc; rewrote root `CLAUDE.md` as a thin bootstrap (harness map + Claude-only continuity triggers incl. the cascading project-walk rule). Acid test holds. Closed.

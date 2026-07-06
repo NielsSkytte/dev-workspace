@@ -6,7 +6,9 @@ project:              # own/X | customers/Client/Project | (blank = workspace-le
 owner:                # M routes → fabric | content | architect | Q | self
 priority: normal      # low | normal | high
 blocked_by:           # optional — what is blocking this
-source: direct        # inbox | direct
+activity:             # optional — F&O activity (WBS) this task rolls under (customer projects)
+fno_task:             # optional — F&O Task id = the linked Azure DevOps work item (task-level projects)
+source: direct        # todo | inbox | direct
 ---
 
 ## What

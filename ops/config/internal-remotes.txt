@@ -1,0 +1,13 @@
+# Internal remote allowlist for heal-repos.ps1
+#
+# A nested repo whose 'origin' URL contains any pattern below is treated as INTERNAL
+# (personal / Pingala; safe to hold context, memory, decisions) -> ignored by the unit
+# repo but NOT given the customer-isolation exclude-guard.
+#
+# Everything else that has a remote is treated as CUSTOMER-facing -> ignored AND guarded
+# (fail toward isolation: the dangerous mistake is calling a customer remote "internal").
+#
+# One substring pattern per line. '#' comments and blank lines are ignored.
+
+github.com/NielsSkytte
+dev.azure.com/PingalaGlobal
