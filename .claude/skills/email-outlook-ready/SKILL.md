@@ -1,5 +1,6 @@
 ---
 name: email-outlook-ready
+bundle: custom
 description: >
   Use this skill whenever drafting, writing, preparing, or "sending" an email for the user in
   ANY project. The user pastes email content into Outlook and needs the formatting (bold,

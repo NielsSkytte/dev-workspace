@@ -1,5 +1,6 @@
 ---
 name: medallion-migration-validation
+bundle: custom
 description: Best practices for migrating, validating, and operating medallion architecture (bronze/silver/gold) data pipelines in Microsoft Fabric. Use this skill when planning a pipeline migration, validating a go-live, designing quality control queries, diagnosing data discrepancies between systems, or designing watermark and tracking table patterns. Also use when backfilling data after a bug fix or go-live gap is identified.
 ---
 
@@ -189,3 +190,11 @@ These all produce no errors but result in wrong or missing data:
 | Metadata mismatch | Columns NULL in target | Column name changed during migration |
 | Watermark seeding gap | Pre-migration records correct, post-migration stale | Migrated watermark ahead of actual processing |
 | Metric inflation | num_upserted equals batch size not actual writes | Counting staging rows instead of Delta history |
+
+---
+
+## Related skills
+
+- **fabric-pipeline-notebook** — the pipeline/notebook gotchas (NDJSON pagination truncation, stuck watermark, permission gaps) behind several rows of the Common Silent Failure Modes table above.
+- **timestamp-timezone-pipelines** — UTC/DST handling and the merge `>=` rule behind the "timezone blind spot" failure mode.
+- **e2e-medallion-architecture** (Microsoft) — the build counterpart: it constructs the Bronze/Silver/Gold stack, this skill validates the migration and go-live. Reach for it for the build mechanics rather than restating them here.

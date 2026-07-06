@@ -1,5 +1,6 @@
 ---
 name: pingala-fabric-platform
+bundle: custom
 description: >
   How Pingala delivers Microsoft Fabric data platforms: architecture, workspace
   structure (LZ/Raw/Enriched/Curated), Pingala Atomic (Particles/Atoms/Molecules),
@@ -25,17 +26,17 @@ For user provisioning, Entra ID groups, licences, and security setup, see the
 **fabric-project-access** skill. For the overall project lifecycle and playbook, see
 the **pingala-project-playbook** skill.
 
-For deep dives on individual components, see the reference files in the `references/`
-directory:
+Each component is covered inline below at a working depth. The areas below are **candidates
+for a deeper standalone reference later** — captured here so the gaps aren't lost:
 
-| Reference file | When to read it |
-|----------------|-----------------|
-| `references/architecture-and-workspaces.md` | Workspace naming, capacity, environment strategy, OneLake layout |
-| `references/pingala-atomic.md` | The Pingala Atomic framework — Particles, Atoms, Molecules layers and D365 F&O table mapping |
-| `references/etl-and-pipelines.md` | Data extraction, ingestion patterns, transformation patterns, pipeline orchestration |
-| `references/data-modelling.md` | Medallion layer design, star schema, semantic models, measures |
-| `references/cicd-and-deployment.md` | Git integration, Azure DevOps, deployment pipelines, environment promotion |
-| `references/data-services.md` | Power BI reports, Data Activator, scorecards, data-as-a-service delivery |
+| Area to explore later | What a deeper dive would add |
+|-----------------------|------------------------------|
+| Architecture & workspaces | Workspace naming, capacity sizing, environment strategy, OneLake layout |
+| Pingala Atomic | Particles/Atoms/Molecules layers and the full D365 F&O table mapping |
+| ETL & pipelines | Data extraction, ingestion patterns, transformation patterns, pipeline orchestration |
+| Data modelling | Medallion layer design, star schema, semantic models, measures |
+| CI/CD & deployment | Git integration, Azure DevOps, deployment pipelines, environment promotion |
+| Data services | Power BI reports, Data Activator, scorecards, data-as-a-service delivery |
 
 ---
 
@@ -297,8 +298,8 @@ InventItemGroupItem, InventTable, ProjTable, WrkCtrTable, and many more.
 | Budget model | Mostly time & materials | Significant portion as fixed fee |
 | Worst case | 50%+ cost overrun (IT project average) | Even worst case delivers in half the time of traditional |
 
-> **For a deeper dive into the Atomic framework, including the full table mapping and
-> transformation specifications, read `references/pingala-atomic.md`.**
+> **Area to explore later:** a deeper dive into the Atomic framework — the full table
+> mapping and transformation specifications — is a candidate for a standalone reference doc.
 
 ---
 
@@ -501,3 +502,15 @@ services that create actual business value).
 | Orchestration | Fabric Data Pipelines (Master + sub-pipelines) |
 | On-prem connectivity | Data Gateway for non-cloud sources |
 | AI platform (when needed) | Azure AI Foundry + Co-pilot Studio + Fabric |
+
+---
+
+## Related skills
+
+- **pingala-visual-identity** — apply Pingala's palette and the correct Microsoft Fabric icons
+  whenever the architecture diagrams above are rendered as real visuals (slides, docs, HTML).
+- **e2e-medallion-architecture** (Microsoft) — the generic build mechanics for the
+  Bronze/Silver/Gold stack. This skill is the Pingala *methodology* (Atomic, workspace naming,
+  GDPR opt-out); that one is the *execution*.
+
+(See also **fabric-project-access** and **pingala-project-playbook**, referenced at the top.)

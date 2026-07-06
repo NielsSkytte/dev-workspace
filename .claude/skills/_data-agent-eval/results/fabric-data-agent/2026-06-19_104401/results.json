@@ -1,0 +1,1390 @@
+{
+  "exit_reason": "max_iterations (5)",
+  "original_description": "How to design, build, ground, and ship a production-grade Microsoft Fabric Data Agent (the conversational natural-language-to-data feature, formerly \"AI Skill\"). Use this skill whenever someone is creating, configuring, grounding, or troubleshooting a Fabric data agent: choosing data sources (Power BI semantic model, lakehouse, warehouse, KQL/Eventhouse, ontology, mirrored DB, Microsoft Graph), writing agent vs data-source instructions and example queries, deciding what belongs in the semantic model's \"Prep for AI\" versus on the agent itself, diagnosing an agent that \"ignores\" table selection or instructions, picking the wrong table/measure, or planning a data-agent proof of concept for production. Trigger on \"Fabric data agent\", \"data agent\", \"AI skill in Fabric\", \"NL2SQL / NL2DAX / NL2KQL\", \"ground an agent on my semantic model\", \"prep for AI\", \"verified answers\", \"the agent picks the wrong measure\", \"chat over my data in Fabric\", or any request to build a conversational analytics experience on Fabric data. Use this even if the user only mentions one part (e.g. just \"how do I write the instructions\" or \"why does deselecting tables do nothing\"). For building the validated test set and running the evaluation harness see `fabric-data-agent-testing`; for capacity, cost, usage logging, and git/CI/ALM see `fabric-data-agent-ops`.",
+  "best_description": "How to design, build, ground, and ship a production-grade Microsoft Fabric Data Agent (the conversational natural-language-to-data feature, formerly \"AI Skill\"). Use this skill whenever someone is creating, configuring, grounding, or troubleshooting a Fabric data agent: choosing data sources (Power BI semantic model, lakehouse, warehouse, KQL/Eventhouse, ontology, mirrored DB, Microsoft Graph), writing agent vs data-source instructions and example queries, deciding what belongs in the semantic model's \"Prep for AI\" versus on the agent itself, diagnosing an agent that \"ignores\" table selection or instructions, picking the wrong table/measure, or planning a data-agent proof of concept for production. Trigger on \"Fabric data agent\", \"data agent\", \"AI skill in Fabric\", \"NL2SQL / NL2DAX / NL2KQL\", \"ground an agent on my semantic model\", \"prep for AI\", \"verified answers\", \"the agent picks the wrong measure\", \"chat over my data in Fabric\", or any request to build a conversational analytics experience on Fabric data. Use this even if the user only mentions one part (e.g. just \"how do I write the instructions\" or \"why does deselecting tables do nothing\"). For building the validated test set and running the evaluation harness see `fabric-data-agent-testing`; for capacity, cost, usage logging, and git/CI/ALM see `fabric-data-agent-ops`.",
+  "best_score": "4/8",
+  "best_train_score": "6/12",
+  "best_test_score": "4/8",
+  "final_description": "Use this skill when someone is building, grounding, configuring, or troubleshooting a Microsoft Fabric data agent \u00e2\u20ac\u201d the conversational feature (formerly \"AI Skill\") that answers natural-language questions over Fabric data. Reach for it whenever a user mentions a \"data agent\" (or \"fabric agent\") and wants to:\n\n- Connect or combine sources (semantic model, lakehouse, warehouse, KQL/Eventhouse, mirrored DB, Fabric IQ ontology, Graph), or asks if multiple sources are allowed.\n- Ground it on a semantic model, business glossary, reference doc, or ontology; write its instructions or example queries; use \"Prep for AI\".\n- Fix its behavior \u00e2\u20ac\u201d inconsistent or unreliable answers, wrong measure/table, ignored instructions, deselecting tables doing nothing, blended sources.\n\nTrigger on casual or partial phrasing too. Siblings: `fabric-data-agent-testing` (evals), `fabric-data-agent-ops` (capacity, cost, CI/ALM).",
+  "iterations_run": 5,
+  "holdout": 0.4,
+  "train_size": 12,
+  "test_size": 8,
+  "history": [
+    {
+      "iteration": 1,
+      "description": "How to design, build, ground, and ship a production-grade Microsoft Fabric Data Agent (the conversational natural-language-to-data feature, formerly \"AI Skill\"). Use this skill whenever someone is creating, configuring, grounding, or troubleshooting a Fabric data agent: choosing data sources (Power BI semantic model, lakehouse, warehouse, KQL/Eventhouse, ontology, mirrored DB, Microsoft Graph), writing agent vs data-source instructions and example queries, deciding what belongs in the semantic model's \"Prep for AI\" versus on the agent itself, diagnosing an agent that \"ignores\" table selection or instructions, picking the wrong table/measure, or planning a data-agent proof of concept for production. Trigger on \"Fabric data agent\", \"data agent\", \"AI skill in Fabric\", \"NL2SQL / NL2DAX / NL2KQL\", \"ground an agent on my semantic model\", \"prep for AI\", \"verified answers\", \"the agent picks the wrong measure\", \"chat over my data in Fabric\", or any request to build a conversational analytics experience on Fabric data. Use this even if the user only mentions one part (e.g. just \"how do I write the instructions\" or \"why does deselecting tables do nothing\"). For building the validated test set and running the evaluation harness see `fabric-data-agent-testing`; for capacity, cost, usage logging, and git/CI/ALM see `fabric-data-agent-ops`.",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "description": "Use this skill for any question about a Microsoft Fabric data agent \u00e2\u20ac\u201d the conversational natural-language-to-data feature (formerly \"AI Skill\") that answers questions by querying Fabric sources. Reach for it whenever someone is building, configuring, grounding, or troubleshooting one, including casual or partial questions.\n\nTypical intents: connecting one or more sources (semantic model, lakehouse, warehouse, KQL/Eventhouse, ontology, mirrored DB, Graph); grounding on a model, business glossary, or Fabric IQ ontology; writing agent or data-source instructions and example queries; using \"Prep for AI\"; and fixing behavior \u00e2\u20ac\u201d the agent picks the wrong measure/table, ignores instructions, deselecting tables does nothing, answers inconsistently, or blends mismatched sources.\n\nIf the user just says \"data agent\" in a Fabric context, or describes chatting over their Fabric data, trigger. Siblings: `fabric-data-agent-testing` (eval harness); `fabric-data-agent-ops` (capacity, cost, git/CI/ALM).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "description": "Use this skill when someone is building, configuring, grounding, or troubleshooting a Microsoft Fabric data agent \u00e2\u20ac\u201d the feature that answers natural-language questions by querying Fabric data (semantic models, lakehouse, warehouse, KQL/Eventhouse, ontology, mirrored DB, Graph; formerly \"AI Skill\"). Trigger on questions about: connecting one or several sources to a data agent; grounding it on a semantic model, a business glossary, reference docs, or a Fabric IQ ontology; writing its instructions or example queries; using \"Prep for AI\"; and especially fixing its behavior \u00e2\u20ac\u201d it answers inconsistently or unreliably, picks the wrong measure or table, ignores instructions, deselecting tables seems to do nothing, or blends mismatched sources. Trigger even on casual or partial phrasing, or whenever someone describes chatting over their Fabric data. Siblings handle narrower needs: `fabric-data-agent-testing` (evaluation harness) and `fabric-data-agent-ops` (capacity, cost, git/CI/ALM).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "description": "Use this skill for anything about a Microsoft Fabric data agent \u00e2\u20ac\u201d the conversational feature (formerly \"AI Skill\") that answers natural-language questions over Fabric data. Trigger broadly whenever a user is setting up, grounding, or fixing a \"data agent\" or \"fabric agent\" on their data, including:\n\n- Connecting one or several sources to it (semantic model, lakehouse, warehouse, KQL/Eventhouse, mirrored DB, Fabric IQ ontology, Graph), or asking whether multiple sources are allowed.\n- Grounding it on a semantic model, a business glossary or reference doc, or an ontology; writing its instructions or example queries; \"Prep for AI\".\n- Fixing its behavior: inconsistent or unreliable answers, wrong measure/table, ignored instructions, deselecting tables doing nothing, blended mismatched sources.\n\nTrigger on casual, partial, or implied phrasing \u00e2\u20ac\u201d anyone describing chatting over their Fabric data. Siblings: `fabric-data-agent-testing` (eval harness), `fabric-data-agent-ops` (capacity, cost, git/CI/ALM).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "description": "Use this skill when someone is building, grounding, configuring, or troubleshooting a Microsoft Fabric data agent \u00e2\u20ac\u201d the conversational feature (formerly \"AI Skill\") that answers natural-language questions over Fabric data. Reach for it whenever a user mentions a \"data agent\" (or \"fabric agent\") and wants to:\n\n- Connect or combine sources (semantic model, lakehouse, warehouse, KQL/Eventhouse, mirrored DB, Fabric IQ ontology, Graph), or asks if multiple sources are allowed.\n- Ground it on a semantic model, business glossary, reference doc, or ontology; write its instructions or example queries; use \"Prep for AI\".\n- Fix its behavior \u00e2\u20ac\u201d inconsistent or unreliable answers, wrong measure/table, ignored instructions, deselecting tables doing nothing, blended sources.\n\nTrigger on casual or partial phrasing too. Siblings: `fabric-data-agent-testing` (evals), `fabric-data-agent-ops` (capacity, cost, CI/ALM).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' \u00e2\u20ac\u201d how do i get it to pick Net Sales instead?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku \u00e2\u20ac\u201d how?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

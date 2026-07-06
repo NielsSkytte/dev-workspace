@@ -1,5 +1,6 @@
 ---
 name: pingala-visual-identity
+bundle: custom
 description: Pingala's brand visual identity system — colors, fonts, and Microsoft Fabric icons. Use this skill whenever creating ANY visual output for Pingala, including presentations, Word documents, Excel files, PDFs, Figma designs, HTML pages, architecture diagrams, data flow visuals, or any deliverable that needs to look like a Pingala product. Trigger on any mention of Pingala colors, Pingala fonts, Pingala brand, Pingala styling, "our colors", "our brand", "make it look Pingala", "use the correct icons", "Microsoft Fabric icons", or any request to create a visual that should follow Pingala standards. Also trigger when creating architecture diagrams, data platform visuals, or Microsoft Fabric-related diagrams where Pingala branding should be applied. Even if the user doesn't explicitly ask for Pingala branding, use this skill whenever creating visuals in a Pingala project context.
 ---
 

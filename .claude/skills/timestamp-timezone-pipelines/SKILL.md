@@ -1,5 +1,6 @@
 ---
 name: timestamp-timezone-pipelines
+bundle: custom
 description: Best practices for handling timestamps and timezones in data pipelines, particularly when data crosses system boundaries (APIs, databases, Delta tables). Use this skill whenever designing or debugging pipelines that involve timestamps, watermarks, date filters sent to external APIs, or data sources that return timezone-aware timestamps. Critical to consult when diagnosing missing records, watermark drift, or inconsistent data between systems in different timezones.
 ---
 
@@ -138,3 +139,10 @@ Before deploying any pipeline that handles timestamps:
 - [ ] Merge condition uses >= not >
 - [ ] No hardcoded offset corrections — offset extracted dynamically from stored value
 - [ ] Timestamp comparison in merge is consistent (no mixed formats)
+
+---
+
+## Related skills
+
+- **fabric-pipeline-notebook** — the pipeline/notebook context these timestamps flow through (watermark design, NDJSON ingestion, the same merge `>=` rule).
+- **medallion-migration-validation** — go-live validation and the "timezone blind spot" row in its silent-failure catalogue; use it when reconciling volumes after a migration.

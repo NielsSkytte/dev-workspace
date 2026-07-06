@@ -1,0 +1,1390 @@
+{
+  "exit_reason": "max_iterations (5)",
+  "original_description": "How to test, evaluate, and regression-guard a Microsoft Fabric Data Agent using the `fabric-data-agent-sdk` Python evaluation harness. Use this skill whenever someone needs to measure whether a Fabric data agent answers correctly, build a validated ground-truth question/answer set, run `evaluate_data_agent`, score answers with an LLM judge, validate the agent's few-shot example queries, or set up regression testing so a change to the semantic model or the agent config doesn't silently break answers. Trigger on \"test my data agent\", \"evaluate the data agent\", \"is the agent answering correctly\", \"ground truth for the agent\", \"regression test the agent\", \"did the model change break the agent\", \"validate my example queries / few-shots\", \"accuracy of the data agent\", or any request about quality-gating or CI-ing a Fabric data agent. This is the companion to `fabric-data-agent` (design/build) and `fabric-data-agent-ops` (capacity, logging, git/CI). Use it even if the user only asks about one piece (e.g. just \"how do I write a critic prompt\" or \"how do I check my few-shots\").",
+  "best_description": "How to test, evaluate, and regression-guard a Microsoft Fabric Data Agent using the `fabric-data-agent-sdk` Python evaluation harness. Use this skill whenever someone needs to measure whether a Fabric data agent answers correctly, build a validated ground-truth question/answer set, run `evaluate_data_agent`, score answers with an LLM judge, validate the agent's few-shot example queries, or set up regression testing so a change to the semantic model or the agent config doesn't silently break answers. Trigger on \"test my data agent\", \"evaluate the data agent\", \"is the agent answering correctly\", \"ground truth for the agent\", \"regression test the agent\", \"did the model change break the agent\", \"validate my example queries / few-shots\", \"accuracy of the data agent\", or any request about quality-gating or CI-ing a Fabric data agent. This is the companion to `fabric-data-agent` (design/build) and `fabric-data-agent-ops` (capacity, logging, git/CI). Use it even if the user only asks about one piece (e.g. just \"how do I write a critic prompt\" or \"how do I check my few-shots\").",
+  "best_score": "4/8",
+  "best_train_score": "6/12",
+  "best_test_score": "4/8",
+  "final_description": "Use this skill to test, evaluate, score, or regression-test a Microsoft Fabric Data Agent \u00e2\u20ac\u201d to measure whether it answers questions *correctly* instead of eyeballing the playground chat.\n\nReach for it when someone wants to: measure or prove a Fabric data agent's answer accuracy; build a held-out ground-truth question/answer set; run `evaluate_data_agent` over Q&A pairs; write or tune the LLM judge / critic prompt (placeholders, strictness); validate or de-conflict the agent's few-shot / example queries before they go live; regression-test that a semantic-model edit, agent-config change, or Microsoft's underlying model update didn't silently break answers; or understand how the verified-answers / few-shots fed to the agent differ from a real test set.\n\nThis is about answer *correctness/accuracy*, not capacity, CU cost, logging, DAX performance, or report-total reconciliation. Companion to `fabric-data-agent` (build) and `fabric-data-agent-ops` (capacity, logging, CI).",
+  "iterations_run": 5,
+  "holdout": 0.4,
+  "train_size": 12,
+  "test_size": 8,
+  "history": [
+    {
+      "iteration": 1,
+      "description": "How to test, evaluate, and regression-guard a Microsoft Fabric Data Agent using the `fabric-data-agent-sdk` Python evaluation harness. Use this skill whenever someone needs to measure whether a Fabric data agent answers correctly, build a validated ground-truth question/answer set, run `evaluate_data_agent`, score answers with an LLM judge, validate the agent's few-shot example queries, or set up regression testing so a change to the semantic model or the agent config doesn't silently break answers. Trigger on \"test my data agent\", \"evaluate the data agent\", \"is the agent answering correctly\", \"ground truth for the agent\", \"regression test the agent\", \"did the model change break the agent\", \"validate my example queries / few-shots\", \"accuracy of the data agent\", or any request about quality-gating or CI-ing a Fabric data agent. This is the companion to `fabric-data-agent` (design/build) and `fabric-data-agent-ops` (capacity, logging, git/CI). Use it even if the user only asks about one piece (e.g. just \"how do I write a critic prompt\" or \"how do I check my few-shots\").",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a ground truth test set for our fabric data agent \u00e2\u20ac\u201d how many questions, and what makes a good one?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook \u00e2\u20ac\u201d why would that happen?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "ground my new data agent on our lakehouse and help me pick which tables to expose",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "description": "Use this skill when someone wants to know whether their Microsoft Fabric Data Agent answers questions correctly \u00e2\u20ac\u201d and to prove it rather than eyeball the playground. Covers: measuring a Fabric data agent's accuracy, building a held-out ground-truth question/answer set, running `evaluate_data_agent` with an LLM judge or custom critic prompt, validating few-shot / example queries before they go live (and catching ones that conflict), and regression-testing so a change to the semantic model, agent config, or the underlying platform LLM doesn't silently break answers. Also covers the distinction between the verified-answer crib sheet you give the agent and a real held-out test set. Trigger on any request to test, evaluate, score, benchmark, quality-gate, or regression-guard a Fabric data agent, or to write a critic prompt or check few-shots. Companion to `fabric-data-agent` (build) and `fabric-data-agent-ops` (capacity, logging, CI).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a ground truth test set for our fabric data agent \u00e2\u20ac\u201d how many questions, and what makes a good one?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook \u00e2\u20ac\u201d why would that happen?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ground my new data agent on our lakehouse and help me pick which tables to expose",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "description": "Use this skill to prove a Microsoft Fabric Data Agent answers correctly instead of eyeballing the playground. Use it whenever someone wants to: measure or score a Fabric data agent's accuracy; build a held-out ground-truth question/answer set; run an evaluation harness or LLM-judge/critic over the agent's answers; write or tune a critic prompt; validate or de-conflict few-shot / example queries before they go live; or regression-test that a semantic-model edit, agent-config change, or Microsoft's underlying LLM update didn't silently break answers. Also use it to explain the difference between the verified-answers/few-shots you feed the agent and a real held-out test set. Any intent around testing, evaluating, benchmarking, quality-gating, or regression-guarding a Fabric data agent belongs here. Companion to `fabric-data-agent` (build) and `fabric-data-agent-ops` (capacity, logging, CI).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a ground truth test set for our fabric data agent \u00e2\u20ac\u201d how many questions, and what makes a good one?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook \u00e2\u20ac\u201d why would that happen?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "ground my new data agent on our lakehouse and help me pick which tables to expose",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "description": "Use this skill for any work proving a Microsoft Fabric Data Agent answers questions correctly \u00e2\u20ac\u201d measuring, scoring, or benchmarking its accuracy rather than just eyeballing the playground. Covers: building a held-out ground-truth question/answer set; running the Fabric evaluation harness (`evaluate_data_agent`) to score the agent; writing or tuning the LLM-judge / critic prompt (placeholders, strictness); validating few-shot / example queries before they ship and catching ones that conflict; and regression-testing so a semantic-model edit, agent-config change, or Microsoft's underlying model update doesn't silently break answers. Also use it to explain how the verified-answers / few-shots you feed the agent differ from a real held-out test set. Reach for it on intents like \"is my data agent accurate\", \"test/evaluate/regression-test the agent\", \"did the model change break it\", or \"validate my few-shots\". Testing companion to `fabric-data-agent` (build) and `fabric-data-agent-ops` (capacity, logging, CI).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook \u00e2\u20ac\u201d why would that happen?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a ground truth test set for our fabric data agent \u00e2\u20ac\u201d how many questions, and what makes a good one?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "ground my new data agent on our lakehouse and help me pick which tables to expose",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "description": "Use this skill to test, evaluate, score, or regression-test a Microsoft Fabric Data Agent \u00e2\u20ac\u201d to measure whether it answers questions *correctly* instead of eyeballing the playground chat.\n\nReach for it when someone wants to: measure or prove a Fabric data agent's answer accuracy; build a held-out ground-truth question/answer set; run `evaluate_data_agent` over Q&A pairs; write or tune the LLM judge / critic prompt (placeholders, strictness); validate or de-conflict the agent's few-shot / example queries before they go live; regression-test that a semantic-model edit, agent-config change, or Microsoft's underlying model update didn't silently break answers; or understand how the verified-answers / few-shots fed to the agent differ from a real test set.\n\nThis is about answer *correctness/accuracy*, not capacity, CU cost, logging, DAX performance, or report-total reconciliation. Companion to `fabric-data-agent` (build) and `fabric-data-agent-ops` (capacity, logging, CI).",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i need to build a ground truth test set for our fabric data agent \u00e2\u20ac\u201d how many questions, and what makes a good one?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook \u00e2\u20ac\u201d why would that happen?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "ground my new data agent on our lakehouse and help me pick which tables to expose",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "how much CU does each fabric data agent question cost and how do i monitor it?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "benchmark two different semantic models for dax query performance",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can i see the actual prompts users send the agent so compliance can audit them?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "validate that our power bi report totals match the source erp numbers",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

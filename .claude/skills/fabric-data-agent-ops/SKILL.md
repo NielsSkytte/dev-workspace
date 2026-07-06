@@ -78,6 +78,12 @@ deployment ([Tejwani, 2026](https://pub.towardsai.net/fabric-data-agents-just-hi
   initial configuration is **100–200 hours** of practitioner time. **First-year, production-grade,
   ~50 users: roughly $30–60k** depending on SKU and licensing mix.
 
+> **Pingala convention - start a data-agent engagement at F4.** When speccing or estimating
+> data-agent work, Pingala's default starting capacity is **F4** (Pingala's general Fabric entry
+> capacity), then size the production capacity up from measured consumption. Confirm the production
+> size from a DEV/trial measurement rather than the headline number - AI queries are heavy, so
+> monitor real CU and size up as needed.
+
 ### Monitoring & baselines
 
 - Use the **Fabric Capacity Metrics app** — data agent LLM usage appears under operation **AI
