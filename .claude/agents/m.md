@@ -64,17 +64,27 @@ The Fabric domain is split in three around the semantic model (the model is the 
 
 ---
 
-## Skill Inventory
+## Capability Inventory
 
-| Skill | What it does | Used by |
+**Commands** (on-demand, `.claude/commands/`):
+
+| Command | What it does | Used by |
 |---|---|---|
 | `/brief` | Send a cross-project note to another project's INBOX.md (quick or structured) | Any agent, any context |
 | `/handoff` | Update current project's CONTEXT.md at end of session — auto-handoff to future self | Any project context |
 | `/todo` | Capture anything into the workspace TODO (`ops/TODO.md`) — ICOR Input | DEV root / any context |
 | `/task` | Manage the workspace task store (`ops/tasks/`) — create/list/move; ICOR Output | DEV root / any context |
-| `/log` | Append a workspace session-log entry (`ops/log/sessions.md`) — ICOR Refine | DEV root / session end |
+| `/log` | Session-log entry + memory distill + time rollup + time backup + internal-repo commits | DEV root / session end |
+| `/time` | Show/roll up tracked time per project (live preview, week/month reports) | Any context |
+| `/switch-task` | Set the time-tracking task for the current customer project | Customer project sessions |
 | `/fill-sow` | Generate a customer SoW from mapping + template | Content agent |
 | `/new-project` | Scaffold a new project (template + interview + VS Code task) | DEV root context |
+| `/update-skills` | Pull the skills-for-fabric vendor submodule | DEV root |
+| `/cwd`, `/exit` | Show session cwd; graceful close (prompts /handoff + /log) | Any context |
+
+**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 20 custom + vendor submodule): the
+authoritative list is the folder itself; each agent's definition names the skills it reaches for.
+Don't duplicate the list here — it drifts.
 
 ---
 

@@ -3,7 +3,7 @@ title:
 status: open          # open | in-progress | done | cancelled
 created:              # YYYY-MM-DD
 project:              # own/X | customers/Client/Project | (blank = workspace-level)
-owner:                # M routes → fabric | content | architect | Q | self
+owner:                # M routes → fabric-back | semantic | fabric-front | content | architect | Q | self
 priority: normal      # low | normal | high
 blocked_by:           # optional — what is blocking this
 activity:             # optional — F&O activity (WBS) this task rolls under (customer projects)

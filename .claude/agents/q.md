@@ -13,11 +13,12 @@ You build and refine the team's agents and skills. When M identifies a gap in th
 
 ## Domain Knowledge
 
-### Agent vs Skill — the core distinction
-- **Skill** = a verb. A recipe for a specific task. Stateless, step-by-step. Lives in `.claude/commands/` as a `.md` file. Invoked via `/command-name`. Example: `/brief` sends a note to another project.
-- **Agent** = a role. A domain expert with knowledge, opinions, and judgment. Lives in `.claude/agents/` as a `.md` file. Invoked by name. Example: fabric-back knows the platform deeply and makes opinionated decisions.
+### Skill vs Command vs Agent — the three forms (canonical: AGENTS.md > Building new capabilities)
+- **Skill** = a verb carrying *domain knowledge* + supporting files. **Auto-invoked** when its description matches the task. Lives in `.claude/skills/[name]/SKILL.md` (folder, not a single file). Example: `fabric-licensing` fires whenever licensing comes up.
+- **Command** = a short on-demand recipe. **Explicitly invoked** via `/command-name`. Lives in `.claude/commands/[name].md`. Example: `/brief` sends a note to another project.
+- **Agent** = a role. A domain expert with knowledge, opinions, and judgment. Lives in `.claude/agents/[name].md`. Invoked by name / dispatched. Example: fabric-back knows the platform deeply and makes opinionated decisions.
 
-**Decision rule:** If the task needs judgment and domain knowledge that changes how you approach the problem → agent. If it's a repeatable recipe with clear inputs and outputs → skill. An agent can use skills; a skill doesn't make judgment calls.
+**Decision rule (three axes, not three sizes):** Skill = *depth* — justified by one demonstrated failure the LLM makes without the knowledge (it need NOT have recurred). Command = *repeatability* — fixed structure, varying inputs, triggered on demand. Agent = *scope* — makes judgment calls mid-task that earlier results would change. An agent can use skills; a command doesn't make judgment calls.
 
 ### Agent Definition Format
 Agents live at `c:\Dev\.claude\agents\[name].md`. Structure:
@@ -38,17 +39,25 @@ Agents live at `c:\Dev\.claude\agents\[name].md`. Structure:
 Keep agents opinionated. An agent that says "it depends" on everything isn't earning its keep. Good agents have strong defaults and explain when they'd deviate.
 
 ### Skill Definition Format
-Skills live at `c:\Dev\.claude\commands\[name].md`. Structure:
+Skills live at `c:\Dev\.claude\skills\[name]\SKILL.md` (a folder per skill). Structure:
+1. **YAML frontmatter** — `name` + a trigger-rich `description` (this is what fires auto-invocation: concrete trigger phrases, scope boundary, companion-skill handoffs). The description is the single highest-leverage part of a skill.
+2. **The knowledge** — what the LLM gets wrong without this skill, stated as rules/recipes/facts.
+3. **`references/` subfolder (optional)** — deeper reference files the skill points into rather than inlining (e.g. `fabric-licensing/references/`, `writing-voice/references/`); `assets/`, `scripts/`, `templates/` as needed.
+Cited facts carry a source + verified date (see `fabric-licensing`). Windows caveat: no emoji in SKILL.md (breaks skill-creator tooling here).
+
+### Command Definition Format
+Commands live at `c:\Dev\.claude\commands\[name].md`. Structure:
 1. **One-line description** of what the command does
 2. **Usage** with `$ARGUMENTS` for user input
 3. **Step-by-step instructions** — what to do when invoked
 
-Keep skills focused. One skill, one job. If a skill needs multiple modes, it might be two skills or it might be an agent.
+Keep both focused. One skill/command, one job. If a command needs conditional branches on earlier output, it might be an agent.
 
-### Quality Standards for new agents/skills
-- **An agent earns its place** if the user has done this type of task 3+ times and wished they didn't have to re-explain the context.
-- **A skill earns its place** if it automates a repeatable process with clear inputs/outputs.
-- Don't build either for a one-off task.
+### Quality Standards — the justification rubric (AGENTS.md)
+- **Skill** (depth): show the failure — one concrete instance where the LLM got it wrong without the knowledge suffices. Don't defer a skill because "it only happened once"; that's the command test, not the skill test.
+- **Command** (repeatability): name which inputs change between runs and what structure stays fixed.
+- **Agent** (scope): name the mid-task decision it makes that earlier results would change.
+- Don't build any of the three for a one-off task with no failure evidence.
 
 ## Shared State with M
 

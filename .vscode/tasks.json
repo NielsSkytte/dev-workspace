@@ -136,12 +136,46 @@
     },
 
     {
-      "label": "Claude · customers/Tystofte/PowerPortal",
-      "detail": "Tystofte — PowerPortal delivery",
+      "label": "Claude · customers/Tystofte/Data-Discovery",
+      "detail": "Tystofte — FCS08 review workbook (Tystofte_review.xlsx)",
       "type": "shell",
       "command": "claude",
       "options": {
-        "cwd": "${workspaceFolder}/customers/Tystofte/PowerPortal"
+        "cwd": "${workspaceFolder}/customers/Tystofte/Data-Discovery"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Tystofte/Tystofte-Fabric",
+      "detail": "Tystofte — Fabric items extracting FCS08 metadata",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Tystofte/Tystofte-Fabric"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Carl-Ras/fabric",
+      "detail": "Carl Ras — Fabric scale-up & model processing (placeholder)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Carl-Ras/fabric"
       },
       "presentation": {
         "panel": "dedicated",
@@ -170,12 +204,12 @@
     },
 
     {
-      "label": "Claude · customers/carl-ras/marketo",
-      "detail": "Carl Ras — Marketo → Fabric integration (Atomic), potentially bi-directional",
+      "label": "Claude · customers/Carl-Ras/datahub",
+      "detail": "Carl Ras — DataHub: GA4/Marketo → Fabric integration (Atomic), retiring Databricks",
       "type": "shell",
       "command": "claude",
       "options": {
-        "cwd": "${workspaceFolder}/customers/carl-ras/marketo"
+        "cwd": "${workspaceFolder}/customers/Carl-Ras/datahub"
       },
       "presentation": {
         "panel": "dedicated",

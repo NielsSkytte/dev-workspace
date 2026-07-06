@@ -34,7 +34,10 @@ DEV/
 │   ├── tasks/             ← workspace task store (ICOR Output): open/ in-progress/ done/ cancelled/
 │   ├── log/sessions.md    ← session log (ICOR Refine); continuity across sessions
 │   ├── memory/            ← memory substrate (Storage/Injection/Recall + skill-eval): store/ daily/ README.md
-│   └── time/              ← time-tracking substrate (heartbeats -> timesheets): heartbeats/ timesheet/ README.md
+│   ├── time/              ← time-tracking substrate (heartbeats -> timesheets): heartbeats/ timesheet/ README.md
+│   ├── decisions/         ← ADRs (architecture decision records)
+│   ├── bin/               ← workspace scripts (heal-repos.ps1 — repo wiring + customer-isolation guards)
+│   └── config/            ← logic-free config consumed by scripts (internal-remotes.txt)
 ├── customers/
 │   └── [client]/           ← customer node (CLAUDE.md + CONTEXT.md): profile + project index
 │       └── [project]/      ← the unit of work (CLAUDE.md + CONTEXT.md); time & tasks attach here
@@ -112,7 +115,7 @@ Every project's `CLAUDE.md` starts with:
 type: content | function
 focus:
 scale: spike | project
-status: active | paused | delivered | archived
+status: active | planned | paused | delivered | archived
 owner: own | customers/[client]
 fno_code:                  # Dynamics F&O time-entry code (drives /time rollup; see Time tracking)
 lineage:
@@ -256,6 +259,8 @@ computes; `/time` and `/log` wrap it. Owned by M.
 
 - **Scripts are ASCII-only.** Anything this workspace executes under Windows PowerShell 5.1 — `SessionStart` hooks, `.ps1` files, any script PS parses — must use ASCII punctuation: plain `-` (not `—`), straight quotes (not `“ ” ‘ ’`), `...` (not `…`). PS 5.1 reads BOM-less UTF-8 as Windows-1252, where an em-dash's bytes decode to a smart quote `”` that the tokenizer treats as a string delimiter, silently corrupting the parse. (Found 2026-06-15: the session-start hook had this latent bug and never ran.) Encoding-proof alternative if non-ASCII is unavoidable: save as UTF-8 *with* BOM. ASCII-only is simpler — prefer it.
 
+- **Wrap-up commits: internal repos always, DevOps repos only on ask.** At session wrap-up (`/log`, `/exit`, or an explicit wrap-up), **commit the internal ("personal") repos touched this session without asking** — the workspace repo (`C:\Dev`) and the customer/own unit repos are the private continuity substrate, and the wrap-up commit is their backup; push where a remote exists. **Customer-facing / DevOps repos (any repo with an external or company remote — Azure DevOps project repos, wiki repos) are never auto-committed — always ask first**: a commit there is a delivery surface and may trigger syncs (e.g. Fabric Source control → Update). Mirrors Guardrail 10's two axes: internal sharing is safe to automate, customer isolation never is. (Decided 2026-07-06.)
+
 - **Offer the commit-to-test at the moment it unblocks the next step.** When local changes have reached the point where committing + pushing is the *prerequisite for the next action* — running or testing them where pushed code is consumed (a Git-synced Fabric workspace via *Source control -> Update*, a CI run, a deploy, a cross-repo handoff) — proactively offer to commit and push *then*, phrased as a prompt the user approves. Don't push silently, and don't sit on a finished change waiting to be told. **The user's explicit OK is always required before any commit/push.** This is not a "checkpoint every change" rule — ordinary in-progress saves are not auto-offered; the trigger is specifically "a push is what unblocks testing / deploy / handoff." Generic across all projects and agents; owned by M. (Decided 2026-06-15: a Fabric notebook edit sat uncommitted, so Fabric had no update to test.)
 
 ## Guardrails
@@ -271,7 +276,7 @@ The operating LLM must enforce these across all projects:
 7. **LLM-agnostic substrate** — durable content (knowledge, inbox, tasks, ADRs, conventions, **memory**) stays as plain markdown in tool-neutral locations; tool-specific harness (slash commands, skills, `CLAUDE.md`, hooks) is a non-load-bearing accelerator only. Tool-specific bootstrap/initialization is permitted. Auto-triggers (hooks, scheduled agents) are permitted accelerators — they may add automation and determinism, but no decision logic or knowledge that isn't also in the substrate. Acid test: deleting `.claude/` + `CLAUDE.md` must lose no knowledge or capability. (Full statement: Governing principle, above.)
 8. **Continuity loop** — session start is context-scoped (workspace walk at root, customer walk at a customer root, project walk inside a project); session end offers a session-log entry. The Claude harness accelerates this via the `SessionStart` hook (root) and the cascading `CLAUDE.md` (project walk); the routine itself is in *Continuity loop*, above. Owned by M. The **memory substrate** (Storage/Injection/Recall + skill-eval) is a peer system at `ops/memory/` — see *Memory*.
 9. **Scripts are ASCII-only** — any script run under Windows PowerShell 5.1 must use ASCII punctuation (see *Conventions*, above).
-10. **Customer-repo isolation** — a customer-facing repo (one with an external customer remote) contains **only** code/deliverables the customer may see. Internal info (context, memory, decisions, `INBOX.md`, `.claude`) is **never a child** of it — it lives as a parent/sibling in the internal (customer) repo. Enforced structurally (internal stays outside the code repo) and backstopped by `ops/bin/heal-repos.ps1`, which adds the internal-only names (`.claude/`, `CONTEXT.md`, `CONTEXT_*.md`, `INBOX.md`) to each customer-facing repo's local `.git/info/exclude`. Two independent axes: *internal sharing* (solo now → per-customer, team-scoped repos later) is separate from *customer isolation* (this rule — always on).
+10. **Customer-repo isolation** — a customer-facing repo (one with an external customer remote) contains **only** code/deliverables the customer may see. Internal info (context, memory, decisions, `INBOX.md`, `.claude`) is **never a child** of it — it lives as a parent/sibling in the internal (customer) repo. Enforced structurally (internal stays outside the code repo) and backstopped by `ops/bin/heal-repos.ps1`, which adds the internal-only names (`.claude/`, `CLAUDE.md`, `CONTEXT.md`, `CONTEXT_*.md`, `INBOX.md`) to each customer-facing repo's local `.git/info/exclude` (`CLAUDE.md` added 2026-07-06 — a project whose folder IS a DevOps repo, e.g. Tystofte-Fabric, keeps its identity block at the repo root, one `git add .` from leaking). Two independent axes: *internal sharing* (solo now → per-customer, team-scoped repos later) is separate from *customer isolation* (this rule — always on).
 
 ## Working with projects
 

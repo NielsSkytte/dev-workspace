@@ -20,7 +20,7 @@
        plus <unit>\.claude\settings.json hard-linked to C:\Dev\.claude\settings.json (no elevation)
        so the SessionStart/Stop/UserPromptSubmit hooks (memory capture + time tracking) load every session
     5. for each DevOps (customer-facing) sub-repo: link the harness there too, and add the
-       internal-only harness names (.claude/, CONTEXT.md, CONTEXT_*.md, INBOX.md) to its
+       internal-only harness names (.claude/, CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) to its
        .git\info\exclude (LOCAL) so internal info can never be committed to the customer's repo.
        Only harness-reserved names are excluded; generic doc folders (decisions/, architecture/)
        are left alone so legitimate customer-facing docs still commit. The real guarantee is
@@ -91,7 +91,7 @@ function Link-Harness($root) {
 function Ensure-Excludes($repo) {
   # Local ignore (never committed) so a customer-facing DevOps repo can NEVER carry
   # internal-only harness files, even if one is accidentally created inside it.
-  $patterns = @(".claude/", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md")
+  $patterns = @(".claude/", "CLAUDE.md", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md")
   $ex = Join-Path $repo ".git\info\exclude"
   if (-not (Test-Path $ex)) { return }
   $existing = Get-Content $ex

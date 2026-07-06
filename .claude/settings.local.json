@@ -2,10 +2,7 @@
   "permissions": {
     "allow": [
       "PowerShell(Get-Command claude -ErrorAction SilentlyContinue)",
-      "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'claude|npm|node' }; \"---\"; try { Get-Command node, npm -ErrorAction Stop | Format-Table Name, Source } catch { \"node/npm missing\" })",
-      "PowerShell(Get-ChildItem C:\\\\Dev\\\\own\\\\Joe -File | Where-Object {$_.Extension -in '.txt','.md','.json','.py'} | Select-Object Name, Length | Format-Table -AutoSize)",
-      "PowerShell(Move-Item *)",
-      "PowerShell(Get-ChildItem \"c:\\\\Dev\\\\own\\\\SoWSkill\" -Recurse -File | Select-Object @{N='Path';E={$_.FullName.Replace\\('c:\\\\Dev\\\\own\\\\SoWSkill\\\\',''\\)}} | Format-Table -AutoSize)"
+      "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'claude|npm|node' }; \"---\"; try { Get-Command node, npm -ErrorAction Stop | Format-Table Name, Source } catch { \"node/npm missing\" })"
     ]
   }
 }

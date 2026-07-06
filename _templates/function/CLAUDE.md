@@ -4,7 +4,7 @@
 type: function
 focus:
 scale: spike | project
-status: active
+status: active       # active | planned | paused | delivered | archived
 owner:
 fno_code:            # Dynamics F&O time-entry code for this project (for /time rollup)
 lineage:

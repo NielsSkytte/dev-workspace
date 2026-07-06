@@ -13,7 +13,7 @@ Fill the Pingala SoW Word template from a content markdown file.
 Ask the user:
 1. Path to the content `.md` file (the source SoW content)
 2. Desired output filename for the filled `.docx`
-3. Path to the `.docx` template (default: `c:\Dev\Projects\Joe\Data_Statement of Work_work order.docx`)
+3. Path to the `.docx` template (default: `C:\Dev\own\SoWSkill\templates\Data_Statement of Work_work order.docx`)
 
 ---
 
@@ -56,7 +56,7 @@ For each section, extract the content as a list of plain-text lines:
 Run the following to list all `<...>` placeholders in the template:
 
 ```
-python "c:\Dev\Projects\Joe\sow_analyse_template.py"
+python "C:\Dev\own\SoWSkill\sow_analyse_template.py"
 ```
 
 From the output, identify any placeholder that:

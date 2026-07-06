@@ -1,6 +1,6 @@
 ---
 title: Create data-agent offer for Melbye
-status: open
+status: done
 created: 2026-06-15
 project: customers/Melbye/data-agent-offer   # scaffolded as placeholder 2026-06-15
 owner: content          # offer/proposal is a document deliverable
@@ -22,3 +22,7 @@ Pursue the Melbye opportunity. *(Inferred — confirm: prospective customer? act
 
 ## Log
 - 2026-06-15 — created (triaged from TODO.md)
+- 2026-07-06 — closed retroactively at the v1-review reconciliation: the offer was driven to
+  **review-ready v1.0** across 5+ sessions (2026-06-19 → 06-24) tracked in the project CONTEXT.md
+  and sessions.md, but this task file was never touched while that happened. Sending/follow-up
+  with Melbye is a new motion, not this task.

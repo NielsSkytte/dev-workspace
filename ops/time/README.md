@@ -153,6 +153,20 @@ every entry.
 **By hand:** for each unfinalized day, run the model in section 3 per group, write the table to
 `timesheet/<YYYY-MM>/<date>.md`, eyeball it, adjust if a number is obviously off.
 
+### Backup (decided 2026-07-06)
+
+The data dirs are gitignored (above), so the workspace's git remote does not protect them. The
+backup is a plain mirror to OneDrive, run **as the last step of `/log`** (the same gate that
+finalizes days):
+
+```
+robocopy "C:\Dev\ops\time" "%OneDrive%\Backup\Dev-ops-time" /E /R:2 /W:5 /NP
+```
+
+Robocopy exit codes 0-7 are success. `/E` copies without deleting on the target (a deleted local
+file survives in the mirror -- fine for a backup). **By hand / other LLM:** run the same command,
+or simply copy the `ops/time/` folder to the OneDrive path.
+
 ## 6. Timesheet (the export)
 
 `timesheet/<YYYY-MM>/<date>.md` -- a table with columns **Project | Proj ID | Activity | Task | Hours |
