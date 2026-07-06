@@ -12,12 +12,26 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:\\Dev\\.claude\\hooks\\track_time.py\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "python \"C:\\Dev\\.claude\\hooks\\capture_turn.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"C:\\Dev\\.claude\\hooks\\track_time.py\""
           }
         ]
       }

@@ -167,6 +167,57 @@
         "close": false
       },
       "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/carl-ras/marketo",
+      "detail": "Carl Ras — Marketo → Fabric integration (Atomic), potentially bi-directional",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/carl-ras/marketo"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Melbye/data-agent-offer",
+      "detail": "Melbye — data-agent offer (placeholder, scaffolded during triage)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Melbye/data-agent-offer"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Aeven/ServiceNowPOC",
+      "detail": "Aeven — Q3 Fabric POC: extract & model on-prem ServiceNow into a Power BI semantic model",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Aeven/ServiceNowPOC"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
     }
 
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────
