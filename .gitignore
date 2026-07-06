@@ -2,6 +2,9 @@
 /customers/
 /own/
 
+# Shared Pingala repos mounted here (psi-context-library) — own repos, never tracked by dev-workspace
+/pingala/
+
 # Archived .git dirs from repos folded into their customer repo (preserved history, recoverable)
 /_git-archive/
 

@@ -28,6 +28,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [skill-fabric-licensing](skill-fabric-licensing.md) — fabric-licensing skill; broad MS-Learn-cited Fabric licensing; owns the licensing facts (replaces the voice-example single-source)
 
 ## Reference
+- [pingala-psi-context-library](pingala-psi-context-library.md) — pingala/ mount = shared Pingala skills repo (other employees contribute), first company shared-brain attempt; not a workspace project
 - [memory-arch-three-jobs](memory-arch-three-jobs.md) — Simon Scrapes video; Storage/Injection/Recall framing, cherry-picks Hermes/MemArch/GBrain, company-brain RLS; our memory direction
 - [skill-creator-trigger-eval-limitation](skill-creator-trigger-eval-limitation.md) — its description-optimization loop gives no valid triggering signal on this Windows setup; crashes on emoji in SKILL.md
 - [claude-auto-memory-disable](claude-auto-memory-disable.md) — why we disable native auto-memory: stops its rogue writes (the real collision with ops/memory) but not the ~11-16k-token preamble (open bug #63903); we disable+replace, Simon layers

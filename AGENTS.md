@@ -43,6 +43,10 @@ DEV/
 │       └── [project]/      ← the unit of work (CLAUDE.md + CONTEXT.md); time & tasks attach here
 ├── own/
 │   └── [project]/
+├── pingala/               ← sanctioned mount: SHARED Pingala repos, not workspace projects
+│   └── psi-context-library/  ← shared skills repo built with other Pingala employees — the first
+│                             attempt at a company "shared brain" (own git repo + .claude; no
+│                             identity block, no CONTEXT.md, no time/task attachment)
 ├── .vscode/               ← tasks.json for project switching (Claude/VS Code accelerator)
 └── .claude/              ← Claude harness (accelerators, not load-bearing): agents/, commands/, skills/
 ```
