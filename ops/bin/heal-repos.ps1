@@ -15,7 +15,9 @@
 
   For every repo unit (each customers\* dir, plus own) this ensures:
     1. git init if it is not yet a repo
-    2. detect immediate child folders that are their own git repo -> ignore them, and classify
+    2. detect nested git repos at both storage-standard depths (AGENTS.md > Conventions >
+       Storage standard): flat under the unit (grandfathered), or role-named inside a project
+       folder (<unit>\<project>\<role>, e.g. fabric/, infra/, wiki/) -> ignore them, and classify
        each by its 'origin' remote against ops/config/internal-remotes.txt: internal/personal
        (GitHub, PingalaGlobal) = ignored only; customer-facing (any other remote) = ignored AND
        guarded; no-remote nested repo = flagged (fold it in, or give it a remote)
@@ -115,6 +117,27 @@ function Get-RemoteClass($repo) {
   return "customer"
 }
 
+function Get-SubRepos($unit) {
+  # Nested-repo discovery per the storage standard: a code repo sits either directly under the
+  # unit (grandfathered flat repos) or one level deeper, role-named inside a project folder.
+  # Two levels only; never descends INTO a found repo, and skips harness/meta dirs by name so
+  # the .claude junction is never traversed. Rel = unit-relative path, forward slashes.
+  $skip = @(".claude", ".project-meta", ".git", ".vscode")
+  $found = @()
+  foreach ($child in (Get-ChildItem $unit -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
+    if (Test-Path (Join-Path $child.FullName ".git")) {
+      $found += [pscustomobject]@{ Dir = $child; Rel = $child.Name }
+      continue
+    }
+    foreach ($gc in (Get-ChildItem $child.FullName -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
+      if (Test-Path (Join-Path $gc.FullName ".git")) {
+        $found += [pscustomobject]@{ Dir = $gc; Rel = ($child.Name + "/" + $gc.Name) }
+      }
+    }
+  }
+  return @($found)
+}
+
 function Set-ManagedIgnore($unit, $subrepos) {
   $giPath = Join-Path $unit ".gitignore"
   $block = @($beg,
@@ -148,29 +171,33 @@ function Set-ManagedIgnore($unit, $subrepos) {
   Set-Content -Path $giPath -Value $out -Encoding utf8
 }
 
-function Sync-SubrepoMeta($unit, $subDirs) {
+function Sync-SubrepoMeta($unit, $subRepos) {
   # A DevOps sub-repo's internal metadata (CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) is
   # excluded from the DevOps remote (Ensure-Excludes) AND cannot be tracked by the unit repo
   # directly (git refuses paths inside a nested repo). Backup: HARD-LINK each metadata file
-  # into <unit>\.project-meta\<sub>\ - a tracked shadow path. Same bytes, no sync step; the
-  # file in the project folder is the source of truth. Self-heal: if an atomic save broke the
-  # link (hashes differ), relink from the project file. (Same trick as settings.json above.)
-  foreach ($d in $subDirs) {
+  # into <unit>\.project-meta\<rel>\ - a tracked shadow path mirroring the repo's unit-relative
+  # path. Same bytes, no sync step; the file in the project folder is the source of truth.
+  # Self-heal: if an atomic save broke the link (hashes differ), relink from the project file.
+  # (Same trick as settings.json above.) Role-level repos under the storage standard normally
+  # carry no metadata (it lives in the project folder, directly tracked) - this then no-ops.
+  foreach ($r in $subRepos) {
+    $full = $r.Dir.FullName
+    $relWin = $r.Rel -replace "/", "\"
     $names = @("CLAUDE.md", "CONTEXT.md", "INBOX.md") + `
-      (Get-ChildItem $d.FullName -File -Filter "CONTEXT_*.md" | ForEach-Object { $_.Name })
-    $metaFiles = $names | Where-Object { Test-Path (Join-Path $d.FullName $_) } | Select-Object -Unique
+      (Get-ChildItem $full -File -Filter "CONTEXT_*.md" | ForEach-Object { $_.Name })
+    $metaFiles = $names | Where-Object { Test-Path (Join-Path $full $_) } | Select-Object -Unique
     if ($metaFiles.Count -eq 0) { continue }
-    $shadowDir = Join-Path $unit (".project-meta\" + $d.Name)
-    if (-not (Test-Path $shadowDir)) { New-Item -ItemType Directory -Path $shadowDir | Out-Null }
+    $shadowDir = Join-Path $unit (".project-meta\" + $relWin)
+    if (-not (Test-Path $shadowDir)) { New-Item -ItemType Directory -Force -Path $shadowDir | Out-Null }
     foreach ($n in $metaFiles) {
-      $srcFile = Join-Path $d.FullName $n
+      $srcFile = Join-Path $full $n
       $shadow = Join-Path $shadowDir $n
       if (Test-Path $shadow) {
         if ((Get-FileHash $shadow).Hash -eq (Get-FileHash $srcFile).Hash) { continue }
         Remove-Item $shadow -Force
       }
       New-Item -ItemType HardLink -Path $shadow -Target $srcFile | Out-Null
-      Write-Host "     meta linked: .project-meta\$($d.Name)\$n"
+      Write-Host "     meta linked: .project-meta\$relWin\$n"
     }
   }
 }
@@ -186,28 +213,31 @@ function Heal-Unit($unit) {
     Write-Host "            point it at an internal remote (see ops/config/internal-remotes.txt)."
   }
 
-  $subDirs = Get-ChildItem $unit -Directory -Force |
-    Where-Object { Test-Path (Join-Path $_.FullName ".git") }
-  $subrepos = @($subDirs | ForEach-Object { $_.Name })
+  # NB: PS variable names are case-insensitive - keep these two names distinct
+  $nestedRepos = Get-SubRepos $unit
+  $nestedRels = @($nestedRepos | ForEach-Object { $_.Rel })
 
-  Set-ManagedIgnore $unit $subrepos
+  Set-ManagedIgnore $unit $nestedRels
   if (Link-Harness $unit) { Write-Host "   harness linked" }
-  Write-Host "   sub-repos ignored: [$($subrepos -join ', ')]"
+  Write-Host "   sub-repos ignored: [$($nestedRels -join ', ')]"
 
-  foreach ($d in $subDirs) {
-    $sp = $d.FullName
+  foreach ($r in $nestedRepos) {
+    $sp = $r.Dir.FullName
     Link-Harness $sp | Out-Null
     switch (Get-RemoteClass $sp) {
-      "customer" { Ensure-Excludes $sp; Write-Host "     $($d.Name): customer-facing -> ignored + guarded" }
-      "internal" { Ensure-Excludes $sp; Write-Host "     $($d.Name): internal remote -> ignored + guarded (wiki/shared: internal metadata still excluded)" }
-      "none"     { Write-Host "     $($d.Name): WARN no remote -> fold into the unit repo or add a remote" }
+      "customer" { Ensure-Excludes $sp; Write-Host "     $($r.Rel): customer-facing -> ignored + guarded" }
+      "internal" { Ensure-Excludes $sp; Write-Host "     $($r.Rel): internal remote -> ignored + guarded (wiki/shared: internal metadata still excluded)" }
+      "none"     { Write-Host "     $($r.Rel): WARN no remote -> fold into the unit repo or add a remote" }
     }
   }
-  Sync-SubrepoMeta $unit $subDirs
+  Sync-SubrepoMeta $unit $nestedRepos
 
   $head = git -C $unit rev-parse --verify --quiet HEAD 2>$null
   if (-not $head) {
-    git -C $unit add -A 2>$null
+    # no 2>$null here: under EAP=Stop a redirected native stderr line (e.g. the LF/CRLF
+    # warning on a fresh unit) becomes a terminating NativeCommandError; unredirected it is
+    # just console output. (Same PS 5.1 trap as the two fixed 2026-07-06.)
+    git -C $unit add -A
     git -C $unit commit -q --allow-empty -m "Initialize $name repo (local backup unit; DevOps sub-repos ignored)"
     Write-Host "   initial commit created"
   }

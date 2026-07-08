@@ -252,6 +252,40 @@
         "close": false
       },
       "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · customers/Vestforbraending/fabric-capacity",
+      "detail": "Vestforbrænding — Fabric capacity via Venzo (placeholder)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Vestforbraending/fabric-capacity"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Claude · own/CapacityManager",
+      "detail": "Fabric capacity scale-up/down around semantic model processing — Pingala-reusable asset",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/CapacityManager"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
     }
 
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────

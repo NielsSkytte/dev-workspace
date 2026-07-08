@@ -27,9 +27,9 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
 - [x] 2026-06-23 — Check up on duplicated skills in the skills-for-fabric vendor submodule → dropped 2026-07-06 triage: vendor packaging choice, costs disk not context (agents reference bundles by path); revisit only if skill-list bloat or contradictory vendor skills are actually observed.
 - [x] 2026-06-25 — læs tystofte design document og giv input omkring data mv. → folded into the Tystofte INBOX package (postgres analysis + design-doc review) at the 2026-07-06 triage
 - [x] 2026-06-25 — check op på tystofte postgres adgang → resolved with the above (checked off 2026-07-06 triage)
-- [ ] 2026-07-06 — analyse Tystofte postgres data, same approach as the Oracle FCS08 work (extract metadata → review workbook flow); route to the DevOps work item when assigned
-- [ ] 2026-07-06 — implementer opskalering af fabric og processering af model hos carl-ras, brug eksisterende python script
-- [ ] 2026-07-06 — mail til Impact med Kasper cc omkring videre setup for Marketo api adgang
-- [ ] 2026-07-06 — formelt tilbud til Aeven omkring ServiceNow offer, skal være i pdf format
-- [ ] 2026-07-06 — følg op på Vestforbrænding med Venzo omkring oprettelse af Fabric capacity
+- [x] 2026-07-06 — analyse Tystofte postgres data, same approach as the Oracle FCS08 work (extract metadata → review workbook flow); route to the DevOps work item when assigned → promoted to task `tasks/open/2026-07-07-tystofte-postgres-analysis.md`
+- [x] 2026-07-06 — implementer opskalering af fabric og processering af model hos carl-ras, brug eksisterende python script → promoted to task `tasks/open/2026-07-07-carlras-fabric-scaleup.md`
+- [x] 2026-07-06 — mail til Impact med Kasper cc omkring videre setup for Marketo api adgang → promoted to task `tasks/open/2026-07-07-carlras-impact-marketo-mail.md`
+- [x] 2026-07-06 — formelt tilbud til Aeven omkring ServiceNow offer, skal være i pdf format → promoted to task `tasks/open/2026-07-07-aeven-servicenow-offer-pdf.md`
+- [x] 2026-07-06 — følg op på Vestforbrænding med Venzo omkring oprettelse af Fabric capacity → promoted to task `tasks/open/2026-07-07-vestforbraending-venzo-capacity-followup.md` (customer node + placeholder project scaffolded 2026-07-07)
 - [ ] 2026-07-06 — ask Niels for the Matas F&O Activity number(s) (212-01 requires an Activity on ALL time lines) and create at least one Matas task carrying activity: so /switch-task can bind sessions
