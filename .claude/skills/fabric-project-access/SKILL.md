@@ -321,10 +321,30 @@ the gap is capacity permission — not workspace visibility, licensing, region, 
 add the account, or (preferred) the `SG-Fabric-Capacity-Admin` / service-principal security
 group. Azure-portal RBAC on the capacity does **not** substitute for this.
 
+**Who grants it — least privilege (add this to the customer access request):**
+
+- The identity that will *run* Link to Fabric (org-account connection identity, service
+  principal, or the `SG-Fabric-…` group) needs at least capacity **Contributor** on the target
+  capacity. Contributor is enough for the wizard — it only needs to assign/use the capacity.
+- The person who *performs* the grant needs capacity **Admin** on that capacity — **not** tenant
+  Fabric admin. Capacity Admin permissions include "Add contributors to the capacity", and a
+  capacity admin can open Capacity settings in the admin portal without any tenant admin role.
+- **Azure RBAC ≠ Fabric capacity admin.** Owner/Contributor on the `Microsoft.Fabric/capacities`
+  Azure resource governs the resource only (scale, pause/resume, delete, and editing the F-SKU
+  *Capacity administrators* list). It does not grant Fabric-side capacity admin or admin-portal
+  governance. The only bridge is being named in the resource's *Capacity administrators*.
+- **Standard Pingala ask:** request capacity **Admin** for `SG-Fabric-Capacity-Admin` on the
+  project capacity (still scoped to one capacity, not tenant-wide) so Pingala can self-manage
+  workspace-to-capacity assignment and contributor grants going forward. Drop to Contributor
+  only if the customer's governance requires it.
+
 > Sources (verified 2026-07, Vestforbrænding):
 > [Link to Fabric prerequisites](https://learn.microsoft.com/power-apps/maker/data-platform/fabric-link-to-data-platform#prerequisites);
 > [Link to Fabric troubleshooting](https://learn.microsoft.com/power-apps/maker/data-platform/fabric-troubleshoot);
-> [Manage your Fabric capacity — Capacity settings](https://learn.microsoft.com/fabric/admin/capacity-settings#capacity-settings).
+> [Manage your Fabric capacity — Capacity settings](https://learn.microsoft.com/fabric/admin/capacity-settings#capacity-settings);
+> [Understand Fabric admin roles](https://learn.microsoft.com/fabric/admin/roles);
+> [Admin portal access requires a Fabric admin role](https://learn.microsoft.com/fabric/admin/admin-overview#what-is-the-admin-portal);
+> [Scale your Fabric capacity — Azure RBAC actions](https://learn.microsoft.com/fabric/enterprise/scale-capacity).
 
 ---
 
