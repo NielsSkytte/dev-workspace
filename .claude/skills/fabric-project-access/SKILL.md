@@ -10,7 +10,10 @@ description: >
   of user provisioning, guest users, ext_ accounts, security groups, or Fabric admin portal
   settings in the context of starting a new project. Also trigger when someone asks "what do we
   need from the customer to get started", "what access requests should we send", or wants to
-  draft an access-request email for a customer. This skill covers Phase 1 of the Pingala Project
+  draft an access-request email for a customer. Also trigger on Dataverse "Link to Microsoft
+  Fabric" access problems — workspaces not appearing in the Link-to-Fabric picker, only Fabric
+  Trial offered, "capacity you don't have access to", or capacity Contributor / capacity-admin
+  permission questions (see section 8.5). This skill covers Phase 1 of the Pingala Project
   Playbook — use it even if the user only asks about one part (e.g. just Entra ID groups, just
   licences, or just the service principal).
 ---
@@ -287,6 +290,42 @@ If the project involves D365 Finance & Operations integration:
 - All users (both guest and ext_ accounts) → **Team Member** on the project
 - DevOps/integration resource (guest account) → **Project Collection Administrator** at org level
 
+### 8.5 Fabric Capacity Permissions — two layers (and Dataverse "Link to Fabric")
+
+"Capacity Contributor" exists at **two separate layers, and they are not interchangeable.**
+Granting the wrong one looks correct but has no effect on Fabric features.
+
+| Layer | Where it is set | What it governs |
+|-------|-----------------|-----------------|
+| Azure RBAC **Contributor** on the capacity resource | Azure portal → the `Microsoft.Fabric/capacities` resource → Access control (IAM) | The Azure resource lifecycle (scale, pause/resume, delete). It does **not** grant any Fabric-side capacity right. |
+| Fabric **Contributor permission** on the capacity | Fabric Admin Portal → Capacity settings → *[capacity]* → **Contributor permissions** | The ability to assign and use workspaces on that capacity inside Fabric. **This is the one Fabric features check.** |
+
+Reaching the Fabric Admin Portal capacity settings requires the **Fabric administrator** role —
+activate it via **PIM** if it is assigned as an eligible / just-in-time role.
+
+**Dataverse "Link to Microsoft Fabric" depends on the Fabric-side Contributor permission.** If
+the account (or service principal) running the wizard is not a Contributor on the target
+capacity *in the Fabric Admin Portal*, the following symptoms appear even when workspace-role
+access and "Users can create Fabric items" are correctly in place:
+
+- existing workspaces on that capacity **do not appear** in the wizard's *Choose Workspace* dropdown;
+- creating a new workspace offers **Fabric Trial only**, never the F-capacity;
+- the workspace shows the banner **"This workspace is configured to use a capacity you don't have access to"** (you can still open the workspace and create items — that is workspace-role access, a different layer);
+- capacity-scoped workspace settings (e.g. large vs small semantic-model storage format) are greyed out.
+
+**Fast isolation:** call `GET https://api.powerbi.com/v1.0/myorg/groups` as the account (Power BI
+REST *Try it* console). If it **returns** the workspaces but the wizard still does not list them,
+the gap is capacity permission — not workspace visibility, licensing, region, or network.
+
+**Fix:** Fabric Admin Portal → Capacity settings → *[capacity]* → **Contributor permissions** →
+add the account, or (preferred) the `SG-Fabric-Capacity-Admin` / service-principal security
+group. Azure-portal RBAC on the capacity does **not** substitute for this.
+
+> Sources (verified 2026-07, Vestforbrænding):
+> [Link to Fabric prerequisites](https://learn.microsoft.com/power-apps/maker/data-platform/fabric-link-to-data-platform#prerequisites);
+> [Link to Fabric troubleshooting](https://learn.microsoft.com/power-apps/maker/data-platform/fabric-troubleshoot);
+> [Manage your Fabric capacity — Capacity settings](https://learn.microsoft.com/fabric/admin/capacity-settings#capacity-settings).
+
 ---
 
 ## Using This Skill — Generating an Access Request
@@ -307,8 +346,9 @@ Ask for (if not already known):
 
 Using the template above, substitute the actual consultant names and email addresses into
 each section. Present the full access request as a structured document or email that can be
-sent to the customer's IT department. When delivering it as an email, hand the body to the
-`email-outlook-ready` skill so the bold/bullets/tables survive the paste into Outlook.
+sent to the customer's IT department. When delivering it as an email, follow the
+`email-outlook-ready` skill: the deliverable is one .md file the user copies from VS Code
+preview into Outlook.
 
 ### Step 3: Track completion
 
