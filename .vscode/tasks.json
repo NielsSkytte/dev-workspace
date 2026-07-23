@@ -288,6 +288,23 @@
       "problemMatcher": []
     }
 
+    ,{
+      "label": "Claude · customers/ElementLogic/LineageDocumentation",
+      "detail": "Element Logic — self-serve lineage docs of the Atomic solution, source → semantic model",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/ElementLogic/LineageDocumentation"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    }
+
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────
     // Template to copy:
     //

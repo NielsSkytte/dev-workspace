@@ -94,7 +94,7 @@ Update procedure: `/update-skills`
 | `fabric-rename-entity` | Safely rename Fabric items |
 | `medallion-migration-validation` | Validate medallion layer migrations |
 | `azure-devops-backlog` | Create and manage Azure DevOps backlog items |
-| `email-outlook-ready` | Draft and send emails via Outlook |
+| `email-outlook-ready` | Email deliverable convention: one .md file (subject stated in the file), pasted into Outlook from VS Code preview |
 | `timestamp-timezone-pipelines` | Timestamp and timezone handling in pipelines |
 | `writing-voice` | Niels's business writing voice (DA/EN) - strip the AI smell, match his voice; strict offer layer |
 | `pingala-offer` | Trusted-advisor doctrine and structure for writing Pingala customer offers / SoWs |

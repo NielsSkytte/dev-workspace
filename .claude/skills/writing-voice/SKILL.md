@@ -11,8 +11,8 @@ description: >-
   meta-narration, throat-clearing, hedge-leaks) and bends the text to how Niels
   actually writes: warm but strict, purpose-first, and as short as the content
   allows. The reader is always a Danish/Nordic business customer. Composes with
-  the email-outlook-ready skill (that one keeps the FORMATTING intact on paste
-  into Outlook; this one keeps the VOICE). Trigger even when the user never says
+  the email-outlook-ready skill (that one makes the email deliverable one .md
+  file; this one keeps the VOICE). Trigger even when the user never says
   "voice" or "style" - any customer-facing or business prose qualifies.
 bundle: custom
 ---
@@ -21,7 +21,7 @@ bundle: custom
 
 ## When this applies
 
-Any prose you draft for Niels to send or publish: client emails, offers, Statements of Work, proposals, executive briefs, internal notes, web copy. Danish or English. This skill governs **voice**; `email-outlook-ready` governs **formatting** - use both when the deliverable is an email.
+Any prose you draft for Niels to send or publish: client emails, offers, Statements of Work, proposals, executive briefs, internal notes, web copy. Danish or English. This skill governs **voice**; `email-outlook-ready` governs the **deliverable format** (one .md file, subject stated in the file) - use both when the deliverable is an email.
 
 The voice was reverse-engineered from Niels's own writing (a Danish master's thesis and his real sent mail). The full evidence sits in `references/voice-profile.md`. This file is the operational core: the rules and the self-check. Read the references when you need the detail or you are writing something substantial.
 
@@ -33,8 +33,19 @@ The voice was reverse-engineered from Niels's own writing (a Danish master's the
 
 ## The two things that make it him
 
-1. **Warmth plus argument.** Thanks-first opener, first-person ownership of a recommendation ("jeg mener" / "my recommendation is"), honest about risk rather than relentlessly upbeat. A senior consultant with a point of view, not a faceless report.
+1. **Warmth plus argument.** Thanks-first opener when there is something new to thank for - never a re-thank for work already acknowledged earlier in the thread; then open with the status or substance instead. Owned recommendations: in an email that is personal ("jeg mener", "som jeg ser det"); in an offer or SoW the owner is Pingala/"vi", never "jeg" (see the document-type rule below). Honest about risk rather than relentlessly upbeat. A senior consultant with a point of view, not a faceless report.
 2. **Economy.** He says it once, plainly, and stops. Half of sounding like him is what you *do not* write. When in doubt, cut.
+
+## First, name what you are writing - the person follows the document type
+
+Before applying any other rule, state which deliverable this is. The **person** (who speaks) is set by the **document type**, not by the section. Niels (2026-07-15): "i would never write I/jeg in an offer, but will make use of it in emails".
+
+| Document type | Who speaks |
+|---|---|
+| Email, informal note to a known counterpart | First person singular is in-voice: "jeg anbefaler", "som jeg ser det", "Du maa meget gerne give mig besked". Personal, direct, warm. |
+| Offer, SoW, proposal - anything contractual or formal customer-facing | **Never "jeg"/"I" (first person singular).** The actor is Pingala or "vi": "Pingala anbefaler", "vores anbefaling", "vi kortlaegger" - or a plain declarative statement. A recommendation is Pingala's position, not a personal opinion. |
+
+The register map below (warm vs precise **sections**) is orthogonal: an email can contain precise sections, and an offer has warm framing sections - but the person rule follows the document type throughout.
 
 ## Register map - match the section, not just the document
 
@@ -42,7 +53,7 @@ Niels's natural voice reasons out loud; his *business* voice is stricter. Pick t
 
 | Section type | Stance |
 |---|---|
-| Warm / relationship: greeting, cover note, overview framing, the close | Voice-forward. Thanks-first, first person, at most one rhetorical-question hinge. Still tight. |
+| Warm / relationship: greeting, cover note, overview framing, the close | Voice-forward. Thanks-first (only when there is something new to thank for; otherwise open on the status), first person, at most one rhetorical-question hinge. Still tight. |
 | Precise / technical: licensing, scope, requirements, prerequisites, estimates, data residency, anything with numbers or obligations | **Strict and declarative.** State requirements as requirements. List- or table-first. No narration, no hedging, no rhetorical questions. |
 
 Emails lean warm. Offers and SoWs lean precise. Never let a precise section drift into reasoning-out-loud - that is where the Melbye draft went wrong. The strict layer and a full before/after live in `references/business-offers.md`.
@@ -57,6 +68,8 @@ Emails lean warm. Offers and SoWs lean precise. Never let a precise section drif
 - **No working notes leaking to the customer.** "(to confirm before kick-off)", "(confirm)", "worth confirming" sprinkled inline are internal hedges. Collect everything that needs confirming into one clean labelled block (a Prerequisites list, or "Melbye to confirm:"). Never pepper the prose with parenthetical uncertainty.
 - **Own actions in the active voice.** "Pingala builds...", "we map...", "vi kortlaegger...". Not "a closer look is taken", "the following is stated", "it is expected that".
 - **One hedge max, then commit.** Keep a single honest softener ("nok", "umiddelbart" / "typically", "in our experience") and strip it off the actual recommendation.
+- **No time/effort selling claims.** Never sell a recommendation with an ease or duration promise ("Opsaetningen tager faa minutter", "quick to set up"). State the steps and let them speak. (Niels struck exactly such a line from a sent mail, 2026-07-15.)
+- **Soften direct requests to a customer.** A bare imperative ask ("Giv besked om...") is too hard for a mail to a customer; spend the extra words on polite direct Danish ("Du maa meget gerne give mig besked om..."). This is the one place where economy yields - a request costs a few more words than a statement.
 - **No breezy or "clever" phrasing.** The register is formal Nordic/Danish business language, not American sales punch. Strip lines that try to be quotable or wry: "built in an afternoon", "in a heartbeat", "the magic happens here", "easier said than done". State the fact plainly: "Setting up a data agent in Fabric takes only a few steps; the real work lies in instructing it correctly and validating its answers." Plain and factual beats catchy.
 - **Label and heading words must name the technical property, not a vibe.** A section title or bold label states what the thing *is*, in terms the reader can check. Use "a validated data agent" (grounded on truth, tested for correctness), not "a proper / real / serious data agent" - vague qualifiers that could mean anything (how it talks back, how it looks). If you cannot say what the word verifies, it is the wrong word.
 
@@ -81,7 +94,8 @@ Run this on every draft, in this order:
 2. **Any meta-narration or "(to confirm)" leak?** Delete the narration; consolidate the confirmations into one labelled block.
 3. **Could any paragraph be a tighter list or table?** Especially in an offer or a requirements section. And is any commercial fact (the phase split, the T&M basis, a scope boundary) stated more than once - if so, say it once and cross-reference.
 4. **Is the purpose stated plainly, up front?**
-5. **Register right?** Precise sections strictly declarative and committed to one answer (no stray range, minimum, or "sized later"); warm sections thanks-first and first person.
+5. **Register right?** Precise sections strictly declarative and committed to one answer (no stray range, minimum, or "sized later"); warm sections thanks-first only when there is something new to thank for. Any ask to the customer softened ("Du maa meget gerne..."), not a bare imperative; any time/effort selling claim ("takes a few minutes") cut.
+5b. **Person right for the document type?** Email: personal "jeg" is in-voice. Offer/SoW/proposal: zero "jeg"/"I" (singular) - the actor is Pingala/"vi" or a plain declarative.
 6. **AI-lexicon scan** (leverage / robust / seamless / holistic / delve / ...) - clean?
 6b. **Register and label scan.** Any breezy/"clever" line ("built in an afternoon", "the magic happens")? Rewrite plain. Any heading or label using a vague qualifier ("proper", "real", "serious") instead of the verifiable property ("validated", "tested", "grounded")? Replace it.
 7. **(English only)** Any "Mvh" or Danish word leaking in? Scrub it. Plain enough for a non-native reader?

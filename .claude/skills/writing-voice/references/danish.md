@@ -5,7 +5,17 @@
 ## Greeting and sign-off
 
 - **Greeting:** "Hej <navn>" is the near-universal default, warm-neutral, even with senior people. **Do not auto-upgrade to "Kaere"** - he never uses it. His more formal move is "Hej" plus a more careful body, not a formal greeting.
-- **Sign-off ladder:** "Mvh Niels Skytte" (business default) -> "vh Niels" (lighter, familiar) -> bare "N" (intimate, not for business).
+- **Sign-off ladder:** "Mvh Niels Skytte" (business default) -> "vh Niels" (lighter, familiar) -> bare "N" (intimate, not for business). In an ongoing informal thread he signs "Mvh Niels" on a single line (observed 2026-07-15).
+
+## Openers and requests (mail)
+
+Calibrated from a mail Niels rewrote before sending (2026-07-15, Carl-Ras Key Vault; full before/after in voice-profile.md, Example 4):
+
+- **No re-thank.** If the counterpart's work was already acknowledged in an earlier mail, do not open with thanks again. Open with the status: "Jeg har koert den foerste test og der er lidt udfordringer" plus a light smiley. A problem-statement opener with a light smiley is in-voice for informal operational mail to a known counterpart.
+- **Requests are polite direct Danish:** "Du maa meget gerne give mig besked om..." - never the bare imperative "Giv besked om...".
+- **Keep the framing first-person:** "Der er to veje videre som jeg ser det" - do not hand the choice-framing to the customer ("og I vaelger den der passer bedst").
+- **No effort selling:** he struck "Opsaetningen tager faa minutter"; the steps that followed stayed and speak for themselves.
+- Minor naturalness touches from the same edit (calibration, do not over-generalize): "allerede", "til formaalet".
 
 ## Reader address
 

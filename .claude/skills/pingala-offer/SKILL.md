@@ -11,7 +11,7 @@ description: >-
   implementation/technical detail (security mechanics, billing internals, admin
   steps, SDK/DAX) stays out, because an offer states value, scope, and price, not
   how it is built. Composes with writing-voice (how the prose reads / AI-smell)
-  and email-outlook-ready (the cover email). Trigger even if the user only
+  and email-outlook-ready (the cover email, delivered as one .md file). Trigger even if the user only
   mentions one offer or one section.
 bundle: custom
 ---
@@ -20,7 +20,7 @@ bundle: custom
 
 An offer - a SoW, proposal, or work order - is a confident commitment from a trusted advisor: the value, the scope, the deliverables, the price. It is not a technical design, not a menu of options, and not a list of the customer's homework. Pingala is the expert, and the offer reads like it.
 
-This skill carries the **stance** and **structure** of an offer. For **voice** (how the prose reads, and stripping the AI smell), it builds on `writing-voice` and its `references/business-offers.md` strict layer. For the **cover email**, `email-outlook-ready`. For where an offer sits in the engagement, `pingala-project-playbook`.
+This skill carries the **stance** and **structure** of an offer. For **voice** (how the prose reads, and stripping the AI smell), it builds on `writing-voice` and its `references/business-offers.md` strict layer. For the **cover email**, `email-outlook-ready` (the deliverable is one .md file). For where an offer sits in the engagement, `pingala-project-playbook`.
 
 ## The trusted-advisor stance (the part that matters most)
 

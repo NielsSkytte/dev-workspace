@@ -83,7 +83,7 @@ What changed: the heading lost its hedge, the opener became a single declarative
 The strict layer trims, but the parts that make it *him* stay:
 
 - Thanks-first in the cover note and the email that carries the offer.
-- First-person ownership where Pingala takes a position ("Pingala specifies F4", "Pingala recommends implementing both").
+- First-person ownership where Pingala takes a position ("Pingala specifies F4", "Pingala recommends implementing both"). The first person of an offer is always Pingala or "vi" - **never the singular "jeg"/"I"** (Niels, 2026-07-15: "i would never write I/jeg in an offer"). A recommendation is stated as Pingala's position ("vores anbefaling", "Pingala anbefaler"), not a personal opinion.
 - Honest edges over false certainty: name the preview status, the dependency, the assumption. He is candid about risk, not relentlessly upbeat.
 - The occasional value-framing line in a warm section (Overview, Vision) - kept to one, never in a precise section.
 

@@ -344,7 +344,14 @@ customers have legacy Dynamics AX or Navision instances running on-prem.
 | **Data Pipeline (Copy Activity)** | External sources requiring scheduled batch loads |
 | **Dataflow Gen2** | Low-code transformations during ingestion |
 | **Eventstream** | Real-time / streaming data sources |
-| **Notebook (PySpark)** | Complex extraction logic, API calls, custom connectors |
+| **Notebook (Python or PySpark)** | Complex extraction logic, API calls, custom connectors |
+
+> **Notebook default — Python over PySpark.** Default to plain **Python notebooks**
+> (single-node: pandas/polars/duckdb) for notebook logic. Reach for **PySpark/Spark
+> notebooks only when a concrete compute requirement has been identified** (data
+> volumes or distributed processing that a single node can't handle). Python notebooks
+> start faster and consume far fewer CUs — on small capacities (F4–F8) this matters.
+> Owner preference (Niels, 2026-07-16): always Python unless the Spark-scale need is proven.
 
 ---
 
@@ -498,7 +505,7 @@ services that create actual business value).
 | CI/CD | Fabric Deployment Pipelines + Azure DevOps |
 | Security model | Entra ID security groups per workspace layer |
 | Capacity entry point | Fabric F4 (North Europe) |
-| Transformation language | PySpark (Notebooks) and T-SQL |
+| Transformation language | Python (Notebooks) and T-SQL; PySpark only on identified compute need |
 | Orchestration | Fabric Data Pipelines (Master + sub-pipelines) |
 | On-prem connectivity | Data Gateway for non-cloud sources |
 | AI platform (when needed) | Azure AI Foundry + Co-pilot Studio + Fabric |

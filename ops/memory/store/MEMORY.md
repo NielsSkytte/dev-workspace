@@ -30,6 +30,8 @@ and the record shape live in [`../README.md`](../README.md).
 - [skill-pingala-offer](skill-pingala-offer.md) — pingala-offer skill; trusted-advisor doctrine (no questions/decisions, build out, customer-state interview, budget-holder altitude, no capacity location)
 - [skill-fabric-licensing](skill-fabric-licensing.md) — fabric-licensing skill; broad MS-Learn-cited Fabric licensing; owns the licensing facts (replaces the voice-example single-source)
 - [eval-2026-07-07-pingala-offer](eval-2026-07-07-pingala-offer.md) — evaluative: pingala-offer fired+helped as verification gates at the Aeven offer; /fill-sow recipe lacked a Word-open verify step; writing-voice not loaded (borderline)
+- [hooks-subdir-session-gap](hooks-subdir-session-gap.md) — sessions rooted below C:\Dev get NO capture/time hooks (hooks don't cascade); Element Logic 07-20..23 untracked, manual timesheet entry needed; per-project sessions currently untracked too
+- [eval-2026-07-22-lineage-viewer](eval-2026-07-22-lineage-viewer.md) — evaluative: dataviz+pingala-visual-identity fired+helped (validator caught real brand failures); pingala-fabric-platform gap: layer-ID conventions undocumented (candidate skill update)
 
 ## Reference
 - [pingala-psi-context-library](pingala-psi-context-library.md) — pingala/ mount = shared Pingala skills repo (other employees contribute), first company shared-brain attempt; not a workspace project
@@ -38,3 +40,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [claude-auto-memory-disable](claude-auto-memory-disable.md) — why we disable native auto-memory: stops its rogue writes (the real collision with ops/memory) but not the ~11-16k-token preamble (open bug #63903); we disable+replace, Simon layers
 - [workflow-large-return-timeout](workflow-large-return-timeout.md) — Workflow synthesis returning two big files via schema times out; files write to disk first (recoverable); prefer agent-Write or smaller returns
 - [sow-fill-toolchain](sow-fill-toolchain.md) — SoW template + sow_fill.py traps: empty w:tc = Word "corrupt", Company controls data-bound to docProps/app.xml, header literal <Customer>; all fixed (unversioned in ~/.claude/tools); verify via Word COM + PDF probe
+- [atomic-lineage-engine](atomic-lineage-engine.md) — reusable Atomic lineage engine at customers/ElementLogic/LineageDocumentation (sqlglot static parse + online enrichment, HTML viewer, query CLI); portable rules in atomic_rules.py; first stop for "where does column X come from" at any Atomic customer
+- [pingala-palette-dataviz-conflict](pingala-palette-dataviz-conflict.md) — Pingala brand palette fails the dataviz validator (teal chroma+dE); use the validated chroma-boosted brand-hue sets (light/dark hexes inside) or re-derive with the same method

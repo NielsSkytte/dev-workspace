@@ -23,7 +23,8 @@ Structure: `SKILL.md` (philosophy + register map + the AI-tell AVOID list + an 8
 plus references `voice-profile.md` (the evidence-backed fingerprint), `business-offers.md` (the
 strict offer layer), `danish.md`, `english.md`. The reader is **always a Danish/Nordic business
 customer** (often a non-native English reader). Composes with `pingala-offer` (offer stance),
-`fabric-licensing` (facts), and `email-outlook-ready` (formatting). See [[skill-pingala-offer]].
+`fabric-licensing` (facts), and `email-outlook-ready` (the email deliverable: one .md file,
+subject stated in the file; HTML/COM pipeline retired 2026-07-15). See [[skill-pingala-offer]].
 
 **Two universal rules added 2026-06-29** (from Niels editing the Melbye SoW; now in SKILL.md
 universal rules + self-check 6b):
@@ -33,3 +34,14 @@ universal rules + self-check 6b):
 - **Label/heading words must name the verifiable property, not a vibe.** A title or bold label
   says what the thing *is*, checkably: "a validated data agent" (grounded, tested), not "a
   proper/real/serious agent". If you can't say what the word verifies, it's the wrong word.
+
+**Rules added 2026-07-15** (from Niels rewriting a drafted Carl-Ras Key Vault mail before sending,
+plus his direct instruction on person; before/after stored as voice-profile.md Example 4):
+- **Person follows the document type.** Emails/informal notes: personal "jeg" is in-voice
+  ("jeg anbefaler", "som jeg ser det"). Offers/SoWs/proposals: never "jeg"/"I" - the actor is
+  Pingala/"vi" ("Pingala anbefaler", "vores anbefaling"). Now a first-class step in SKILL.md.
+- **Thanks-first only when there is something new to thank for** - no re-thank; open on the
+  status instead (a light smiley on a problem-statement opener is in-voice in informal mail).
+- **No time/effort selling claims** ("Opsaetningen tager faa minutter" was struck).
+- **Requests to customers are softened** ("Du maa meget gerne give mig besked..."), the one
+  place economy yields.

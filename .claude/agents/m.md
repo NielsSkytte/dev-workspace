@@ -105,6 +105,16 @@ Keep entries factual and actionable. Q clears entries after incorporating feedba
 |------|-------|---------|-------------|
 | | | | |
 
+<!-- Cleared 2026-07-15 (Q, same day): (1) writing-voice — Niels rewrote a drafted DA mail before
+sending (Carl-Ras fabric, Key Vault): cut a re-thank opener, cut a "takes minutes" effort claim,
+softened a bare-imperative ask, kept first-person framing; plus his instruction that "jeg"/"I" is
+email-only, never in offers. Folded into writing-voice SKILL.md (document-type person rule, two
+new universal rules, self-check 5b) + danish.md + voice-profile.md Example 4 + business-offers.md.
+(2) email-outlook-ready — Niels retired the HTML/COM pipeline; skill reduced to the .md-only
+deliverable convention (one .md file, subject in the file, VS Code preview -> paste into Outlook);
+open-in-outlook.ps1 deleted; cross-references updated. -->
+
+
 ---
 
 ## Hiring Board
