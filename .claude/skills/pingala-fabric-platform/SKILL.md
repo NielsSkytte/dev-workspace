@@ -166,6 +166,27 @@ Each workspace layer uses a consistent Admin / Member / Contributor pattern:
 
 Production workspaces have no Contributor access — all changes flow through CI/CD.
 
+### Item folder placement (fab CLI gotcha)
+
+Workspaces organise items into **logical folders** (e.g. `03 - Raw/GTM`,
+`02 - Enriched/GTM`), and Fabric git integration serialises each item to a repo
+path that mirrors its workspace folder. Getting the folder wrong puts the item at
+the repo root and breaks the house layout.
+
+- **`fab mkdir <ws>/<item>` creates the item at the workspace ROOT** — it has no
+  folder argument, and `fab ls` shows a flat list that hides folders entirely.
+  Code items authored in git (notebooks/pipelines) land in the right folder
+  because their repo path *is* the folder; **data items created via `fab mkdir`
+  (lakehouses/warehouses) do not** and must be moved after creation.
+- **Folders + moves are REST-API only** (`fab api`):
+  - list: `GET workspaces/{ws}/folders`
+  - create: `POST workspaces/{ws}/folders` body `{"displayName","parentFolderId"}`
+  - move item: `POST workspaces/{ws}/items/{itemId}/move` body `{"targetFolderId"}`
+- **Routine:** after any `fab mkdir` of a data item, immediately look up (or
+  create) the target source subfolder and move the item into it, *before* the
+  workspace→git commit. The next commit then serialises it to the correct path.
+- **When the target folder is not obvious, ask** — do not guess folder placement.
+
 ---
 
 ## Medallion architecture — Pingala implementation
