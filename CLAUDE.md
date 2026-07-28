@@ -16,7 +16,7 @@ The harness *accelerates* routines that are fully described in `AGENTS.md`. Wher
 | Harness piece | Location | Wraps (neutral routine in AGENTS.md) |
 |---|---|---|
 | Agents (`fabric-back`, `semantic`, `fabric-front`, `content`, `architect`, `M`, `Q`) | `.claude/agents/` | *Agents — the roster* |
-| Slash commands (`/todo`, `/task`, `/log`, `/time`, `/brief`, `/handoff`, `/new-project`, …) | `.claude/commands/` | *Continuity loop*, *Knowledge flow*, *Working with projects*, *Time tracking* |
+| Slash commands (`/todo`, `/task`, `/log`, `/time`, `/dashboard`, `/brief`, `/handoff`, `/new-project`, …) | `.claude/commands/` | *Continuity loop*, *Knowledge flow*, *Working with projects*, *Time tracking*, *Dashboard* |
 | Agent Skills (auto-invoked by context) | `.claude/skills/` | *Building new capabilities* |
 | Memory hooks (`capture_turn.py` = per-turn capture; `build_snapshot.py` = session-start injection) | `.claude/hooks/` | *Memory* (substrate lives at `ops/memory/`) |
 | Time hooks (`track_time.py` = per-turn heartbeat on `UserPromptSubmit`+`Stop`; `session_task.py` = active-task resolution on `SessionStart`) | `.claude/hooks/` | *Time tracking* (substrate lives at `ops/time/`) |

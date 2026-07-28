@@ -279,6 +279,76 @@ settings don't cascade to sessions rooted below `C:\Dev`, so the user-level regi
 project- and customer-rooted sessions; the scripts self-guard to cwds under `C:\Dev` (fixed 2026-07-28).
 Owned by M.
 
+## Dashboard
+
+The substrates above each answer one question well and none of them answers *"what is going on across
+everything?"* — that view previously had to be assembled by hand from five places. `ops/dashboard.py`
+is the **derive-only** answer: a local page (`http://127.0.0.1:8787/`, `/dashboard`) that reads
+`ops/tasks/`, `ops/time/` (through `rollup.py`, so the 15+5 model is never reimplemented), every
+project's `CLAUDE.md` `## Identity` and `CONTEXT.md` (`Current Focus`, `State` -> Status / Last worked /
+In progress / Blocked on, `Next Actions`, `Open Threads`), each customer node, and `ops/TODO.md`.
+
+It **owns no state and writes no file.** Every number and sentence on it is traceable to one of those
+files; to change what it says, change the source. Deleting it loses a view, never knowledge
+(Guardrail 7). It shows, per project and per customer: hours (total / month / 30 days / a 14-day
+strip), F&O Project ID, status, **days since last worked**, open tasks, blocked-on and next actions —
+with the hours chart on the **current calendar month** by default (last month one click away) plotting
+**every date** — an untracked day reads as an explicit zero rather than closing the gap, and weekends are
+shaded so an empty stretch is legible as a weekend rather than as lost time (weekends stay in the plot
+precisely because work sometimes lands on them) —
+split into *in flight* (touched within 14 days) and **"not working on"** (active projects gone quiet,
+ranked by how long), which is the half no other artifact surfaces. A data-hygiene panel surfaces
+`UNSET` Project IDs, time on folders that no longer exist, and days never finalized.
+
+The layout encodes the priority: a fixed top band (totals) over two panes — the **left third is what
+needs you** (*Needs triage*, *Open tasks*, *Needs attention*), the **right two-thirds is the overview**.
+Each pane scrolls on its own so neither can push the other off screen; below 1000 px it collapses to one
+column. The page re-fetches every 30 s, so it is a live view rather than a report. Each pane carries a
+filter chip bar (remembered between visits): the left filters by item type and task state, the right by
+**project scope — Customers / Own / Dev** — which is also the split that decides billable vs internal,
+so the same chips drive the hours chart. The stat tiles deliberately ignore the filters: they are the
+unfiltered glance, and a filter must never be able to hide a total.
+
+The left pane makes the **ICOR Input→Control step visible**: *Needs triage* lists every unchecked
+`ops/TODO.md` item with its age and a one-click route into `/task` — raw capture is not allowed to sit
+unseen at the bottom of a file. Open tasks sit directly beneath and drill into the task itself
+(What / Why / Context / full Log / `activity` + `fno_task`), not just its project.
+
+One thing it does write to the outside world: **launching a session.** `POST /api/launch` starts
+`claude` (via Windows Terminal) or `code` rooted at a chosen project — the same act that makes that
+session's time attribute to that project. Paths outside `C:\Dev` are rejected. The launch may carry an
+opening instruction, which is how the two one-click routines below start.
+
+### Check-in — the interview that keeps CONTEXT.md honest
+
+`/checkin` (the dashboard's **Status check-in** button) is the counterpart to `/handoff`, split by
+**where the truth comes from**: `/handoff` reads the session and reports what happened; `/checkin`
+asks the owner, because arriving at a project cold from the dashboard means the session has nothing to
+report. It walks **Blocked on → In progress → Next Actions → Open Threads → Tasks**, one category at a
+time, presenting what is currently recorded and offering *still accurate / resolved / changed / skip* —
+one question per turn, never a batched list. Skipping is first-class: a skipped category is left
+byte-identical, never restated as confirmed, and skipping everything writes nothing. Nothing is
+inferred from the repo or the transcript — only answers are written, after a shown diff and one
+confirmation. Task state changes move the file between `ops/tasks/<state>/` and append a dated Log line.
+
+The routine is tool-neutral: any LLM can run it by reading the section list above out of `CONTEXT.md`
+and asking. The command file only accelerates it, and is registered at **both** workspace and user level
+since project-rooted sessions never see workspace commands.
+
+**Its look follows the two guides by splitting their jobs** (settled 2026-07-28, resolving the
+standing conflict in memory record `pingala-palette-dataviz-conflict`): `pingala-visual-identity` owns
+the **structure** — Aptos Display headings over Aptos body, warm cream/earth surfaces, a deep-teal brand
+band, and the identity's own "neutrals for structure" rule; the `dataviz` skill owns the **data marks**.
+The raw brand hexes are never used as data colours (their teals sit under the chroma floor and read
+gray); the chroma-boosted brand hues from the Element Logic precedent are, re-validated with
+`validate_palette.js` against these exact surfaces. Three chromatic families carry meaning and nothing
+else does: **teal = identity/presence**, **terracotta = attention** (one status colour, never without an
+icon or a word), **a single-hue warm-neutral ladder = how long since worked** — because staleness is an
+ordered duration, not a traffic light. Everything else is structure.
+
+The dashboard is *not* a source of truth and must never become one: nothing may be recorded only
+there. Owned by M.
+
 ## Conventions
 
 - **A referenced customer always has a customer node and a project.** The moment work references a customer with no folder under `customers/<Customer>/`, scaffold both the **customer node** (`CLAUDE.md` + `CONTEXT.md` from `_templates/customer/`) and at least a **placeholder** project (`CLAUDE.md` + `CONTEXT.md` from the project templates, fields inferred from context and marked `PLACEHOLDER`, plus a VS Code task entry) before proceeding — don't leave the work orphaned at workspace level or block on a full interview. The placeholder is a stub to be fleshed out later via the `/new-project` interview, not a finished project. This keeps every customer obligation anchored to a real project home. (Decided 2026-06-15 during a `/task` triage that named "Melbye" with no project.)

@@ -286,6 +286,25 @@
         "close": false
       },
       "problemMatcher": []
+    },
+
+    // ── Workspace dashboard ────────────────────────────────────
+    {
+      "label": "Dashboard · workspace overview",
+      "detail": "Serve the cross-project dashboard at http://127.0.0.1:8787/ (derive-only; no session needed)",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/ops/dashboard.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "ops",
+        "close": false
+      },
+      "problemMatcher": []
     }
 
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────

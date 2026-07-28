@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEV — Workspace Dashboard</title>
+<style>
+/* ═══ Pingala visual identity, applied per its own split of duties ═══
+   Brand teal + warm neutrals carry the STRUCTURE (the identity's "neutrals for structure" rule).
+   DATA colours are not the raw brand hexes -- those fail the dataviz chroma floor (memory record
+   `pingala-palette-dataviz-conflict`); these are the chroma-boosted brand hues from the Element
+   Logic precedent, re-validated here with dataviz/scripts/validate_palette.js against these exact
+   surfaces: light PASS (contrast WARN -> relief rule: legend + direct labels + table view are
+   shipped), dark PASS on every check.
+   Three chromatic families only: teal = identity/presence, terracotta = attention, warm neutral
+   ladder = how long since worked. Everything else is structure. */
+:root{
+  color-scheme: light;
+  --plane:#EEE4DE; --surface:#F7F2EE; --surface-2:#E7DCD4;
+  --ink:#241F1B; --ink-2:#5B5249; --muted:#8B8074;
+  --grid:#DDD1C8; --axis:#C2B4A7; --ring:rgba(36,31,27,0.13);
+  --brand:#4D7878; --brand-2:#60756E; --brand-ink:#F2EAE4;
+  --accent:#B5442A; --cta:#4D7878;                                  /* attention -- always with icon or word */
+  --s1:#24A8A8; --s2:#CC845A;                        /* billable / internal */
+  --seq:#24A8A8; --seq-soft:#C6DBDB;
+  --f1:#BBA998; --f2:#A1947F; --f3:#827560; --f4:#5C513F;   /* fresh -> cold, one hue */
+  --band:#E5D8CE;                                    /* weekend shading */
+  --shadow:0 1px 2px rgba(36,31,27,.05), 0 10px 26px rgba(36,31,27,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --plane:#171B1A; --surface:#232B2A; --surface-2:#2C3533;
+    --ink:#F1EDE8; --ink-2:#CBC4B9; --muted:#908B84;
+    --grid:#33403E; --axis:#435150; --ring:rgba(241,237,232,0.13);
+    --brand:#2F4241; --brand-2:#4D7878; --brand-ink:#E7F0EE;
+    --accent:#D4674A; --cta:#5C8A8A;
+    --s1:#1EA29C; --s2:#CC783C;
+    --seq:#1EA29C; --seq-soft:#2A4A48;
+    --f1:#8A7F6B; --f2:#A1947F; --f3:#BBA998; --f4:#D6CBBC;
+    --band:#36423F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#171B1A; --surface:#232B2A; --surface-2:#2C3533;
+  --ink:#F1EDE8; --ink-2:#CBC4B9; --muted:#908B84;
+  --grid:#33403E; --axis:#435150; --ring:rgba(241,237,232,0.13);
+  --brand:#2F4241; --brand-2:#4D7878; --brand-ink:#E7F0EE;
+  --accent:#D4674A; --cta:#5C8A8A;
+  --s1:#1EA29C; --s2:#CC783C;
+  --seq:#1EA29C; --seq-soft:#2A4A48;
+  --f1:#8A7F6B; --f2:#A1947F; --f3:#BBA998; --f4:#D6CBBC;
+  --band:#36423F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+/* Pingala type stack -- Aptos ships with M365 on Windows; Calibri then system sans as fallbacks */
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.55 Aptos,Calibri,system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:inherit}
+/* Aptos Display is for HEADINGS only (identity rule). Figures stay in the body sans -- a display
+   face on a hero number reads as decoration (dataviz anti-patterns). */
+h1,h2,h3{font-family:"Aptos Display",Aptos,Calibri,system-ui,sans-serif}
+h1{font-size:20px;margin:0;letter-spacing:-.012em;font-weight:600}
+h2{font-size:11.5px;margin:0 0 10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:600}
+h3{font-size:15px;margin:0 0 6px;letter-spacing:-.01em;font-weight:600}
+.sub{color:var(--muted);font-size:12px}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header .grow{flex:1;min-width:120px}
+
+/* ── full-viewport shell: brand band, alert strip, two independently scrolling panes ── */
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.app > .top{flex:none;padding:15px clamp(14px,1.6vw,28px) 15px;background:var(--brand);color:var(--brand-ink)}
+.app > .top h1{color:var(--brand-ink)}
+.app > .top .sub{color:var(--brand-ink);opacity:.72}
+.app > .top button{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);color:var(--brand-ink)}
+.app > .top button:hover{background:rgba(255,255,255,.22)}
+.app > .top input[type=search]{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);
+  color:var(--brand-ink)}
+.app > .top input[type=search]::placeholder{color:var(--brand-ink);opacity:.6}
+#alerts{flex:none;padding:12px clamp(14px,1.6vw,28px) 0}
+#alerts:empty{display:none}
+#alerts .alert:first-child{margin-top:0}
+.panes{flex:1;min-height:0;display:grid;gap:clamp(12px,1.2vw,20px);
+  grid-template-columns:minmax(330px,1fr) minmax(0,2fr);
+  padding:clamp(12px,1.2vw,20px) clamp(14px,1.6vw,28px)}
+.pane{min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;padding-right:6px}
+.pane > section:first-child{margin-top:0}
+.pane::-webkit-scrollbar{width:10px}
+.pane::-webkit-scrollbar-thumb{background:var(--grid);border-radius:6px}
+.pane::-webkit-scrollbar-thumb:hover{background:var(--axis)}
+@media(max-width:1000px){
+  .app{height:auto;overflow:visible}
+  body{height:auto}
+  .panes{grid-template-columns:1fr;padding-bottom:48px}
+  .pane{overflow:visible}
+}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--ring);
+  border-radius:8px;padding:6px 11px;cursor:pointer}
+button:hover{background:var(--surface-2)}
+button.primary{background:var(--cta);color:#fff;border-color:transparent}
+button.primary:hover{filter:brightness(1.08)}
+button.mini{padding:3px 8px;font-size:12px;border-radius:6px}
+input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--ring);
+  border-radius:8px;padding:6px 11px;min-width:230px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+section{margin-top:22px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;margin-top:14px;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.16);border-radius:12px;
+  overflow:hidden}
+.app > .top .tile{padding:11px 15px;border-radius:0;box-shadow:none;border:0;
+  background:var(--brand);color:var(--brand-ink)}
+.tile .label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.62}
+.tile .val{font-size:27px;line-height:1.12;margin-top:3px;letter-spacing:-.022em;font-weight:600}
+.tile .foot{font-size:11.5px;margin-top:2px;opacity:.68}
+.cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--ring);background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.pcard{cursor:pointer;transition:transform .08s ease,border-color .08s ease}
+.pcard:hover{transform:translateY(-1px);border-color:var(--axis)}
+.pcard .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pcard .hrs{font-size:20px;letter-spacing:-.02em;white-space:nowrap}
+.pcard .why{color:var(--ink-2);font-size:12.5px;margin:8px 0 0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.05em;
+  text-transform:uppercase;padding:0 10px 7px 0;border-bottom:1px solid var(--grid)}
+td{padding:9px 10px 9px 0;border-bottom:1px solid var(--grid);vertical-align:top}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:var(--surface-2)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--muted)}
+.ink2{color:var(--ink-2)}
+.legend{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:10px;height:10px;border-radius:3px}
+.chartbox{position:relative}
+.tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--ring);
+  border-radius:8px;padding:7px 10px;font-size:12px;box-shadow:var(--shadow);z-index:60;display:none;
+  white-space:nowrap;color:var(--ink)}
+.tip b{font-variant-numeric:tabular-nums}
+.datatable{display:none;margin-top:12px;max-height:220px;overflow:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(620px,100%);background:var(--surface);
+  border-left:1px solid var(--ring);box-shadow:-12px 0 40px rgba(0,0,0,.16);z-index:70;
+  transform:translateX(100%);transition:transform .18s ease;overflow-y:auto}
+.drawer.open{transform:none}
+.drawer .inner{padding:20px 22px 60px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:65;opacity:0;pointer-events:none;
+  transition:opacity .18s ease}
+.scrim.open{opacity:1;pointer-events:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;margin:12px 0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+ul.tight{margin:6px 0 0;padding-left:18px}
+ul.tight li{margin:3px 0;color:var(--ink-2)}
+.block{margin-top:18px}
+.block h4{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;font-weight:600}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--plane);
+  padding:9px 15px;border-radius:9px;font-size:13px;z-index:90;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.bar-lane{display:flex;gap:2px;align-items:stretch;height:30px}
+.bar-lane .slot{flex:1;display:flex;align-items:flex-end;border-radius:3px;min-width:0}
+.bar-lane .slot.we{background:var(--band)}          /* weekend, same shading as the hours chart */
+.bar-lane .slot b{display:block;width:100%;background:var(--seq);border-radius:2px 2px 0 0}
+.bar-lane .slot.zero b{background:var(--grid);height:2px}
+.lane-cap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);
+  margin-top:3px;letter-spacing:.02em}
+.alert{display:flex;gap:10px;align-items:flex-start;font-size:13px;padding:11px 14px;border-radius:10px;
+  border:1px solid var(--ring);background:var(--surface);margin-top:14px}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--surface-2);
+  padding:1px 5px;border-radius:4px}
+.hidden{display:none !important}
+.triage-row{padding:11px 0;border-bottom:1px solid var(--grid)}
+.triage-row:last-of-type{border-bottom:0}
+.triage-main{display:flex;gap:8px;align-items:baseline}
+.triage-age{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;
+  color:var(--muted);font-variant-numeric:tabular-nums}
+.triage-text{font-size:13px;color:var(--ink);cursor:pointer;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.triage-text.open{-webkit-line-clamp:unset}
+.triage-act{display:flex;gap:6px;margin-top:7px;justify-content:flex-end}
+.tcard{border:1px solid var(--ring);border-radius:9px;padding:10px 12px;margin:8px 0;cursor:pointer}
+.tcard:hover{background:var(--surface-2);border-color:var(--axis)}
+.pill-link{cursor:pointer}
+.pill-link:hover{border-color:var(--axis);background:var(--surface)}
+#tasks a[data-proj]{text-decoration:none;border-bottom:1px dotted var(--axis)}
+#tasks a[data-proj]:hover{border-bottom-style:solid}
+.filterbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  padding:8px 10px;margin-bottom:2px;background:var(--plane);border:1px solid var(--ring);
+  border-radius:10px}
+.flabel{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  font-weight:600;margin-right:2px}
+.fsep{width:1px;height:16px;background:var(--grid);margin:0 4px}
+.chip{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--ring);
+  background:var(--surface);color:var(--muted);cursor:pointer;line-height:1.5}
+.chip:hover{border-color:var(--axis)}
+.chip.on{background:var(--cta);border-color:transparent;color:#fff;font-weight:500}
+.titem{display:flex;gap:10px;align-items:flex-start;padding:10px 8px;margin:0 -8px;
+  border-bottom:1px solid var(--grid);cursor:pointer;border-radius:8px;transition:background .15s}
+.titem:last-child{border-bottom:0}
+.titem:hover{background:var(--surface-2)}
+.titem > div:first-of-type{flex:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <header>
+      <h1>DEV — Workspace Dashboard</h1>
+      <div class="grow sub" id="stamp"></div>
+      <input type="search" id="q" placeholder="Filter projects, customers, tasks…">
+      <button id="auto" class="mini" title="Toggle auto-refresh">Auto ⏸</button>
+      <button id="theme" class="mini">Theme</button>
+      <button id="refresh" class="mini">Refresh</button>
+    </header>
+    <div class="tiles" id="tiles"></div>
+  </div>
+
+  <div id="alerts"></div>
+
+  <div class="panes">
+    <!-- ── LEFT 1/3: what needs me ───────────────────────────── -->
+    <div class="pane" id="paneLeft">
+      <div class="filterbar" id="filterLeft">
+        <span class="flabel">Show</span>
+        <button class="chip" data-f="left.triage">Triage</button>
+        <button class="chip" data-f="left.tasks">Tasks</button>
+        <button class="chip" data-f="left.attention">Attention</button>
+        <span class="fsep"></span>
+        <span class="flabel">Task state</span>
+        <button class="chip" data-f="state.in-progress">In progress</button>
+        <button class="chip" data-f="state.open">Open</button>
+      </div>
+
+      <section id="triageSection">
+        <h2>Needs triage</h2>
+        <div class="card" id="triage"></div>
+      </section>
+
+      <section id="tasksSection">
+        <h2 id="tasksHead">Open tasks</h2>
+        <div class="card" id="tasks"></div>
+      </section>
+
+      <section id="attentionSection">
+        <h2>Needs attention</h2>
+        <div class="card" id="hygiene"></div>
+      </section>
+    </div>
+
+    <!-- ── RIGHT 2/3: the overview ───────────────────────────── -->
+    <div class="pane" id="paneRight">
+      <div class="filterbar" id="filterRight">
+        <span class="flabel">Projects</span>
+        <button class="chip" data-f="scope.customers">Customers</button>
+        <button class="chip" data-f="scope.own">Own</button>
+        <button class="chip" data-f="scope.dev">Dev</button>
+        <span class="fsep"></span>
+        <span class="fsep"></span>
+        <span class="flabel">Period</span>
+        <button class="chip" data-period="this">This month</button>
+        <button class="chip" data-period="last">Last month</button>
+        <span class="fsep"></span>
+        <span class="flabel">Show</span>
+        <button class="chip" data-f="right.charts">Charts</button>
+        <button class="chip" data-f="right.inflight">In flight</button>
+        <button class="chip" data-f="right.quiet">Gone quiet</button>
+        <button class="chip" data-f="right.customers">Customer rollup</button>
+      </div>
+
+      <section class="cols" id="secCharts">
+        <div class="card chartbox">
+          <h2 id="dailyHead">Hours</h2>
+          <div class="legend" style="margin-bottom:10px">
+            <span id="legBill"><i class="swatch" style="background:var(--s1)"></i>Billable</span>
+            <span id="legInt"><i class="swatch" style="background:var(--s2)"></i>Internal</span>
+            <span class="muted"><i class="swatch"
+              style="background:var(--band);border:1px solid var(--grid)"></i>Weekend</span>
+            <button class="mini" data-table="dailyTable" style="margin-left:auto">Table</button>
+          </div>
+          <div id="dailyChart"></div>
+          <div class="datatable" id="dailyTable"></div>
+        </div>
+        <div class="card chartbox">
+          <h2 id="projHead">By project</h2>
+          <div class="legend" style="margin-bottom:10px">
+            <span class="muted">Active hours per project</span>
+            <button class="mini" data-table="projTable" style="margin-left:auto">Table</button>
+          </div>
+          <div id="projChart"></div>
+          <div class="datatable" id="projTable"></div>
+        </div>
+      </section>
+
+      <section id="secInflight">
+        <h2 id="inflightHead">In flight — worked in the last 14 days</h2>
+        <div class="grid-cards" id="inflight"></div>
+      </section>
+
+      <section id="secQuiet">
+        <h2>Not working on — active projects gone quiet</h2>
+        <div class="card"><div id="idle"></div></div>
+      </section>
+
+      <section id="secCustomers">
+        <h2>Customers</h2>
+        <div class="grid-cards" id="customers"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"><div class="inner" id="drawerBody"></div></aside>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if(c) n.className = c;
+  if(h !== undefined) n.innerHTML = h; return n; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const h = n => (Math.round(n*100)/100).toFixed(2).replace(/\.00$/,'');
+let D = null, Q = '';
+
+/* ---------- filters (persisted; every group defaults to all-on) ---------- */
+const F_DEFAULT = {
+  left:  {triage:true, tasks:true, attention:true},
+  state: {'in-progress':true, open:true},
+  scope: {customers:true, own:true, dev:true},
+  right: {charts:true, inflight:true, quiet:true, customers:true},
+};
+let F = JSON.parse(JSON.stringify(F_DEFAULT));
+try{
+  const saved = JSON.parse(localStorage.getItem('dash.filters') || 'null');
+  if(saved) for(const g in F) for(const k in F[g])
+    if(saved[g] && typeof saved[g][k] === 'boolean') F[g][k] = saved[g][k];
+}catch(e){}
+const saveF = () => { try{ localStorage.setItem('dash.filters', JSON.stringify(F)); }catch(e){} };
+
+/* chart period: 'this' | 'last' calendar month (also persisted) */
+let PERIOD = (() => { try{ return localStorage.getItem('dash.period') || 'this'; }
+  catch(e){ return 'this'; } })();
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+/* Sat/Sun of the LOCAL date -- parsed field-wise, never through Date(string) (UTC shift) */
+const dowOf = ds => new Date(+ds.slice(0,4), +ds.slice(5,7)-1, +ds.slice(8,10)).getDay();
+const dowName = ds => DOW[dowOf(ds)];
+const isWeekend = ds => { const n = dowOf(ds); return n === 0 || n === 6; };
+/* every date in the selected month, so gaps render as an explicit 0 rather than vanishing. */
+function periodDays(){
+  const [Y, M] = D.today.split('-').map(Number);
+  const y = PERIOD === 'last' ? (M === 1 ? Y-1 : Y) : Y;
+  const m = PERIOD === 'last' ? (M === 1 ? 12 : M-1) : M;
+  const lastDay = new Date(y, m, 0).getDate();
+  const out = [];
+  for(let d = 1; d <= lastDay; d++) out.push(`${y}-${pad(m)}-${pad(d)}`);
+  return {days: out, label: `${MONTHS[m-1]} ${y}`};
+}
+
+/* which scope group a project key belongs to */
+const scopeOf = k => k === 'Dev' ? 'dev' : k.startsWith('own/') ? 'own' : 'customers';
+const inScope = p => F.scope[scopeOf(p.key)];
+
+function paintChips(){
+  document.querySelectorAll('.chip[data-f]').forEach(b => {
+    const [g,k] = b.dataset.f.split('.');
+    b.classList.toggle('on', !!F[g][k]);
+  });
+  for(const k in F.left) $('#' + {triage:'triageSection', tasks:'tasksSection',
+    attention:'attentionSection'}[k]).classList.toggle('hidden', !F.left[k]);
+  const secs = {charts:'secCharts', inflight:'secInflight', quiet:'secQuiet', customers:'secCustomers'};
+  for(const k in F.right) $('#' + secs[k]).classList.toggle('hidden', !F.right[k]);
+}
+function paintPeriod(){
+  document.querySelectorAll('.chip[data-period]').forEach(b =>
+    b.classList.toggle('on', b.dataset.period === PERIOD));
+}
+function bindChips(){
+  document.querySelectorAll('.chip[data-period]').forEach(b => b.onclick = () => {
+    PERIOD = b.dataset.period;
+    try{ localStorage.setItem('dash.period', PERIOD); }catch(e){}
+    paintPeriod(); if(D){ dailyChart(); projChart(); }
+  });
+  document.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => {
+    const [g,k] = b.dataset.f.split('.');
+    F[g][k] = !F[g][k];
+    // never let a group go fully empty -- that reads as a bug, not a filter
+    if(!Object.values(F[g]).some(Boolean)) for(const x in F[g]) F[g][x] = true;
+    saveF(); paintChips(); if(D) render();
+  });
+}
+
+/* ---------- freshness ----------
+   "How long since worked" is an ORDERED DURATION, not a status, so it wears a single-hue ordinal
+   ladder (validated with --ordinal in both modes) rather than a traffic light. Heavier step = longer
+   idle. Colour never carries it alone: every use ships the glyph and the word too. */
+function fresh(days){
+  if(days === null || days === undefined) return {c:'var(--muted)', w:'never', i:'○'};
+  if(days <= D.thresholds.good)    return {c:'var(--f1)', w:'fresh', i:'●'};
+  if(days <= D.thresholds.warn)    return {c:'var(--f2)', w:'aging', i:'◑'};
+  if(days <= D.thresholds.serious) return {c:'var(--f3)', w:'stale', i:'◓'};
+  return {c:'var(--f4)', w:'cold', i:'○'};
+}
+const ago = d => d === null || d === undefined ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : d + 'd ago';
+const pill = (txt, extra) => `<span class="pill">${extra||''}${esc(txt)}</span>`;
+const freshPill = days => { const f = fresh(days);
+  return `<span class="pill"><i class="dot" style="background:${f.c}"></i>${f.w} · ${ago(days)}</span>`; };
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+function showTip(e, html){ tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - r.width - 10) + 'px';
+  tip.style.top  = Math.max(e.clientY - r.height - 12, 8) + 'px'; }
+const hideTip = () => tip.style.display = 'none';
+
+/* ---------- charts ---------- */
+function dailyChart(){
+  const box = $('#dailyChart');
+  const {days, label} = periodDays();
+  const src = {}; D.daily.forEach(d => src[d.date] = d);
+  /* billable = customer work; internal = own + Dev. Both follow the scope chips.
+     Every day of the month is present -- an untracked day is a real 0, not a gap. */
+  const data = days.map(date => {
+    const v = src[date] || {customers:0, own:0, dev:0};
+    return {date,
+      billable: F.scope.customers ? v.customers : 0,
+      internal: (F.scope.own ? v.own : 0) + (F.scope.dev ? v.dev : 0)};
+  });
+  const total = data.reduce((s,d) => s + d.billable + d.internal, 0);
+  $('#dailyHead').textContent = `Hours — ${label}` + (total ? ` · ${h(total)} h` : '');
+  // a legend entry with no marks on the plot is noise -- show only the series actually drawn
+  $('#legBill').classList.toggle('hidden', !data.some(d => d.billable > 0));
+  $('#legInt').classList.toggle('hidden', !data.some(d => d.internal > 0));
+  box.innerHTML = '';
+  const W = box.clientWidth || 720, H = 200, PB = 22, PL = 30;
+  const max = Math.max(4, ...data.map(d => d.billable + d.internal));
+  const iw = W - PL, bw = Math.max(2, iw/data.length - 3), step = iw/data.length;
+  const y = v => (H - PB) - (v/max) * (H - PB - 8);
+  let s = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily hours, billable and internal, weekends shaded">`;
+  // weekend bands first, so they sit behind grid and bars -- a Saturday with work still draws normally
+  data.forEach((d,i) => {
+    if(!isWeekend(d.date)) return;
+    s += `<rect x="${PL + i*step}" y="0" width="${step}" height="${H-PB}" fill="var(--band)"/>`;
+  });
+  for(let i=0;i<=2;i++){ const v = max*i/2, yy = y(v);
+    s += `<line x1="${PL}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`
+      +  `<text x="0" y="${yy+4}" fill="var(--muted)" font-size="10">${h(v)}</text>`; }
+  data.forEach((d,i) => {
+    const x = PL + i*step + (step-bw)/2;
+    const tb = d.billable + d.internal;
+    // stacked: internal on top of billable, 2px surface gap between the two fills
+    if(d.billable > 0){
+      const y0 = y(d.billable), hgt = (H-PB) - y0;
+      s += `<rect x="${x}" y="${y0}" width="${bw}" height="${hgt}" rx="${d.internal>0?0:4}" fill="var(--s1)"/>`;
+    }
+    if(d.internal > 0){
+      const top = y(tb), bot = d.billable > 0 ? y(d.billable) - 2 : (H-PB);
+      s += `<rect x="${x}" y="${top}" width="${bw}" height="${Math.max(2, bot-top)}" rx="4" fill="var(--s2)"/>`;
+    }
+    if(tb === 0)   // an untracked day: a baseline stub, so the day is visibly present at zero
+      s += `<rect x="${x}" y="${H-PB-2}" width="${bw}" height="2" rx="1" fill="var(--grid)"/>`;
+    s += `<rect class="hit" x="${PL + i*step}" y="0" width="${step}" height="${H-PB}" fill="transparent"
+           data-i="${i}"/>`;
+    s += `<text x="${x+bw/2}" y="${H-6}" font-size="9" text-anchor="middle"
+           fill="${isWeekend(d.date) ? 'var(--ink-2)' : 'var(--muted)'}"
+           ${isWeekend(d.date) ? 'font-weight="700"' : ''}>${+d.date.slice(8)}</text>`;
+  });
+  s += `<line x1="${PL}" x2="${W}" y1="${H-PB}" y2="${H-PB}" stroke="var(--axis)"/></svg>`;
+  box.innerHTML = s;
+  box.querySelectorAll('.hit').forEach(r => {
+    r.addEventListener('mousemove', e => { const d = data[+r.dataset.i];
+      showTip(e, `<b>${dowName(d.date)} ${d.date}</b>${isWeekend(d.date) ? ' · weekend' : ''}`
+        + `<br>Billable <b>${h(d.billable)} h</b><br>Internal <b>${h(d.internal)} h</b>`); });
+    r.addEventListener('mouseleave', hideTip);
+  });
+  $('#dailyTable').innerHTML = '<table><tr><th>Date</th><th>Day</th><th class="num">Billable</th>'
+    + '<th class="num">Internal</th></tr>' + data.map(d =>
+      `<tr><td>${d.date}</td><td class="${isWeekend(d.date) ? 'ink2' : 'muted'}">${dowName(d.date)}`
+      + `${isWeekend(d.date) ? ' *' : ''}</td>`
+      + `<td class="num">${h(d.billable)}</td><td class="num">${h(d.internal)}</td></tr>`
+    ).join('') + '</table><p class="sub" style="margin:8px 0 0">* weekend</p>';
+}
+
+function projChart(){
+  const box = $('#projChart');
+  const {days, label: plabel} = periodDays();      // same month as the hours chart beside it
+  const inPeriod = new Set(days);
+  const rows = D.projects.filter(inScope).map(p => ({p,
+      hrs: Object.entries(p.by_date).reduce((s,[d,v]) => s + (inPeriod.has(d) ? v : 0), 0)}))
+    .filter(r => r.hrs > 0).sort((a,b) => b.hrs - a.hrs).slice(0, 9);
+  $('#projHead').textContent = `By project — ${plabel}`;
+  box.innerHTML = '';
+  if(!rows.length){ box.innerHTML = `<p class="muted">Nothing tracked in ${esc(plabel)}.</p>`; return; }
+  const max = Math.max(...rows.map(r => r.hrs));
+  const t = el('div');
+  rows.forEach(({p, hrs}) => {
+    const w = Math.max(2, (hrs/max)*100);
+    const r = el('div', null, `
+      <div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin:0 0 3px">
+        <span class="ink2" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label(p))}</span>
+        <span class="num">${h(hrs)} h</span></div>
+      <div style="height:9px;background:var(--surface-2);border-radius:4px;overflow:hidden">
+        <div style="width:${w}%;height:100%;background:var(--seq);border-radius:0 4px 4px 0"></div></div>`);
+    r.style.margin = '0 0 11px'; r.style.cursor = 'pointer';
+    r.onclick = () => openProject(p.key);
+    t.appendChild(r);
+  });
+  box.appendChild(t);
+  $('#projTable').innerHTML = '<table><tr><th>Project</th><th class="num">Month h</th><th class="num">Total h</th></tr>'
+    + rows.map(({p, hrs}) => `<tr><td>${esc(label(p))}</td><td class="num">${h(hrs)}</td>`
+      + `<td class="num">${h(p.hours)}</td></tr>`).join('') + '</table>';
+}
+
+const label = p => p.key === 'Dev' ? 'Dev (workspace)'
+  : p.customer ? p.customer + ' / ' + p.name : p.key;
+
+/* ---------- sparkline: last 14 days of a project ---------- */
+const pad = n => String(n).padStart(2, '0');
+function dayKeys(n){                      // local dates, never via toISOString (UTC shift)
+  const [Y, M, Dd] = D.today.split('-').map(Number), out = [];
+  for(let i = n-1; i >= 0; i--){ const d = new Date(Y, M-1, Dd-i);
+    out.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`); }
+  return out;
+}
+/* first item that actually says something -- "Nothing" / "None" are not a status */
+const said = arr => (arr || []).find(x => !/^\(?\s*(nothing|none|n\/a|--|—)\b/i.test(x.trim())) || '';
+
+const shortDate = ds => `${+ds.slice(8)} ${MONTHS[+ds.slice(5,7)-1].slice(0,3)}`;
+
+/* 14-day strip: weekends shaded like the hours chart, every day hoverable, ends labelled --
+   otherwise it is 14 anonymous bars and you cannot tell which day is which. */
+function spark(p){
+  const days = dayKeys(14);
+  const vals = days.map(d => p.by_date[d] || 0), max = Math.max(1, ...vals);
+  const slots = days.map((d,i) => {
+    const v = vals[i];
+    return `<span class="slot ${isWeekend(d) ? 'we ' : ''}${v ? '' : 'zero'}"
+      title="${dowName(d)} ${shortDate(d)} — ${v ? h(v) + ' h' : 'no time tracked'}">`
+      + `<b style="height:${v ? Math.max(14, (v/max)*100) : 0}%"></b></span>`;
+  }).join('');
+  return `<div class="bar-lane">${slots}</div>
+    <div class="lane-cap"><span>${shortDate(days[0])}</span>
+      <span>last 14 days</span><span>${shortDate(days[13])}</span></div>`;
+}
+
+/* ---------- sections ---------- */
+function tiles(){
+  const t = D.totals, hy = D.hygiene;
+  const attention = hy.unfinalized.length + (hy.unset_total > 0 ? 1 : 0) + hy.orphans.length
+    + D.projects.filter(p => p.ctx_status.startsWith('active') && (p.days_idle === null || p.days_idle > D.thresholds.warn)).length;
+  const cards = [
+    ['Today', h(t.today) + ' h', 'live — finalizes at /log'],
+    ['This week', h(t.week_billable + t.week_internal) + ' h',
+      `${h(t.week_billable)} billable · ${h(t.week_internal)} internal`],
+    ['This month', h(t.month_billable) + ' h',
+      `billable · ${h(t.month_internal)} h internal · ${h(t.month_billable+t.month_internal)} h total`],
+    ['Active projects', String(D.projects.filter(p => p.ctx_status.startsWith('active')).length),
+      `${D.customers.length} customers · ${D.projects.length} projects total`],
+    ['Open tasks', String(D.tasks.filter(x => x.state !== 'done' && x.state !== 'cancelled').length),
+      `${D.tasks.filter(x => x.state === 'in-progress').length} in progress · ${hy.todo_open} unprocessed todos`],
+    ['Needs attention', String(attention), 'quiet projects, unfinalized days, UNSET codes'],
+  ];
+  $('#tiles').innerHTML = cards.map(([l,v,f]) =>
+    `<div class="card tile"><div class="label">${l}</div><div class="val">${v}</div>
+     <div class="foot">${f}</div></div>`).join('');
+}
+
+function alerts(){
+  const a = [], hy = D.hygiene;
+  if(D.active_sessions.length){
+    a.push(['var(--brand-2)', 'Session tag active: ' + D.active_sessions.map(s =>
+      `<code class="pill-link" data-goto="${esc(s.slug)}">${esc(s.slug)}</code>`).join(', ')
+      + ' — time is billing to that task.']);
+  }
+  if(hy.unfinalized.length)
+    a.push(['var(--accent)', `${hy.unfinalized.length} day(s) with tracked time never finalized: `
+      + hy.unfinalized.map(d => `<code>${d}</code>`).join(' ') + ' — run <code>/log</code>.']);
+  if(hy.unset_total > 0)
+    a.push(['var(--accent)', `<b>${h(hy.unset_total)} h</b> sit on an <code>UNSET</code> F&amp;O Project ID `
+      + `across ${hy.unset.length} rows — they cannot be entered in F&amp;O as-is.`]);
+  $('#alerts').innerHTML = a.map(([c,txt]) =>
+    `<div class="alert"><i class="dot" style="background:${c};margin-top:6px"></i><div>${txt}</div></div>`).join('');
+  $('#alerts').querySelectorAll('[data-goto]').forEach(n =>
+    n.onclick = () => gotoTask(n.dataset.goto));
+}
+
+function pcard(p){
+  const c = el('div', 'card pcard');
+  /* the number covers exactly the window the strip below it draws -- a 30-day figure over a
+     14-day strip inside a "last 14 days" section was three windows on one card */
+  const hrs14 = dayKeys(14).reduce((s,d) => s + (p.by_date[d] || 0), 0);
+  c.innerHTML = `
+    <div class="top">
+      <div style="min-width:0">
+        <h3>${esc(label(p))}</h3>
+        <div class="sub">${esc(p.fno_code)}${p.focus_tag ? ' · ' + esc(p.focus_tag) : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="hrs">${h(hrs14)} h</div>
+        <div class="sub">14 days</div>
+      </div>
+    </div>
+    <p class="why">${esc(said(p.next_actions) || p.focus || '')}</p>
+    <div class="row">
+      ${freshPill(p.days_idle)}
+      ${p.tasks.length ? pill(p.tasks.length + ' task' + (p.tasks.length>1?'s':'')) : ''}
+      ${p.blocked_on.length ? `<span class="pill"><i class="dot" style="background:var(--accent)"></i>blocked</span>` : ''}
+      <span style="flex:1"></span>
+    </div>
+    <div style="margin-top:10px">${spark(p)}</div>`;
+  c.onclick = () => openProject(p.key);
+  return c;
+}
+
+function inflight(){
+  const box = $('#inflight'); box.innerHTML = '';
+  const rows = D.projects.filter(p => p.days_idle !== null && p.days_idle <= 14
+      && match(p) && inScope(p))
+    .sort((a,b) => (a.days_idle - b.days_idle) || (b.hours_30d - a.hours_30d));
+  $('#inflightHead').textContent =
+    `In flight — worked in the last 14 days${rows.length ? ' · ' + rows.length : ''}`;
+  if(!rows.length){ box.innerHTML = '<p class="muted">Nothing worked in the last 14 days.</p>'; return; }
+  rows.forEach(p => box.appendChild(pcard(p)));
+}
+
+function idle(){
+  const rows = D.projects.filter(p => p.key !== 'Dev' && match(p) && inScope(p)
+      && (p.days_idle === null || p.days_idle > 14)
+      && !/complete|delivered|archived/i.test(p.ctx_status))
+    .sort((a,b) => (b.days_idle === null ? 9e9 : b.days_idle) - (a.days_idle === null ? 9e9 : a.days_idle));
+  if(!rows.length){ $('#idle').innerHTML = '<p class="muted">Every active project has been touched recently.</p>'; return; }
+  $('#idle').innerHTML = `<table><tr><th>Project</th><th>Status</th><th>Last worked</th>
+    <th>Open tasks</th><th>Where it stopped</th><th class="num">Hours</th></tr>` + rows.map(p => {
+      const f = fresh(p.days_idle);
+      return `<tr class="clickable" data-key="${esc(p.key)}">
+        <td><b>${esc(label(p))}</b><div class="sub">${esc(p.fno_code)}</div></td>
+        <td>${esc(p.ctx_status)}</td>
+        <td><span style="color:${f.c}">${f.i}</span> ${esc(f.w)}<div class="sub">${ago(p.days_idle)}</div></td>
+        <td>${p.tasks.length || '—'}</td>
+        <td class="ink2" style="max-width:420px">${esc((said(p.blocked_on) || said(p.next_actions) || p.focus || '').slice(0,150))}</td>
+        <td class="num">${p.hours ? h(p.hours) : '—'}</td></tr>`;
+    }).join('') + '</table>';
+  $('#idle').querySelectorAll('tr.clickable').forEach(tr =>
+    tr.onclick = () => openProject(tr.dataset.key));
+}
+
+function customers(){
+  const box = $('#customers'); box.innerHTML = '';
+  if(!F.scope.customers){
+    box.innerHTML = '<p class="muted">Customers are filtered out.</p>'; return; }
+  D.customers.filter(c => matchC(c)).sort((a,b) =>
+      (b.hours_30d - a.hours_30d) || a.name.localeCompare(b.name)).forEach(c => {
+    const projs = c.projects.map(k => D.projects.find(p => p.key === k)).filter(Boolean);
+    const card = el('div', 'card');
+    card.innerHTML = `
+      <div class="top" style="display:flex;justify-content:space-between;gap:10px">
+        <div style="min-width:0"><h3>${esc(c.name)}</h3>
+          <div class="sub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            title="${esc(c.status || '')}">${esc((c.status || '').slice(0,52))}${c.language ? ' · ' + esc(c.language) : ''}</div></div>
+        <div style="text-align:right;flex:none"><div class="hrs" style="font-size:20px">${h(c.hours)} h</div>
+          <div class="sub">all time</div></div>
+      </div>
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
+        ${freshPill(c.days_idle)}
+        ${c.open_tasks ? pill(c.open_tasks + ' open task' + (c.open_tasks>1?'s':'')) : ''}
+        ${c.node_hours ? `<span class="pill"><i class="dot" style="background:var(--accent)"></i>${h(c.node_hours)} h unassigned</span>` : ''}
+      </div>
+      <table style="margin-top:12px">${projs.map(p => {
+        const f = fresh(p.days_idle);
+        return `<tr class="clickable" data-key="${esc(p.key)}">
+          <td style="border:0;padding:6px 8px 6px 0"><span style="color:${f.c}">${f.i}</span>
+            ${esc(p.name)}<div class="sub">${esc(p.fno_code)} · ${esc(p.ctx_status)}</div></td>
+          <td class="num" style="border:0;padding:6px 0">${h(p.hours)} h<div class="sub">${ago(p.days_idle)}</div></td>
+        </tr>`; }).join('') || '<tr><td class="muted" style="border:0">no projects</td></tr>'}</table>`;
+    card.querySelectorAll('tr.clickable').forEach(tr =>
+      tr.onclick = e => { e.stopPropagation(); openProject(tr.dataset.key); });
+    box.appendChild(card);
+  });
+}
+
+function tasks(){
+  const all = D.tasks.filter(t => t.state === 'in-progress' || t.state === 'open');
+  const rows = all.filter(t => F.state[t.state] && matchT(t))
+    .sort((a,b) => (a.state === b.state ? a.slug.localeCompare(b.slug) : a.state === 'in-progress' ? -1 : 1));
+  const nIp = all.filter(t => t.state === 'in-progress').length;
+  $('#tasksHead').textContent =
+    `Open tasks — ${nIp} in progress · ${all.length - nIp} open`;
+  $('#tasks').innerHTML = !rows.length && all.length
+    ? '<p class="muted">No task matches the current filter.</p>'
+    : rows.length ? rows.map(t => {
+    const ip = t.state === 'in-progress';
+    return `<div class="titem" id="task-${esc(t.slug)}" data-slug="${esc(t.slug)}">
+      <i class="dot" style="background:${ip ? 'var(--brand-2)' : 'var(--axis)'};margin-top:6px"></i>
+      <div style="min-width:0">
+        <div style="font-weight:600">${esc(t.title)}</div>
+        <div class="sub" style="margin-top:1px">
+          ${t.project ? `<a href="#" data-proj="${esc(t.project)}">${esc(t.project.replace('customers/',''))}</a>`
+                      : 'workspace'}
+          ${t.owner ? ' · ' + esc(t.owner) : ''}${t.activity ? ' · act ' + esc(t.activity) : ''}
+          ${t.blocked_by ? ' · <span style="color:var(--accent)">blocked</span>' : ''}
+        </div>
+      </div>
+      <div class="sub" style="text-align:right;flex:none">${ip ? 'in progress' : 'open'}
+        <div>${esc(t.log_last || '')}</div></div>
+    </div>`; }).join('')
+    : '<p class="muted">No open tasks.</p>';
+  $('#tasks').querySelectorAll('.titem').forEach(n =>
+    n.onclick = () => openTask(n.dataset.slug));
+  $('#tasks').querySelectorAll('a[data-proj]').forEach(a =>
+    a.onclick = e => { e.preventDefault(); e.stopPropagation(); openProject(a.dataset.proj); });
+}
+
+/* jump to a task in the left pane, flash it, then open it */
+function gotoTask(slug){
+  const row = document.getElementById('task-' + slug);
+  if(row){
+    row.scrollIntoView({behavior:'smooth', block:'center'});
+    row.style.background = 'var(--surface-2)';
+    setTimeout(() => row.style.background = '', 1400);
+  }
+  openTask(slug);
+}
+
+function triage(){
+  const box = $('#triage');
+  if(!D.todos.length){
+    $('#triageSection').querySelector('h2').textContent = 'Needs triage';
+    box.innerHTML = '<p class="muted">Nothing unprocessed — every captured item has been routed.</p>';
+    return;
+  }
+  $('#triageSection').querySelector('h2').textContent =
+    `Needs triage — ${D.todos.length} raw item${D.todos.length>1?'s':''} waiting to become a task`;
+  box.innerHTML = D.todos.map((t,i) => {
+    const f = fresh(t.age);
+    return `<div class="triage-row">
+      <div class="triage-main">
+        <span class="triage-age" title="captured ${esc(t.date)}">
+          <i class="dot" style="background:${f.c}"></i>${t.age === null ? '—' : t.age + 'd'}</span>
+        <span class="triage-text" title="click to expand">${esc(t.text)}</span>
+      </div>
+      <div class="triage-act">
+        <button class="mini primary" data-triage="${i}">Make it a task</button>
+        <button class="mini" data-copy="${i}">Copy</button>
+      </div></div>`; }).join('')
+    + `<p class="sub" style="margin:12px 0 0">"Make it a task" opens a Claude session at the workspace
+       root seeded with <code>/task &lt;the item&gt;</code> — it does the routing interview, then you
+       tick the line off in <code>ops/TODO.md</code>.</p>`;
+  box.querySelectorAll('.triage-text').forEach(n =>
+    n.onclick = () => n.classList.toggle('open'));
+  box.querySelectorAll('[data-triage]').forEach(b => b.onclick = () => {
+    const t = D.todos[+b.dataset.triage];
+    doLaunch(D.root, 'claude', '/task ' + t.text);
+  });
+  box.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+    const t = D.todos[+b.dataset.copy];
+    try{ await navigator.clipboard.writeText('/task ' + t.text); toast('Copied /task line'); }
+    catch(e){ toast('Clipboard blocked — select the text instead'); }
+  });
+}
+
+function hygiene(){
+  const hy = D.hygiene, out = [];
+  if(hy.unset.length) out.push(`<h4 style="margin:0 0 4px;font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted)">UNSET project id — ${h(hy.unset_total)} h</h4>`
+    + '<ul class="tight">' + hy.unset.slice(0,6).map(u =>
+      `<li>${esc(u.project)} — <b>${h(u.hours)} h</b></li>`).join('') + '</ul>');
+  if(hy.orphans.length) out.push(`<div class="block"><h4>Time on folders that no longer exist</h4>`
+    + '<ul class="tight">' + hy.orphans.map(o =>
+      `<li>${esc(o.project)} — <b>${h(o.hours)} h</b></li>`).join('') + '</ul></div>');
+  if(hy.unfinalized.length) out.push(`<div class="block"><h4>Unfinalized days</h4>`
+    + '<p class="ink2" style="margin:4px 0">' + hy.unfinalized.map(esc).join(', ') + '</p></div>');
+  $('#hygiene').innerHTML = out.join('') || '<p class="muted">Clean.</p>';
+}
+
+/* ---------- drill-down ---------- */
+function openProject(key){
+  const p = D.projects.find(x => x.key === key);
+  if(!p) return;
+  const ts = D.tasks.filter(t => t.project === key && t.state !== 'cancelled');
+  const list = (title, arr) => arr && arr.length
+    ? `<div class="block"><h4>${title}</h4><ul class="tight">${arr.map(x =>
+        `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+  $('#drawerBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div><h3 style="font-size:18px">${esc(label(p))}</h3>
+        <div class="sub">${esc(p.path)}</div></div>
+      <button class="mini" onclick="closeDrawer()">Close</button>
+    </div>
+    <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      ${pill(p.ctx_status || p.status)}${pill('F&O ' + p.fno_code)}
+      ${p.type ? pill(p.type) : ''}${p.focus_tag ? pill(p.focus_tag) : ''}
+      ${pill(p.billable ? 'billable' : 'internal')}${freshPill(p.days_idle)}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="primary" data-checkin>Status check-in</button>
+      <button data-launch="claude">Start Claude session here</button>
+      <button data-launch="code">Open in VS Code</button>
+    </div>
+    <p class="sub" style="margin:6px 0 0">Check-in walks blocked / in progress / next actions /
+      open threads / tasks one card at a time — skip any, then it writes what you answered.</p>
+    <dl class="kv">
+      <dt>Hours total</dt><dd>${h(p.hours)} h</dd>
+      <dt>This month</dt><dd>${h(p.hours_month)} h</dd>
+      <dt>Last 30 days</dt><dd>${h(p.hours_30d)} h</dd>
+      <dt>Last activity</dt><dd>${esc(p.last_activity || 'never')} (${ago(p.days_idle)})</dd>
+    </dl>
+    ${p.focus ? `<div class="block"><h4>Current focus</h4><p class="ink2" style="margin:4px 0">${esc(p.focus)}</p></div>` : ''}
+    ${list('Blocked on', p.blocked_on)}
+    ${list('In progress', p.in_progress)}
+    ${list('Next actions', p.next_actions)}
+    ${list('Open threads', p.open_threads)}
+    ${ts.length ? `<div class="block"><h4>Tasks</h4>` + ts.map(t => `
+      <div class="tcard" data-slug="${esc(t.slug)}">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <b>${esc(t.title)}</b>${pill(t.state)}</div>
+        <div class="sub" style="margin-top:2px">${esc(t.slug)}${t.activity ? ' · activity ' + esc(t.activity) : ''}${t.fno_task ? ' · ADO ' + esc(t.fno_task) : ''}</div>
+        ${t.what ? `<p class="ink2" style="margin:7px 0 0;font-size:12.5px;
+          display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(t.what)}</p>` : ''}
+      </div>`).join('') + '</div>' : ''}`;
+  $('#drawerBody').querySelectorAll('[data-launch]').forEach(b =>
+    b.onclick = () => doLaunch(p.path, b.dataset.launch));
+  $('#drawerBody').querySelector('[data-checkin]').onclick =
+    () => doLaunch(p.path, 'claude', '/checkin');
+  $('#drawerBody').querySelectorAll('.tcard').forEach(c =>
+    c.onclick = () => openTask(c.dataset.slug));
+  openDrawer();
+}
+
+function openTask(slug){
+  const t = D.tasks.find(x => x.slug === slug);
+  if(!t) return;
+  const p = D.projects.find(x => x.key === t.project);
+  $('#drawerBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div style="min-width:0"><h3 style="font-size:18px">${esc(t.title)}</h3>
+        <div class="sub">${esc(t.slug)}.md</div></div>
+      <button class="mini" onclick="closeDrawer()">Close</button>
+    </div>
+    <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      ${t.state === 'in-progress'
+        ? `<span class="pill"><i class="dot" style="background:var(--brand-2)"></i>in progress</span>`
+        : pill(t.state)}
+      ${p ? `<span class="pill pill-link" data-proj="${esc(p.key)}">${esc(label(p))} ↗</span>` : ''}
+      ${t.priority && t.priority !== 'normal' ? pill(t.priority + ' priority') : ''}
+      ${t.owner ? pill('owner: ' + t.owner) : ''}
+      ${t.activity ? pill('activity ' + t.activity) : ''}
+      ${t.fno_task ? pill('ADO ' + t.fno_task) : ''}
+      ${t.created ? pill('created ' + t.created) : ''}
+    </div>
+    ${t.blocked_by ? `<div class="alert" style="margin-top:12px">
+      <i class="dot" style="background:var(--accent);margin-top:6px"></i>
+      <div><b>Blocked by</b> — ${esc(t.blocked_by)}</div></div>` : ''}
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      ${p ? `<button class="primary" data-launch="claude">Start session on this project</button>` : ''}
+      <button data-open-file>Open task file</button>
+    </div>
+    ${t.what ? `<div class="block"><h4>What</h4><p class="ink2" style="margin:4px 0">${esc(t.what)}</p></div>` : ''}
+    ${t.why ? `<div class="block"><h4>Why</h4><p class="ink2" style="margin:4px 0">${esc(t.why)}</p></div>` : ''}
+    ${t.context.length ? `<div class="block"><h4>Context</h4><ul class="tight">${
+      t.context.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    ${t.log.length ? `<div class="block"><h4>Log</h4><ul class="tight">${
+      t.log.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}`;
+  const pl = $('#drawerBody').querySelector('[data-launch]');
+  if(pl && p) pl.onclick = () => doLaunch(p.path, 'claude');
+  $('#drawerBody').querySelector('[data-open-file]').onclick = () => doLaunch(t.path, 'file');
+  const link = $('#drawerBody').querySelector('.pill-link');
+  if(link) link.onclick = () => openProject(link.dataset.proj);
+  openDrawer();
+}
+
+function openDrawer(){ $('#drawer').scrollTop = 0;
+  $('#drawer').classList.add('open'); $('#scrim').classList.add('open'); }
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#scrim').classList.remove('open'); }
+
+async function doLaunch(path, mode, prompt){
+  toast('Starting…');
+  try{
+    const r = await fetch('/api/launch', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({path, mode, prompt})});
+    const j = await r.json();
+    toast(j.message || (j.ok ? 'started' : 'failed'));
+  }catch(e){ toast('Launch failed: ' + e.message); }
+}
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* ---------- filter ---------- */
+const match  = p => !Q || (label(p) + ' ' + p.key + ' ' + p.fno_code + ' ' + p.focus + ' '
+  + p.next_actions.join(' ') + ' ' + p.tasks.join(' ')).toLowerCase().includes(Q);
+const matchC = c => !Q || (c.name + ' ' + c.about + ' ' + c.focus).toLowerCase().includes(Q)
+  || c.projects.some(k => { const p = D.projects.find(x => x.key === k); return p && match(p); });
+const matchT = t => !Q || (t.title + ' ' + t.slug + ' ' + t.project + ' ' + t.what).toLowerCase().includes(Q);
+
+/* ---------- boot + auto-refresh ---------- */
+function render(){
+  const L = $('#paneLeft').scrollTop, R = $('#paneRight').scrollTop;   // survive a re-render
+  alerts(); tiles(); triage(); dailyChart(); projChart(); inflight(); idle();
+  customers(); tasks(); hygiene();
+  $('#paneLeft').scrollTop = L; $('#paneRight').scrollTop = R;
+  stamp();
+}
+function stamp(){
+  if(!D) return;
+  const secs = Math.round((Date.now() - lastLoad)/1000);
+  const when = secs < 10 ? 'just now' : secs < 90 ? secs + 's ago'
+    : Math.round(secs/60) + 'm ago';
+  $('#stamp').textContent = `${D.root} · ${D.today} · updated ${when}`
+    + (autoOn ? '' : ' · auto-refresh off');
+}
+let autoOn = true, lastLoad = 0, timer = null;
+const AUTO_MS = 30000;
+
+async function load(quiet){
+  try{
+    const r = await fetch('/api/data', {cache:'no-store'});
+    const next = await r.json();
+    if(next.error){
+      if(!quiet) toast('Collector error: ' + next.error);
+      return;
+    }
+    D = next; lastLoad = Date.now(); render();
+  }catch(e){
+    if(!quiet) toast('Dashboard server not reachable — restart it with /dashboard');
+  }
+}
+function tick(){
+  if(!autoOn || document.hidden) return;
+  if($('#drawer').classList.contains('open')) return;      // don't yank an open drill-down
+  if(document.activeElement === $('#q')) return;           // don't disturb a filter in progress
+  load(true);
+}
+function setAuto(on){
+  autoOn = on;
+  $('#auto').textContent = on ? 'Auto ' + (AUTO_MS/1000) + 's' : 'Auto off';
+  clearInterval(timer);
+  if(on) timer = setInterval(tick, AUTO_MS);
+  stamp();
+}
+setInterval(stamp, 5000);
+$('#auto').onclick = () => setAuto(!autoOn);
+$('#refresh').onclick = () => load(false);
+$('#scrim').onclick = closeDrawer;
+$('#theme').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark';
+  if(next) document.documentElement.setAttribute('data-theme', next);
+  else document.documentElement.removeAttribute('data-theme');
+  if(D) render();
+};
+$('#q').addEventListener('input', e => { Q = e.target.value.trim().toLowerCase();
+  if(D){ inflight(); idle(); customers(); tasks(); } });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDrawer(); });
+document.querySelectorAll('[data-table]').forEach(b => b.onclick = () => {
+  const t = document.getElementById(b.dataset.table);
+  t.style.display = t.style.display === 'block' ? 'none' : 'block';
+});
+
+/* the bar chart is drawn at its container's width -- redraw when that width changes.
+   Observe the CARD, not the chart div: redrawing the chart would re-trigger its own observer. */
+let rzT, lastW = 0;
+new ResizeObserver(entries => {
+  const w = Math.round(entries[0].contentRect.width);
+  if(w === lastW) return;
+  lastW = w; clearTimeout(rzT);
+  rzT = setTimeout(() => { if(D) dailyChart(); }, 120);
+}).observe($('#dailyChart').closest('.chartbox'));
+
+bindChips(); paintChips(); paintPeriod();
+setAuto(true);
+load(false);
+</script>
+</body>
+</html>

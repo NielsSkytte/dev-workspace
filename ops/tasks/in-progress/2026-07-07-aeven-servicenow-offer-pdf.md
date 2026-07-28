@@ -5,7 +5,7 @@ created: 2026-07-07
 project: customers/Aeven/ServiceNowPOC
 owner: content
 priority: normal
-blocked_by: Aeven day-to-day contact name (one yellow flag in the docx/PDF)
+blocked_by: signed SoW returned from Aeven
 activity:
 fno_task:
 source: todo
@@ -30,3 +30,6 @@ The offer is the gate to the Q3 engagement; `fno_code:` is created only after si
   `offer/Aeven_ServiceNow_POC_SoW_v1.0.docx` / `.pdf`. Legal name Aeven A/S; contacts Niels
   Skytte (Pingala) + Aeven contact yellow-flagged (name not provided); Brøndby/Ballerup.
   Remaining: fill the Aeven contact, re-export PDF, send.
+- 2026-07-28 — Aeven contact obtained; SoW re-issued as v1.1 (Pingala work-order template,
+  content unchanged from v1.0) packaged with General Terms and Conditions + new-customer
+  appendix, sent to Aeven. Now awaiting signed SoW returned from Aeven.
