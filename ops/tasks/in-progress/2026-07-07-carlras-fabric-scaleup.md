@@ -2,7 +2,7 @@
 title: Carl Ras — implement Fabric scale-up + semantic model processing (existing python script)
 status: in-progress
 created: 2026-07-07
-project: customers/Carl-Ras/fabric
+project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by:
@@ -16,14 +16,14 @@ Implement scale-up of the Fabric capacity and processing of the semantic model a
 using the existing python script.
 
 ## Why
-Standing TODO from 2026-07-06; also the concrete work that fleshes out the `Carl-Ras/fabric`
-placeholder project (v1-review Next item).
+Standing TODO from 2026-07-06; the platform work the Datahub implementation needs.
 
 ## Context
-- Project: `customers/Carl-Ras/fabric` (PLACEHOLDER — confirm scope and locate the existing
-  python script as the first step; see its CONTEXT.md).
-- Carl-Ras node: shared infra picture; fno_code for datahub is 230-02, fabric placeholder has
-  none on file yet.
+- Project: `customers/Carl-Ras/datahub` (`230-02`). This task was previously its own project
+  folder `Carl-Ras/fabric`; merged into `datahub` on 2026-07-28 — it was a second repo
+  (`Fabric-ETL`), not a second project. State carried over into `datahub/CONTEXT.md`
+  > *Workstream — Fabric scale-up & model processing*.
+- Code lives in `datahub/Fabric-ETL` (`NB_CapacityManager_Bootstrap`, `PL_ScaleProcess_SP`).
 
 ## Log
 - 2026-07-07 — created (promoted from TODO 2026-07-06 at the day-start routing pass)

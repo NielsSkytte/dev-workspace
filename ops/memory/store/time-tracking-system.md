@@ -6,7 +6,7 @@ scope: workspace
 source: session:per-project-time-tracking
 tags: [project]
 status: distilled
-description: "Per-project time tracking at ops/time/ — heartbeat+idle-timeout (15+5) model, deterministic rollup, F&O codes, data not in git (ADR-002)"
+description: "Per-project time tracking at ops/time/ — heartbeat+idle-timeout (15+5) model, deterministic rollup, F&O codes, data not in git (ADR-002); attribution is TASK-FIRST since ADR-003"
 ---
 
 The workspace tracks **active working time per project** (the level that has its own `CLAUDE.md`):
@@ -18,8 +18,9 @@ Substrate at `ops/time/`, a peer to `ops/memory/` with the same raw->reviewed sp
 (`ts_start` at `UserPromptSubmit`, `ts_end` at `Stop`). Per (local day, project, task): merge heartbeats
 into active *stretches*, splitting wherever an idle gap exceeds **15 min** (stale gaps discarded — a
 session left open for days costs nothing); each stretch = its span **+ 5 min** tail buffer; sum, round
-to **0.25 h**. **Attribution is strictly by session cwd** — whatever folder the session is rooted in gets
-the time, regardless of files touched.
+to **0.25 h**. **Attribution was strictly by session cwd until 2026-07-28; it is now TASK-FIRST**
+(ADR-003) — the active task decides the project, cwd is the fallback, capped to the same customer, with a
+session-scoped `active-task` marker. Within a project, files touched are still irrelevant.
 
 **Determinism is the point.** No LLM goes near the numbers (billing must be auditable/reproducible). The
 only LLM-suitable piece is the optional F&O work *description*, sourceable from existing `ops/memory/daily/`

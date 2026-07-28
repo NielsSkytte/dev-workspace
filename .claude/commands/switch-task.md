@@ -20,10 +20,10 @@ Resolve the current project from the session cwd. If it is **not** a `customers/
    - Otherwise list them — one per line, `slug — title  (status · activity <activity>/task <fno_task>, or "no activity")` — and ask in plain text which to work on (accept a slug or the line number). **Do not use the AskUserQuestion tool** — the owner prefers open dialogue.
 
 4. **Apply:**
-   - Write the chosen slug to `C:\Dev\ops\time\active-task` (overwrite).
+   - Write `{"slug": "<slug>", "session": null, "set_at": "<UTC ISO Z>"}` to `C:\Dev\ops\time\active-task` (overwrite). `session: null` means *unclaimed* — the next turn's `track_time.py` stamps it with the running session id. A bare slug on one line is still accepted (legacy) and gets claimed the same way.
    - If the task was in `open/`, move it to `in-progress/`, set `status: in-progress`, and append a dated Log line (`YYYY-MM-DD — started (session task)`).
    - If the task's `activity:` is blank, prompt for it (one line) and write it into the frontmatter — F&O books time as Project ID → Activity → Task. If this project registers down to task level and `fno_task:` is blank, also prompt for the Azure DevOps work-item id; activity-only projects leave it blank.
 
 5. **Confirm** in one line: `Tracking time to <slug> — <proj_id> · <activity> · <fno_task or "activity-level">.` Flag any missing `activity` so it gets filled before entry.
 
-The time hook only tags a heartbeat with the active task when that task belongs to the session's project, so a slug set here (always this project's) is always valid, and a stale tag from another project drops itself. Keep this command mechanical and fast.
+Since 2026-07-28 (ADR-003) the active task **decides** the project and cwd is the fallback, so a slug set here also fixes attribution when the session was launched from a repo subfolder or the customer node. The override is capped to the **same customer** — a task from another customer, or any task at all in a `Dev`/`own/` session, is ignored. The marker is **session-scoped**: it is claimed by the running session and a marker owned by an earlier session is discarded, so a stale tag cannot carry into a new session. Keep this command mechanical and fast.

@@ -19,7 +19,7 @@ The harness *accelerates* routines that are fully described in `AGENTS.md`. Wher
 | Slash commands (`/todo`, `/task`, `/log`, `/time`, `/brief`, `/handoff`, `/new-project`, …) | `.claude/commands/` | *Continuity loop*, *Knowledge flow*, *Working with projects*, *Time tracking* |
 | Agent Skills (auto-invoked by context) | `.claude/skills/` | *Building new capabilities* |
 | Memory hooks (`capture_turn.py` = per-turn capture; `build_snapshot.py` = session-start injection) | `.claude/hooks/` | *Memory* (substrate lives at `ops/memory/`) |
-| Time hook (`track_time.py` = per-turn heartbeat on `UserPromptSubmit`+`Stop`) | `.claude/hooks/` | *Time tracking* (substrate lives at `ops/time/`) |
+| Time hooks (`track_time.py` = per-turn heartbeat on `UserPromptSubmit`+`Stop`; `session_task.py` = active-task resolution on `SessionStart`) | `.claude/hooks/` | *Time tracking* (substrate lives at `ops/time/`) |
 
 **Reach for a slash command** for a short recipe you trigger on demand; **reach for an Agent Skill** when it carries domain knowledge or files and should fire automatically by context. Before creating any skill/command/agent, apply the justification rubric in `AGENTS.md` > *Building new capabilities*.
 
@@ -40,7 +40,8 @@ The memory substrate lives at `ops/memory/` (see `AGENTS.md` > *Memory*). Claude
 
 ## Reminders
 
-- **Hook registration is dual (fixed 2026-07-28):** `track_time.py` + `capture_turn.py` are registered in both `.claude/settings.json` (workspace) **and** the user-level `~/.claude/settings.json` — settings don't cascade, so only the user-level registration reaches sessions rooted below `C:\Dev` (project/customer sessions). The scripts self-guard to cwds under `C:\Dev`; Claude Code deduplicates the identical command strings, so **keep them byte-identical (load-bearing)**. The `SessionStart` snapshot hook stays workspace-root-only by design.
+- **Hook registration is dual (fixed 2026-07-28):** `track_time.py`, `capture_turn.py` + `session_task.py` are registered in both `.claude/settings.json` (workspace) **and** the user-level `~/.claude/settings.json` — settings don't cascade, so only the user-level registration reaches sessions rooted below `C:\Dev` (project/customer sessions). The scripts self-guard to cwds under `C:\Dev`; Claude Code deduplicates the identical command strings, so **keep them byte-identical (load-bearing)**. The `SessionStart` *snapshot* hook (`session-start.ps1`) stays workspace-root-only by design; the `SessionStart` *task* hook (`session_task.py`) is dual-registered, since it must fire in project sessions.
+- **Time attribution is task-first (ADR-003, 2026-07-28):** the active task decides the project, cwd is the fallback, capped to the same customer, with a session-scoped marker. Don't reintroduce cwd-first logic. Hook output is ASCII-sanitised on purpose — task titles carry non-cp1252 characters and a Windows encode error would be swallowed by the fail-silent guard.
 - **Scripts are ASCII-only** under Windows PowerShell 5.1 (hooks, `.ps1`). See `AGENTS.md` > *Conventions* for the why.
 - **Project context chain:** open sessions rooted at the project folder so the chain resolves project → workspace root. Use the per-project VS Code Task (`Ctrl+Shift+P` → `Tasks: Run Task`).
 - **Switching to / starting projects, guardrails, identity block, all conventions:** see `AGENTS.md`.

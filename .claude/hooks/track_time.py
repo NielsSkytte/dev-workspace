@@ -57,12 +57,39 @@ def project_from_cwd(cwd):
 
 
 def read_active_task():
+    """-> (slug, session) from ops/time/active-task.
+
+    Two accepted formats: a JSON object {slug, session, set_at} (current), or a bare
+    slug on one line (legacy / written by hand). A bare slug has session None, which
+    means 'unclaimed' -- see claim_active_task."""
     try:
         with open(ACTIVE_TASK, encoding="utf-8") as f:
-            slug = f.read().strip()
-            return slug or None
+            raw = f.read().strip()
     except Exception:
-        return None
+        return None, None
+    if not raw:
+        return None, None
+    if raw.startswith("{"):
+        try:
+            d = json.loads(raw)
+            return (d.get("slug") or None), (d.get("session") or None)
+        except Exception:
+            return None, None
+    return raw.splitlines()[0].strip() or None, None
+
+
+def claim_active_task(slug, sid):
+    """Stamp an unclaimed active-task with this session id.
+
+    The marker is SESSION-SCOPED: a task set in an earlier session must not silently
+    tag today's work (that is the stale-tag failure the session-start hook exists to
+    prevent). But a slash command writing the file cannot know the session id, so it
+    writes no session and the next turn of whichever session is running claims it."""
+    try:
+        with open(ACTIVE_TASK, "w", encoding="utf-8") as f:
+            json.dump({"slug": slug, "session": sid, "set_at": now_z()}, f)
+    except Exception:
+        pass
 
 
 def task_project(slug):
@@ -82,13 +109,49 @@ def task_project(slug):
     return None
 
 
-def active_task_for(project):
-    """The active task, but only if it belongs to `project` -- a stale or foreign task tag
-    (left over from another project's session) must never bill to this one."""
-    slug = read_active_task()
-    if slug and task_project(slug) == project:
-        return slug
+def customer_of(project):
+    """'customers/<Client>[/<Project>]' -> '<client>' (lowercased); None for Dev / own/."""
+    if not project:
+        return None
+    parts = project.split("/")
+    if len(parts) >= 2 and parts[0].lower() == "customers":
+        return parts[1].lower()
     return None
+
+
+def resolve(cwd, sid):
+    """-> (project, task_slug) for this turn.
+
+    The active task DECIDES the project, cwd is the fallback (reversed 2026-07-28,
+    ADR-003) -- one project routinely spans several repos and one repo hosts several
+    tasks, so the folder cannot express which work is in play.
+
+    Guard: the task may only override cwd WITHIN THE SAME CUSTOMER. A customer node
+    (customers/<Client>) is overridden by a task on one of its projects, which is how
+    node-level UNSET time resolves itself. Dev and own/ are NEVER overridden -- moving
+    workspace time onto a customer is the direction that over-bills, and it stays a
+    deliberate call at the review gate.
+
+    Staleness: a task claimed by a different session is ignored entirely."""
+    cwd_proj = project_from_cwd(cwd)
+    if cwd_proj is None:
+        return None, None
+    slug, owner = read_active_task()
+    if not slug:
+        return cwd_proj, None
+    if owner is None:
+        claim_active_task(slug, sid)      # written by a slash command; this session adopts it
+    elif owner != sid:
+        return cwd_proj, None             # belongs to another session -- stale, ignore
+    tproj = task_project(slug)
+    if not tproj:
+        return cwd_proj, None
+    if tproj == cwd_proj:
+        return cwd_proj, slug
+    cust = customer_of(cwd_proj)
+    if cust and cust == customer_of(tproj):
+        return tproj, slug                # same customer -> the task names the real project
+    return cwd_proj, None                 # cross-customer, or Dev/own -> cwd wins, no tag
 
 
 def load_state():
@@ -125,13 +188,12 @@ def main():
     state = load_state()
 
     if event == "UserPromptSubmit":
-        # Stamp the turn's start; remember cwd + the task active at submit time
-        # (only if that task belongs to this session's project).
-        project = project_from_cwd(cwd)
+        # Stamp the turn's start; resolve project + task as of submit time.
+        project, task = resolve(cwd, sid)
         if project is None:
             return  # outside the workspace -> not tracked
         state[sid] = {"start": now_z(), "cwd": cwd,
-                      "task": active_task_for(project)}
+                      "project": project, "task": task}
         save_state(state)
         return
 
@@ -139,10 +201,12 @@ def main():
     s = state.get(sid) or {}
     ts_start = s.get("start") or now_z()           # fall back to a point if no submit was seen
     ts_end = now_z()
-    project = project_from_cwd(s.get("cwd") or cwd)
+    project = s.get("project")
+    task = s.get("task")
+    if project is None:                            # no submit seen this session -- resolve now
+        project, task = resolve(s.get("cwd") or cwd, sid)
     if project is None:
         return  # outside the workspace -> not tracked
-    task = s.get("task")
 
     # Every Stop writes -- a turn can Stop several times (yield on background
     # work, then continue), and each later Stop extends the tracked interval.

@@ -31,7 +31,7 @@ This is the Control step: the user gives raw intent; **you** add the structure. 
 1. Find the task file by slug across the subfolders.
 2. Move it to the target folder (`in-progress/`, `done/`, or `cancelled/`) and update `status` in the frontmatter.
 3. Append a dated line to the **Log** — for `done`, the outcome; for `cancel`, the reason.
-4. **Time tagging (task-level tracking):** on `start`, write the slug to `C:\Dev\ops\time\active-task` (overwrite) so heartbeats bill to this task until it changes; on `done`/`cancel`, delete that file if it holds this slug. The time hook only tags a heartbeat with the active task when that task's `project:` matches the session's project, so a foreign tag never mis-bills. For picking among several tasks of the *same* customer project mid-session, use `/switch-task`. See `AGENTS.md` > Time tracking.
+4. **Time tagging (task-level tracking):** on `start`, write `{"slug": "<slug>", "session": null, "set_at": "<UTC ISO Z>"}` to `C:\Dev\ops\time\active-task` (overwrite) so heartbeats bill to this task until it changes; on `done`/`cancel`, delete that file if it holds this slug. `session: null` means unclaimed — the next turn's hook stamps it with the running session id, and a marker owned by an *earlier* session is discarded rather than applied (ADR-003), so a forgotten tag cannot bill tomorrow's work. Since ADR-003 the active task **decides** the project, capped to the same customer; `Dev`/`own/` sessions are never re-attributed. For picking among several tasks of the *same* customer project mid-session, use `/switch-task`. See `AGENTS.md` > Time tracking.
 5. Confirm in one line.
 
 Keep this command mechanical and fast. Routing judgment happens at create; everything else is bookkeeping.

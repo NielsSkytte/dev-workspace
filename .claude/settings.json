@@ -10,6 +10,15 @@
             "command": "powershell -NoProfile -File \"C:\\Dev\\.claude\\hooks\\session-start.ps1\""
           }
         ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:\\Dev\\.claude\\hooks\\session_task.py\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

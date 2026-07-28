@@ -170,23 +170,6 @@
     },
 
     {
-      "label": "Claude · customers/Carl-Ras/fabric",
-      "detail": "Carl Ras — Fabric scale-up & model processing (placeholder)",
-      "type": "shell",
-      "command": "claude",
-      "options": {
-        "cwd": "${workspaceFolder}/customers/Carl-Ras/fabric"
-      },
-      "presentation": {
-        "panel": "dedicated",
-        "reveal": "always",
-        "group": "claude",
-        "close": false
-      },
-      "problemMatcher": []
-    },
-
-    {
       "label": "Claude · customers/Matas/DataCompare",
       "detail": "Matas — compare entities across AX, NAV/BC, and D365 F&O",
       "type": "shell",
@@ -205,7 +188,7 @@
 
     {
       "label": "Claude · customers/Carl-Ras/datahub",
-      "detail": "Carl Ras — DataHub: GA4/Marketo → Fabric integration (Atomic), retiring Databricks",
+      "detail": "Carl Ras — Datahub implementation: GA4/Marketo → Fabric (Atomic), retiring Databricks; incl. capacity scale-up. Repos: Landingzone-ETL, Fabric-ETL",
       "type": "shell",
       "command": "claude",
       "options": {

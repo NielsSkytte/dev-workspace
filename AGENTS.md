@@ -243,10 +243,19 @@ are not tracked (decided 2026-07-28).
 Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **timesheets** (reviewed truth).
 
 - **Capture** — every turn emits a heartbeat (`{ts_start, ts_end, project, session, task}`) to
-  `ops/time/heartbeats/<utc-date>.jsonl`. `project` is the session's working directory (attribution is
-  by cwd by default); `task` is set only while a task is "started". **One override at the review gate:
+  `ops/time/heartbeats/<utc-date>.jsonl`. **The active task decides `project`; the session's working
+  directory is the fallback** (reversed 2026-07-28, ADR-003 — a project routinely spans several repos
+  and a repo hosts several tasks, so the folder cannot express which work is in play). Two guards:
+  the task may override cwd only **within the same customer** (`Dev` and `own/…` are never
+  overridden), and the marker is **session-scoped** (`{slug, session, set_at}`) so a tag left set in
+  an earlier session is discarded rather than applied. **One override at the review gate:
   `Dev`-rooted time that is clearly a single project's work is reassigned to that project — only ever
   out of `Dev` into a project, never between two named projects** (see `ops/time/README.md` §2).
+- **A repo is not a project** — a project is one F&O Project ID; if two folders bill to the same ID
+  they are one project, and repos live inside it. Distinct workstreams within a project are **tasks**,
+  at the granularity of the user story / Azure DevOps work item that `fno_task:` names. Sub-steps of a
+  story are not modelled — F&O has no dimension below Task. The tag is stamped per turn, so a task
+  need not be finishable in one sitting and `/switch-task` splits time where you switch.
 - **Rollup (the 15+5 model)** — per (local day, project, task): merge heartbeats into active *stretches*,
   splitting wherever an idle gap exceeds **15 min** (stale gaps are never counted — this is what makes a
   session left open for days cost nothing); each stretch = its span **+ 5 min** tail buffer; sum and round
@@ -261,11 +270,14 @@ Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **tim
 
 The full spec and the **by-hand recipe** live in **`ops/time/README.md`** — that file plus the data is the
 whole system, runnable by any LLM with no harness. The Claude harness accelerates it: the `track_time.py`
-hook (`UserPromptSubmit` stamps the turn start; `Stop` writes the heartbeat) captures; `ops/time/rollup.py`
-computes; `/time` and `/log` wrap it. The hook is registered in **both** `C:\Dev\.claude\settings.json` and
-the user-level `~/.claude/settings.json` — settings don't cascade to sessions rooted below `C:\Dev`, so the
-user-level registration is what covers project- and customer-rooted sessions; the script self-guards to cwds
-under `C:\Dev` (fixed 2026-07-28). Owned by M.
+hook (`UserPromptSubmit` stamps the turn start and resolves project+task; `Stop` writes the heartbeat)
+captures; `session_task.py` (`SessionStart`) establishes the session's task — auto-setting it when the
+project has exactly one open task, surfacing the list when there are several, and offering *task or
+project level* when there are none; `ops/time/rollup.py` computes; `/time` and `/log` wrap it. Both hooks
+are registered in **both** `C:\Dev\.claude\settings.json` and the user-level `~/.claude/settings.json` —
+settings don't cascade to sessions rooted below `C:\Dev`, so the user-level registration is what covers
+project- and customer-rooted sessions; the scripts self-guard to cwds under `C:\Dev` (fixed 2026-07-28).
+Owned by M.
 
 ## Conventions
 

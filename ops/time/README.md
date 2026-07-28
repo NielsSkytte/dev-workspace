@@ -52,10 +52,45 @@ Several heartbeats per turn are harmless: they are seconds apart and collapse in
 
 ## 2. Attribution
 
-**Default: by the session's working directory.** Whatever project the session is rooted in gets the
-time, regardless of which files were touched. If you are in a Melbye session and edit a shared `Dev`
-skill, that time bills to Melbye. The occasional cross-edit *between two real projects* is noise that
-washes out; this keeps attribution predictable and free.
+**The active task decides; the working directory is the fallback.** (Reversed 2026-07-28 — see
+ADR-003. Before that, cwd decided and a task that disagreed was discarded.) The reason: a project
+routinely spans **several repos** and a repo hosts **several tasks**, so the folder cannot express
+which work is in play. Carl Ras showed both at once — one Datahub project across `Landingzone-ETL`
+and `Fabric-ETL`, and `Fabric-ETL` alone holding the GTM ingest, the capacity scale-up and
+CapacityManager.
+
+Resolution order, per turn:
+
+1. If an active task is set **and** it passes the guards below -> its `project:` is the project, and
+   the heartbeat carries the task tag.
+2. Otherwise -> the session's working directory (rules below), with no task tag.
+
+**Two guards, both load-bearing:**
+
+- **Same customer only.** A task may override cwd only within the same customer; a customer node
+  (`customers/<Client>`) is overridden by a task on one of its projects, which is how node-level
+  `UNSET` time resolves itself. **`Dev` and `own/…` are never overridden** — moving workspace time
+  onto a customer is the direction that over-bills, so it stays a deliberate call at the review gate
+  (the `Dev` -> project override below).
+- **Session-scoped marker.** `active-task` records `{slug, session, set_at}`. A marker owned by a
+  *different* session is ignored outright, so a tag forgotten on Monday cannot bill Tuesday's work.
+  A marker written with `session: null` (what the slash commands write — they cannot know the
+  session id) is *claimed* by the next turn of whichever session is running. A bare slug on one
+  line is still read (legacy) and claimed the same way.
+
+Within a project, whatever files you touch is irrelevant — attribution follows the session, not the
+edits. If you are in a Melbye session and edit a shared `Dev` skill, that time bills to Melbye. The
+occasional cross-edit *between two real projects* is noise that washes out.
+
+**Setting the task is not a ritual you must remember.** A `SessionStart` hook
+(`.claude/hooks/session_task.py`) resolves it for you: exactly one open task on the project -> it is
+set automatically; several -> the list is surfaced so the first reply asks; none -> you are offered
+a new task *or* project-level tracking, which is a valid F&O line and the right answer whenever the
+work is not story-shaped. **The task granularity is the user story / Azure DevOps work item** — the
+thing `fno_task:` points at. Sub-steps of one story ("create the datastore", "type-2 history",
+"build the model") are deliberately not modelled: F&O has no dimension below Task. A task need not
+be finishable in one sitting — the tag is stamped **per turn**, so `/switch-task` mid-session splits
+the time exactly where you switched.
 
 **Three levels, rolled up from any depth** (decided 2026-07-28): a session anywhere inside a project --
 including sub-folders like `src/...` -- bills to the **project**; a session at a customer node
@@ -98,12 +133,10 @@ the daily review gate (section 5) by editing the timesheet.
 
 **Task level (customer projects).** Within a `customers/<Client>/<Project>` a session's time can be
 tagged to a **task**, which adds the F&O Activity/Task dimensions *beneath* the project id (see section 4).
-The active task lives in `ops/time/active-task` (set by `/task start` or `/switch-task`, cleared by
-`/task done|cancel` or `/switch-task off`). The hook only stamps a heartbeat with the active task when
-**that task's `project:` matches the session's project** -- a stale or foreign tag left over from another
-project's session never mis-bills. At the start of a customer session the project walk asks which of the
-project's open/in-progress tasks this session is for. `own/…` and workspace (`Dev`) sessions have no task
-level; they bill to the project id (or `INTERNAL-RND`).
+The active task lives in `ops/time/active-task` (set by the session-start hook, `/task start` or
+`/switch-task`; cleared by `/task done|cancel` or `/switch-task off`). Its two guards -- same-customer
+and session-scoped -- are described above. `own/…` and workspace (`Dev`) sessions have no task level;
+they bill to the project id (or `INTERNAL-RND`).
 
 ## 3. Rollup: the 15+5 active-time model
 

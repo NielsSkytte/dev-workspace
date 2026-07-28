@@ -24,7 +24,10 @@ and the record shape live in [`../README.md`](../README.md).
 - [knowledge-flow](knowledge-flow.md) — /brief command + INBOX.md for cross-project knowledge transfer
 - [atomiccortex-vision](atomiccortex-vision.md) — LLM second brain; full-ICOR, portability-first (tool + scale), markdown+git, three horizons (solo->team of 10->org of 150)
 - [skill-usage-evaluation](skill-usage-evaluation.md) — core goal: capture which skills fire/don't-fire/help and feed back into skill revision; the evaluative layer this memory system enables
-- [time-tracking-system](time-tracking-system.md) — per-project time tracking at ops/time/; heartbeat+15/5 idle model, deterministic rollup, F&O codes, data gitignored (ADR-002)
+- [time-tracking-system](time-tracking-system.md) — per-project time tracking at ops/time/; heartbeat+15/5 idle model, deterministic rollup, F&O codes, data gitignored (ADR-002); attribution TASK-FIRST since ADR-003
+- [repo-vs-project-vs-task](repo-vs-project-vs-task.md) — a project is ONE F&O Project ID (repos live inside, several allowed); distinct workstreams are TASKS at user-story/ADO-work-item granularity; folder-per-task rejected (ADR-003, Carl Ras merge)
+- [time-backfill-from-transcripts](time-backfill-from-transcripts.md) — recovering untracked hours from Claude Code transcripts: POINT events not turns, additive-only (never re-roll a timesheet), dedupe on work identity not Proj ID
+- [eval-2026-07-28-timetracking-rework](eval-2026-07-28-timetracking-rework.md) — evaluative: no skill fired (correct); dry-run-then-diff caught 2 of 3 self-inflicted errors on billing data; 3rd consecutive /log with local-summarizer overstatement
 - [workspace-v1-frozen](workspace-v1-frozen.md) — v1.0 tagged 2026-07-06; setup phase OVER; freeze rule binding (no new capability without a demonstrated failure); success metric = INTERNAL-RND share collapsing
 - [eval-2026-07-06-artifact-design](eval-2026-07-06-artifact-design.md) — evaluative: artifact-design fired+helped at the v1 review; domain skills correctly silent on a setup day
 - [skill-writing-voice](skill-writing-voice.md) — writing-voice skill (DA/EN); subtraction-first AI-smell removal; built from Niels's thesis + email voice
