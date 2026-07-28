@@ -1,7 +1,8 @@
 # [Customer] — CLAUDE.md (customer node)
 
 > **Customer node, not a project.** This file is the customer *map*: who they are and the
-> projects under them. **No time or tasks attach here** — all work lives in the projects listed
+> projects under them. **Tasks attach only to projects** — time normally bills to a project; a session left at
+> this node is tracked at the customer level (Proj ID `UNSET`, resolved at review). All work lives in the projects listed
 > below, each with its own `CLAUDE.md` + `CONTEXT.md`. Live customer-level state is in
 > `CONTEXT.md` beside this file.
 

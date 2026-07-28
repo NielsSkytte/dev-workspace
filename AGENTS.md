@@ -234,7 +234,11 @@ The Claude harness accelerates it: a `Stop` hook (`capture_turn.py`) writes the 
 A dedicated **time substrate** lives at `ops/time/` — a peer system to memory, tracking active working
 time **per project** (the level that has its own `CLAUDE.md`): `Dev` (this workspace setup itself; absorbs
 `ops/` work), each `customers/<client>/<project>`, each `own/<project>`. Optionally **per task** within a
-project (opt-in via `/task start`). Time in `ops/` is not its own project — it rolls into `Dev`.
+project (opt-in via `/task start`). Time in `ops/` is not its own project — it rolls into `Dev`. Any depth
+inside a project rolls up to the project; a session at a **customer node** (`customers/<client>`, above its
+projects) is tracked at the customer level (Proj ID `UNSET`, resolved at review); a customer sub-folder
+without a `CLAUDE.md` (grandfathered flat repo) also tracks to the customer; sessions outside `C:\Dev`
+are not tracked (decided 2026-07-28).
 
 Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **timesheets** (reviewed truth).
 
@@ -258,7 +262,10 @@ Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **tim
 The full spec and the **by-hand recipe** live in **`ops/time/README.md`** — that file plus the data is the
 whole system, runnable by any LLM with no harness. The Claude harness accelerates it: the `track_time.py`
 hook (`UserPromptSubmit` stamps the turn start; `Stop` writes the heartbeat) captures; `ops/time/rollup.py`
-computes; `/time` and `/log` wrap it. Owned by M.
+computes; `/time` and `/log` wrap it. The hook is registered in **both** `C:\Dev\.claude\settings.json` and
+the user-level `~/.claude/settings.json` — settings don't cascade to sessions rooted below `C:\Dev`, so the
+user-level registration is what covers project- and customer-rooted sessions; the script self-guards to cwds
+under `C:\Dev` (fixed 2026-07-28). Owned by M.
 
 ## Conventions
 

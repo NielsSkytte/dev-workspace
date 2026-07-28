@@ -10,6 +10,7 @@ See C:\\Dev\\ops\\memory\\README.md for the model and record shape.
 import sys, os, json, datetime, hashlib
 
 DAILY_DIR = os.environ.get("MEMORY_DAILY_DIR", r"C:\Dev\ops\memory\daily")
+DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 STATE_FILE = os.environ.get(
     "MEMORY_STATE_FILE",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), ".capture_state.json"),
@@ -22,17 +23,32 @@ SUMMARY_TIMEOUT = int(os.environ.get("MEMORY_SUMMARY_TIMEOUT", "20"))
 
 
 def scope_from_cwd(cwd):
-    c = (cwd or "").replace("\\", "/")
-    low = c.lower()
-    for bucket in ("/customers/", "/own/"):
-        i = low.find(bucket)
-        if i != -1:
-            rest = c[i + 1:].split("/")
-            # customers/<client>/<project> or own/<project>
-            if rest[0].lower() == "customers" and len(rest) >= 3:
-                return "project:customers/%s/%s" % (rest[1], rest[2])
-            if rest[0].lower() == "own" and len(rest) >= 2:
-                return "project:own/%s" % rest[1]
+    """cwd -> record scope, anchored at the workspace root (mirrors
+    track_time.project_from_cwd; scope values per ops/memory/README.md).
+    project:<path> inside a project (any depth), client:<name> at a customer
+    node, 'workspace' elsewhere under the workspace, None outside it -- the
+    hooks are registered machine-wide in the user-level settings, and
+    non-workspace sessions must not be captured. realpath canonicalizes
+    casing/junctions; a depth-3 folder is a project only if it has a
+    CLAUDE.md (grandfathered flat repos scope to the client)."""
+    if not cwd:
+        return None
+    root = os.path.realpath(DEV_WORKSPACE)
+    c = os.path.realpath(cwd)
+    if os.path.normcase(c) == os.path.normcase(root):
+        return "workspace"
+    if not os.path.normcase(c).startswith(os.path.normcase(root) + os.sep):
+        return None
+    rest = [seg for seg in c[len(root) + 1:].split(os.sep) if seg]
+    if rest and rest[0].lower() == "customers":
+        if len(rest) >= 3 and os.path.isfile(
+                os.path.join(root, rest[0], rest[1], rest[2], "CLAUDE.md")):
+            return "project:customers/%s/%s" % (rest[1], rest[2])
+        if len(rest) >= 2:
+            return "client:%s" % rest[1]
+    if rest and rest[0].lower() == "own" and len(rest) >= 2 and os.path.isfile(
+            os.path.join(root, rest[0], rest[1], "CLAUDE.md")):
+        return "project:own/%s" % rest[1]
     return "workspace"
 
 
@@ -218,13 +234,15 @@ def main():
         return  # avoid loops
     sid = str(hook.get("session_id", "unknown"))
     cwd = hook.get("cwd", "")
+    scope = scope_from_cwd(cwd)
+    if scope is None:
+        return  # outside the workspace -> not captured
     user_text, asst_text = extract_turn(hook.get("transcript_path", ""))
 
     now = datetime.datetime.now(datetime.timezone.utc)
     ts = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     date = now.strftime("%Y-%m-%d")
     rid = now.strftime("%Y%m%dT%H%M%SZ") + "-" + sid[:8]
-    scope = scope_from_cwd(cwd)
 
     # One record per user turn: a turn is keyed by (date, session, user message). The Stop
     # hook can fire several times within one turn (the agent yields, then continues) - those

@@ -6,7 +6,7 @@ scope: workspace
 source: session:14457941
 tags: [infrastructure, hooks, time-tracking, memory-capture]
 status: distilled
-description: "Sessions rooted BELOW C:\\Dev (e.g. C:\\Dev\\customers) get NO capture/time hooks - Element Logic session 07-20..23 has zero heartbeats and zero daily records; hours need manual timesheet entry"
+description: "FIXED 2026-07-28 for time/capture (user-level registration + in-script guard); sessions below C:\\Dev previously got NO hooks (Element Logic 07-20..23, DataCompare 07-16..28 untracked - manual timesheet entry). STILL OPEN: agent roster + SessionStart snapshot don't cascade"
 ---
 
 Sessions rooted below `C:\Dev` do not get the workspace hooks. The Element Logic
@@ -28,9 +28,17 @@ load `C:\Dev\.claude\settings.json` hooks.
   timesheet entry. **Extension:** the workspace *agent roster* doesn't cascade either —
   the `sentinel` agent was not an available agent type at /log; its review must be done
   by hand (README recipe) in sub-rooted sessions.
-- Fix direction to evaluate: register the three hooks in user-level settings
-  (`~/.claude/settings.json`) with cwd-guards, or per-project settings stubs.
-  Until fixed, per-project VS Code task sessions are ALSO untracked — the
-  "time is captured automatically once you open sessions rooted at its folder"
-  claim in /new-project's confirmation is currently FALSE.
+- **FIXED 2026-07-28** (session 1f323a74): `track_time.py` + `capture_turn.py` are now
+  registered in the user-level `~/.claude/settings.json` (identical command strings to the
+  workspace registration) with an **in-script guard** — any cwd outside `C:\Dev` is ignored,
+  any depth inside rolls up (project / customer-node `customers/<client>` / `Dev`; depth-3
+  folders without a `CLAUDE.md` fall to the customer, `realpath` canonicalizes casing).
+  Claude Code dedupes the identical command strings (docs-verified) — keep them
+  byte-identical, that identity is load-bearing. Verified by execute-and-assert tests +
+  a 3-lens adversarial workflow (which killed an initial Stop-dedup guard as a regression:
+  a turn legitimately Stops several times; every Stop must write). The /new-project
+  "time is captured automatically" claim is TRUE again.
+- **STILL OPEN:** the workspace *agent roster* (e.g. `sentinel`) and the `SessionStart`
+  snapshot hook do not reach sub-rooted sessions (snapshot deliberately root-only; the
+  roster gap is real — /log sentinel review must be done by hand in project sessions).
 - Related: [[claude-auto-memory-disable]]

@@ -40,8 +40,9 @@ Every turn emits one heartbeat -- a JSON object appended as a line to `heartbeat
 
 - `ts_start` -- when you sent the message (UTC, `...Z`). Captures "the time spent" on the turn.
 - `ts_end` -- when the assistant finished the turn (UTC).
-- `project` -- the session's project, derived from its working directory (see *Attribution*). `Dev` for any
-  session not inside `customers/` or `own/` (workspace root, `ops/`, etc.).
+- `project` -- derived from the session's working directory (see *Attribution*): any depth inside a
+  project maps to `customers/<client>/<project>` or `own/<project>`; a customer node itself maps to
+  `customers/<client>`; anything else under `C:\Dev` is `Dev`. Sessions outside `C:\Dev` emit no heartbeat.
 - `session` -- session id (first 8 chars), for debugging only.
 - `task` -- task slug if a task was "started" (`ops/time/active-task` present), else `null`.
 
@@ -55,6 +56,33 @@ Several heartbeats per turn are harmless: they are seconds apart and collapse in
 time, regardless of which files were touched. If you are in a Melbye session and edit a shared `Dev`
 skill, that time bills to Melbye. The occasional cross-edit *between two real projects* is noise that
 washes out; this keeps attribution predictable and free.
+
+**Three levels, rolled up from any depth** (decided 2026-07-28): a session anywhere inside a project --
+including sub-folders like `src/...` -- bills to the **project**; a session at a customer node
+(`customers/<client>`, above its projects) bills to the **customer** as `customers/<client>` (Proj ID
+`UNSET` -- the node has no `fno_code` -- reassigned or left at the review gate); anything else under
+`C:\Dev` bills to **Dev**. Sessions outside `C:\Dev` are not tracked at all. A depth-3 folder counts as
+a project only if it has a `CLAUDE.md` -- a grandfathered flat code repo under a customer (e.g.
+`Tystofte/PowerPortal.wiki`) bills to the customer, and a non-project folder under `own/` bills to `Dev`.
+Attribution keys are canonicalized via `realpath` (casing, junctions), so one project never splits into
+case-variant rows.
+
+**Registration (fixed 2026-07-28):** hooks registered only in `C:\Dev\.claude\settings.json` never fired
+for sessions rooted *below* `C:\Dev` -- Claude settings do not cascade (see memory record
+`hooks-subdir-session-gap`; DataCompare and Element Logic sessions went untracked). The
+`track_time.py` + `capture_turn.py` hooks are therefore registered in the **user-level
+`~/.claude/settings.json` as well**, with identical command strings, so every session on the machine
+fires them; the scripts themselves ignore any cwd outside `C:\Dev`. Claude Code **deduplicates identical
+hook command strings** across settings files (hooks docs), so the dual registration runs once per event --
+**keep the two command strings byte-identical; that identity is load-bearing** (if they diverge, both run
+in parallel: harmless for hours -- the rollup merges overlapping intervals -- but `capture_turn.py`'s
+daily-file rewrite is not parallel-safe). A turn can legitimately Stop several times (yield on background
+work, then continue); every Stop writes a heartbeat and later ones extend the interval.
+
+Known limits (accepted 2026-07-28): a session whose hook payload carries no `cwd`, or one opened through
+an alias of `C:\Dev` that `realpath` cannot resolve to it (e.g. a UNC path), is not tracked; subagent
+turns are covered via the parent turn's `Stop`; the hooks fail silent by design (exit 0 always), so there
+is no runtime alarm if `python` itself is unavailable.
 
 **One override -- `Dev` -> a project (never project -> project).** The workspace root (`Dev`) is the
 catch-all, not a real billing target. When `Dev`-rooted time is *clearly* a single project's work --

@@ -23,18 +23,36 @@ STATE_FILE = os.environ.get(
 
 
 def project_from_cwd(cwd):
-    """Session working dir -> project key. Mirrors capture_turn.scope_from_cwd, but returns the
-    bare project path (no 'project:' prefix) and 'Dev' for anything outside customers/ and own/."""
-    c = (cwd or "").replace("\\", "/")
-    low = c.lower()
-    for bucket in ("/customers/", "/own/"):
-        i = low.find(bucket)
-        if i != -1:
-            rest = c[i + 1:].split("/")
-            if rest[0].lower() == "customers" and len(rest) >= 3:
-                return "customers/%s/%s" % (rest[1], rest[2])
-            if rest[0].lower() == "own" and len(rest) >= 2:
-                return "own/%s" % rest[1]
+    """Session working dir -> project key, anchored at the workspace root.
+    Mirrors capture_turn.scope_from_cwd. Any depth below a project rolls up to
+    the project (customers/<client>/<project> or own/<project>); a customer
+    node (customers/<client>, above projects) is its own key; anything else
+    under the workspace is 'Dev'. Returns None for a cwd OUTSIDE the
+    workspace -- the hooks are registered machine-wide in the user-level
+    settings, and non-workspace sessions must not be tracked.
+    realpath canonicalizes casing and resolves junctions/subst drives so one
+    project never splits into case-variant keys. A depth-3 folder counts as a
+    project only if it has a CLAUDE.md -- a grandfathered flat code repo under
+    a customer (e.g. Tystofte/PowerPortal.wiki) bills to the customer, and a
+    non-project folder under own/ bills to Dev."""
+    if not cwd:
+        return None
+    root = os.path.realpath(DEV_WORKSPACE)
+    c = os.path.realpath(cwd)
+    if os.path.normcase(c) == os.path.normcase(root):
+        return "Dev"
+    if not os.path.normcase(c).startswith(os.path.normcase(root) + os.sep):
+        return None
+    rest = [seg for seg in c[len(root) + 1:].split(os.sep) if seg]
+    if rest and rest[0].lower() == "customers":
+        if len(rest) >= 3 and os.path.isfile(
+                os.path.join(root, rest[0], rest[1], rest[2], "CLAUDE.md")):
+            return "customers/%s/%s" % (rest[1], rest[2])
+        if len(rest) >= 2:
+            return "customers/%s" % rest[1]
+    if rest and rest[0].lower() == "own" and len(rest) >= 2 and os.path.isfile(
+            os.path.join(root, rest[0], rest[1], "CLAUDE.md")):
+        return "own/%s" % rest[1]
     return "Dev"
 
 
@@ -109,8 +127,11 @@ def main():
     if event == "UserPromptSubmit":
         # Stamp the turn's start; remember cwd + the task active at submit time
         # (only if that task belongs to this session's project).
+        project = project_from_cwd(cwd)
+        if project is None:
+            return  # outside the workspace -> not tracked
         state[sid] = {"start": now_z(), "cwd": cwd,
-                      "task": active_task_for(project_from_cwd(cwd))}
+                      "task": active_task_for(project)}
         save_state(state)
         return
 
@@ -119,8 +140,15 @@ def main():
     ts_start = s.get("start") or now_z()           # fall back to a point if no submit was seen
     ts_end = now_z()
     project = project_from_cwd(s.get("cwd") or cwd)
+    if project is None:
+        return  # outside the workspace -> not tracked
     task = s.get("task")
 
+    # Every Stop writes -- a turn can Stop several times (yield on background
+    # work, then continue), and each later Stop extends the tracked interval.
+    # Duplicates are free: the rollup merges overlapping intervals, and Claude
+    # Code deduplicates the identical command strings of the workspace +
+    # user-level registrations anyway.
     rec = {"ts_start": ts_start, "ts_end": ts_end,
            "project": project, "session": sid[:8], "task": task}
     try:

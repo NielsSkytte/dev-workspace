@@ -15,11 +15,13 @@ description: "customers/ is two-tier — a customer node (map: profile + project
   key contacts, shared infrastructure (Fabric capacity, Entra tenant, DevOps org), and a **project
   index** (one row per project + status). `CONTEXT.md` = live customer-level state across projects.
   Scaffold from `_templates/customer/`.
-- **Project** = `customers/<client>/<project>/…` — unchanged. The unit of work, and **the only thing
-  time and tasks attach to.**
+- **Project** = `customers/<client>/<project>/…` — unchanged. The unit of work, and the only thing
+  **tasks** attach to. Time *normally* bills to a project too, but since 2026-07-28 a session left at
+  the customer node is tracked at the **customer level** (`customers/<client>`, Proj ID `UNSET`,
+  resolved at the review gate) — see `ops/time/README.md` §2.
 
-**A customer node is never a project and never a billing target** — no `type:`/`scale:`/`fno_code:`.
-Work always bills to a project (and, for `customers/…`, a task within it). **Every** customer gets a
+**A customer node is never a project** — no `type:`/`scale:`/`fno_code:`; node-level time surfaces as
+`UNSET` for review rather than billing directly. **Every** customer gets a
 node, including single-project ones (index has one row). `own/` stays single-tier (an `own/<project>`
 is just a project).
 
