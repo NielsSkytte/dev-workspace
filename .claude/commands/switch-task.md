@@ -11,7 +11,7 @@ Resolve the current project from the session cwd. If it is **not** a `customers/
 
 ## Instructions
 
-1. **`off` / `none` / `clear`:** delete `C:\Dev\ops\time\active-task` and confirm time now bills to the project. Done.
+1. **`off` / `none` / `clear`:** delete `C:\Dev\ops\time\active-task` and confirm time now bills to the project. Done. **Known limitation:** this clears the marker for *every* open session, not just this one — the command has no session id to target. Rare enough to accept; the cost is other sessions dropping to project-level tracking (correct Proj ID, no Activity/Task).
 
 2. **Gather this project's tasks:** read `ops/tasks/open/` and `ops/tasks/in-progress/` and keep the files whose `project:` frontmatter equals the current project. If there are none, say so and offer `/task` to create one; stop.
 
@@ -20,7 +20,11 @@ Resolve the current project from the session cwd. If it is **not** a `customers/
    - Otherwise list them — one per line, `slug — title  (status · activity <activity>/task <fno_task>, or "no activity")` — and ask in plain text which to work on (accept a slug or the line number). **Do not use the AskUserQuestion tool** — the owner prefers open dialogue.
 
 4. **Apply:**
-   - Write `{"slug": "<slug>", "session": null, "set_at": "<UTC ISO Z>"}` to `C:\Dev\ops\time\active-task` (overwrite). `session: null` means *unclaimed* — the next turn's `track_time.py` stamps it with the running session id. A bare slug on one line is still accepted (legacy) and gets claimed the same way.
+   - Set the task **by running this** — do **not** hand-write the file. `active-task` holds one entry *per session*, and overwriting it whole would wipe other open sessions' tags:
+     ```
+     python -c "import sys;sys.path.insert(0,r'C:\Dev\.claude\hooks');import track_time as t;m=t.load_marker();m['unclaimed']={'slug':'<slug>','set_at':t.now_z()};t.save_marker(m)"
+     ```
+     This leaves the task *unclaimed*; the next turn of the session you typed the command in claims it — and only if the task passes the same-customer test, so a concurrent session on another customer cannot steal it. A bare slug on one line is still accepted (legacy) and adopted the same way.
    - If the task was in `open/`, move it to `in-progress/`, set `status: in-progress`, and append a dated Log line (`YYYY-MM-DD — started (session task)`).
    - If the task's `activity:` is blank, prompt for it (one line) and write it into the frontmatter — F&O books time as Project ID → Activity → Task. If this project registers down to task level and `fno_task:` is blank, also prompt for the Azure DevOps work-item id; activity-only projects leave it blank.
 

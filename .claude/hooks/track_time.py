@@ -56,40 +56,66 @@ def project_from_cwd(cwd):
     return "Dev"
 
 
-def read_active_task():
-    """-> (slug, session) from ops/time/active-task.
+MARKER_TTL_DAYS = 7
 
-    Two accepted formats: a JSON object {slug, session, set_at} (current), or a bare
-    slug on one line (legacy / written by hand). A bare slug has session None, which
-    means 'unclaimed' -- see claim_active_task."""
+
+def load_marker():
+    """-> {"sessions": {sid: {slug, set_at}}, "unclaimed": {slug, set_at} | None}
+
+    The marker is PER SESSION (corrected 2026-07-28, same day as ADR-003): several
+    sessions run concurrently on different projects, and a single shared record meant
+    each new session wiped the previous one's tag. Each session owns its own entry.
+
+    Three formats are accepted, so nothing written by an older build or by hand is lost:
+      map        {"sessions": {...}, "unclaimed": {...}}   -- current
+      single     {"slug", "session", "set_at"}             -- ADR-003 first cut
+      bare slug  one line of text                          -- original / by hand
+    The latter two carry no session, so they land in `unclaimed`."""
     try:
         with open(ACTIVE_TASK, encoding="utf-8") as f:
             raw = f.read().strip()
     except Exception:
-        return None, None
+        return {"sessions": {}, "unclaimed": None}
     if not raw:
-        return None, None
+        return {"sessions": {}, "unclaimed": None}
     if raw.startswith("{"):
         try:
             d = json.loads(raw)
-            return (d.get("slug") or None), (d.get("session") or None)
         except Exception:
-            return None, None
-    return raw.splitlines()[0].strip() or None, None
+            return {"sessions": {}, "unclaimed": None}
+        if "sessions" in d or "unclaimed" in d:
+            return {"sessions": d.get("sessions") or {},
+                    "unclaimed": d.get("unclaimed") or None}
+        slug, sid = d.get("slug"), d.get("session")
+        if not slug:
+            return {"sessions": {}, "unclaimed": None}
+        if sid:
+            return {"sessions": {sid: {"slug": slug, "set_at": d.get("set_at") or now_z()}},
+                    "unclaimed": None}
+        return {"sessions": {}, "unclaimed": {"slug": slug, "set_at": d.get("set_at") or now_z()}}
+    return {"sessions": {},
+            "unclaimed": {"slug": raw.splitlines()[0].strip(), "set_at": now_z()}}
 
 
-def claim_active_task(slug, sid):
-    """Stamp an unclaimed active-task with this session id.
-
-    The marker is SESSION-SCOPED: a task set in an earlier session must not silently
-    tag today's work (that is the stale-tag failure the session-start hook exists to
-    prevent). But a slash command writing the file cannot know the session id, so it
-    writes no session and the next turn of whichever session is running claims it."""
+def save_marker(m):
+    """Write the marker, dropping session entries older than MARKER_TTL_DAYS so the map
+    cannot grow without bound across months of sessions."""
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(days=MARKER_TTL_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    m["sessions"] = {k: v for k, v in (m.get("sessions") or {}).items()
+                     if (v or {}).get("set_at", "") >= cutoff}
     try:
+        os.makedirs(os.path.dirname(ACTIVE_TASK), exist_ok=True)
         with open(ACTIVE_TASK, "w", encoding="utf-8") as f:
-            json.dump({"slug": slug, "session": sid, "set_at": now_z()}, f)
+            json.dump(m, f)
     except Exception:
         pass
+
+
+def set_session_task(sid, slug):
+    m = load_marker()
+    m.setdefault("sessions", {})[sid] = {"slug": slug, "set_at": now_z()}
+    save_marker(m)
 
 
 def task_project(slug):
@@ -132,17 +158,29 @@ def resolve(cwd, sid):
     workspace time onto a customer is the direction that over-bills, and it stays a
     deliberate call at the review gate.
 
-    Staleness: a task claimed by a different session is ignored entirely."""
+    Staleness: only THIS session's own marker entry is read, so a task set in another
+    session -- past or concurrent -- can never tag this one."""
     cwd_proj = project_from_cwd(cwd)
     if cwd_proj is None:
         return None, None
-    slug, owner = read_active_task()
+
+    m = load_marker()
+    slug = ((m.get("sessions") or {}).get(sid) or {}).get("slug")
     if not slug:
-        return cwd_proj, None
-    if owner is None:
-        claim_active_task(slug, sid)      # written by a slash command; this session adopts it
-    elif owner != sid:
-        return cwd_proj, None             # belongs to another session -- stale, ignore
+        # Nothing of ours. A slash command cannot know the session id, so it leaves an
+        # UNCLAIMED entry -- adopt it only if it passes the same-customer test below,
+        # which stops a concurrent session on another customer from stealing it.
+        pending = (m.get("unclaimed") or {}).get("slug")
+        if not pending:
+            return cwd_proj, None
+        if not _fits(pending, cwd_proj):
+            return cwd_proj, None
+        m["sessions"] = m.get("sessions") or {}
+        m["sessions"][sid] = {"slug": pending, "set_at": now_z()}
+        m["unclaimed"] = None
+        save_marker(m)
+        slug = pending
+
     tproj = task_project(slug)
     if not tproj:
         return cwd_proj, None
@@ -152,6 +190,17 @@ def resolve(cwd, sid):
     if cust and cust == customer_of(tproj):
         return tproj, slug                # same customer -> the task names the real project
     return cwd_proj, None                 # cross-customer, or Dev/own -> cwd wins, no tag
+
+
+def _fits(slug, cwd_proj):
+    """Would this task legitimately apply to a session rooted at cwd_proj?"""
+    tproj = task_project(slug)
+    if not tproj:
+        return False
+    if tproj == cwd_proj:
+        return True
+    cust = customer_of(cwd_proj)
+    return bool(cust and cust == customer_of(tproj))
 
 
 def load_state():

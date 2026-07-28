@@ -72,11 +72,16 @@ Resolution order, per turn:
   `UNSET` time resolves itself. **`Dev` and `own/…` are never overridden** — moving workspace time
   onto a customer is the direction that over-bills, so it stays a deliberate call at the review gate
   (the `Dev` -> project override below).
-- **Session-scoped marker.** `active-task` records `{slug, session, set_at}`. A marker owned by a
-  *different* session is ignored outright, so a tag forgotten on Monday cannot bill Tuesday's work.
-  A marker written with `session: null` (what the slash commands write — they cannot know the
-  session id) is *claimed* by the next turn of whichever session is running. A bare slug on one
-  line is still read (legacy) and claimed the same way.
+- **Per-session marker.** `active-task` holds one entry **per session**:
+  `{"sessions": {"<session-id>": {"slug", "set_at"}, …}, "unclaimed": {"slug", "set_at"} | null}`.
+  A session reads only its **own** entry, so a tag set in another session — forgotten from Monday,
+  or running concurrently in another window — never applies here. The slash commands cannot know
+  the session id, so they write to `unclaimed`; the next turn adopts it, but **only if the task
+  passes the same-customer test**, which stops a concurrent session on another customer from
+  taking it. Entries older than 7 days are pruned on write. Two older formats are still read: the
+  single record `{slug, session, set_at}` and a bare slug on one line — both land in `unclaimed`.
+  **Write it with the merge-safe helper in `/switch-task`, never by overwriting the file**, or you
+  will wipe the other open sessions' entries.
 
 Within a project, whatever files you touch is irrelevant — attribution follows the session, not the
 edits. If you are in a Melbye session and edit a shared `Dev` skill, that time bills to Melbye. The
@@ -86,7 +91,11 @@ occasional cross-edit *between two real projects* is noise that washes out.
 (`.claude/hooks/session_task.py`) resolves it for you: exactly one open task on the project -> it is
 set automatically; several -> the list is surfaced so the first reply asks; none -> you are offered
 a new task *or* project-level tracking, which is a valid F&O line and the right answer whenever the
-work is not story-shaped. **The task granularity is the user story / Azure DevOps work item** — the
+work is not story-shaped. The same hook emits the **unfinalized-days nudge** for every workspace
+session (including `Dev`/`own`): days with tracked time whose `/log` never ran. Forgetting to wrap
+up costs nothing in hours — idle gaps are discarded (§3) and `rollup.py` finalizes missed days in
+bulk (§5) — so the nudge exists for the parts that *do* decay: `CONTEXT.md` handoff and memory
+distillation, which need the conversation that a forgotten session takes with it. **The task granularity is the user story / Azure DevOps work item** — the
 thing `fno_task:` points at. Sub-steps of one story ("create the datastore", "type-2 history",
 "build the model") are deliberately not modelled: F&O has no dimension below Task. A task need not
 be finishable in one sitting — the tag is stamped **per turn**, so `/switch-task` mid-session splits

@@ -10,10 +10,16 @@ Behaviour, by what the session's cwd resolves to:
   customer project / customer node, exactly one open task -> SET it, announce it
   ... several open tasks                                  -> emit the list; first reply asks
   ... no open tasks                                       -> offer: create one, or project level
-  Dev / own/ / outside the workspace                      -> silent, no task level there
+  Dev / own/                                              -> no task level; nudge only
+  outside the workspace                                   -> silent
 
-Also clears an active-task left claimed by a previous session, so a stale tag can never
-carry into this one (ADR-003).
+Every workspace session also gets the **unfinalized-days nudge**: days with tracked time
+whose /log never ran. Sessions left open for days cost nothing (the 15+5 model discards
+idle gaps) and `rollup.py` catches missed days up in bulk, so this is a reminder, not a
+repair.
+
+The marker entry written here is keyed by THIS session id and never touches another
+session's -- concurrent sessions on different projects are the normal case.
 
 Schema + rules live in ops/time/README.md (non-load-bearing accelerator).
 Robust by design: reads hook JSON from stdin, always exits 0, never blocks a session.
@@ -28,9 +34,12 @@ TASKS_ROOT = os.path.join(DEV_WORKSPACE, "ops", "tasks")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from track_time import project_from_cwd, customer_of, read_active_task
+    from track_time import project_from_cwd, customer_of, set_session_task
 except Exception:
     sys.exit(0)
+
+HEARTBEATS = os.path.join(TIME_ROOT, "heartbeats")
+TIMESHEET = os.path.join(TIME_ROOT, "timesheet")
 
 
 def say(text):
@@ -71,22 +80,31 @@ def open_tasks_for(project):
     return out
 
 
-def set_active(slug):
+def unfinalized_days():
+    """Complete past days that have heartbeats but no timesheet -- i.e. days whose /log
+    never ran. `rollup.py` catches them up whenever /log next runs, so this is a nudge,
+    not a repair. Heartbeat files are named by UTC date and timesheets by local date, so
+    a day either side of the boundary can read a few hours off; it is advisory only."""
     try:
-        os.makedirs(TIME_ROOT, exist_ok=True)
-        with open(ACTIVE_TASK, "w", encoding="utf-8") as f:
-            json.dump({"slug": slug, "session": None,
-                       "set_at": datetime.datetime.now(
-                           datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}, f)
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        hb = {os.path.basename(p)[:10] for p in glob.glob(os.path.join(HEARTBEATS, "*.jsonl"))}
+        ts = {os.path.basename(p)[:10] for p in glob.glob(os.path.join(TIMESHEET, "*", "*.md"))}
+        return sorted(d for d in hb - ts if d < today)
     except Exception:
-        pass
+        return []
 
 
-def clear_active():
-    try:
-        os.remove(ACTIVE_TASK)
-    except Exception:
-        pass
+def nudge():
+    """Surface days whose /log never ran. Fires for EVERY workspace session, including
+    Dev and own/ -- forgetting to wrap up is not a customer-project-only habit."""
+    days = unfinalized_days()
+    if not days:
+        return
+    shown = ", ".join(days[:5]) + (" +%d more" % (len(days) - 5) if len(days) > 5 else "")
+    say("[Time] %d day(s) with tracked time but no finalized timesheet: %s. Mention this "
+        "in the first reply and offer /log -- it finalizes every missed day at once "
+        "(catch-up), distills memory, and backs up. Nothing is lost meanwhile; the hours "
+        "are already captured." % (len(days), shown))
 
 
 def main():
@@ -95,20 +113,22 @@ def main():
     except Exception:
         hook = {}
     project = project_from_cwd(hook.get("cwd", ""))
-    if project is None or not customer_of(project):
-        return  # Dev, own/, or outside the workspace -- no task level, stay silent
+    if project is None:
+        return  # outside the workspace
 
-    # A marker claimed by an earlier session must not carry over.
-    slug, owner = read_active_task()
-    if slug and owner:
-        clear_active()
-        slug = None
+    nudge()
 
+    if not customer_of(project):
+        return  # Dev or own/ -- no task level there
+
+    # NOTE: this session gets its OWN marker entry. It must never clear another
+    # session's -- concurrent sessions on different projects are normal here, and a
+    # shared single record made each new session wipe the previous one's tag.
     tasks = open_tasks_for(project)
 
     if len(tasks) == 1:
         t = tasks[0]
-        set_active(t["slug"])
+        set_session_task(hook.get("session_id", "unknown"), t["slug"])
         say("[Time] Active task set automatically (the only open task on this project): "
               "%s -- %s\nTime this session bills to %s / %s. Say so in your first reply; "
               "use /switch-task to change it."

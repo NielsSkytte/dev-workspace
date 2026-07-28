@@ -54,17 +54,33 @@ Two guards make the inversion safe. Both are load-bearing:
   `UNSET` time resolves itself. **`Dev` and `own/…` are never overridden.** Re-attributing workspace
   time onto a customer is the direction that over-bills; it stays a deliberate judgement at the
   daily review gate, where ADR-002's `Dev` -> project override already lives.
-- **Session-scoped marker.** `active-task` becomes `{slug, session, set_at}`. A marker owned by a
-  different session is ignored outright. Slash commands, which cannot know the session id, write
-  `session: null` (*unclaimed*); the next turn of the running session claims it. Legacy bare slugs
-  are still read and claimed identically.
+- **Per-session marker.** `active-task` becomes
+  `{"sessions": {<session-id>: {slug, set_at}}, "unclaimed": {slug, set_at}|null}`. A session reads
+  only its own entry, so a task set in another session — earlier *or concurrent* — never applies.
+  Slash commands, which cannot know the session id, write to `unclaimed`; the next turn adopts it
+  only if the task passes the same-customer test. Entries older than 7 days are pruned on write.
+  Legacy formats (the single record, a bare slug) are still read.
+
+  > **Corrected 2026-07-28, same day.** This first shipped as a single shared record
+  > `{slug, session, set_at}` where a session owning the marker caused any *newly opened* session to
+  > clear it. That silently dropped the first session's tag whenever a second was opened — a real
+  > failure for this workspace, where concurrent sessions on different projects are normal. Verified
+  > by test before and after. The same-customer cap contained the damage to lost granularity (and,
+  > for two sessions on one customer, a wrong task within that customer) — it never crossed
+  > customers. Session-scoping the marker was right; making it a *single* record was not.
 
 **Setting the task stops being a ritual.** A `SessionStart` hook (`.claude/hooks/session_task.py`)
 resolves it deterministically: exactly one open task on the project -> set it and announce it;
 several -> surface the list so the first reply asks; none -> offer to create one *or* to track at
-project level. It also clears a marker owned by an earlier session. This is a hook rather than an
-instruction because instructions are exactly what got skipped — the file write does not depend on
-model compliance.
+project level. This is a hook rather than an instruction because instructions are exactly what got
+skipped — the file write does not depend on model compliance.
+
+**Forgetting to end a session is handled by a nudge, not machinery.** The same hook reports days
+with tracked time whose `/log` never ran, for every workspace session. This is deliberately only a
+reminder: leaving sessions open costs **nothing** in hours (the 15+5 model discards idle gaps,
+ADR-002) and `rollup.py` already finalizes missed days in bulk at the next `/log`. What genuinely
+decays is `CONTEXT.md` handoff and memory distillation, and neither can be reconstructed after the
+fact — so the only honest remedy is to prompt while the conversation still exists.
 
 **Task granularity is the user story / Azure DevOps work item** — what `fno_task:` points at.
 Sub-steps of a story ("create the datastore", "type-2 history", "build the semantic model") are
