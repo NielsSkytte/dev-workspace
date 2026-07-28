@@ -15,6 +15,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-time-attribution-dev-to-project](feedback-time-attribution-dev-to-project.md) — project-rooted time always stays; Dev-rooted time clearly a project's gets reassigned to it (out of Dev only)
 - [feedback-wrapup-commit-policy](feedback-wrapup-commit-policy.md) — at wrap-up//log always commit internal (personal) repos; DevOps/customer-facing repos always ask first
 - [feedback-fact-only-language](feedback-fact-only-language.md) — never imply; facts only, inference labeled as inference; check claims against recorded evidence; prefer the smaller true statement
+- [feedback-interview-one-question](feedback-interview-one-question.md) — interviews: one question at a time as AskUserQuestion cards (options + Other); never batched question lists; refines design-dialogue
 
 ## Project
 - [workspace-design](workspace-design.md) — two buckets (own/customers), two types (content/function), focus field, scale
@@ -32,6 +33,8 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-07-07-pingala-offer](eval-2026-07-07-pingala-offer.md) — evaluative: pingala-offer fired+helped as verification gates at the Aeven offer; /fill-sow recipe lacked a Word-open verify step; writing-voice not loaded (borderline)
 - [hooks-subdir-session-gap](hooks-subdir-session-gap.md) — sessions rooted below C:\Dev get NO capture/time hooks (hooks don't cascade); Element Logic 07-20..23 untracked, manual timesheet entry needed; per-project sessions currently untracked too
 - [eval-2026-07-22-lineage-viewer](eval-2026-07-22-lineage-viewer.md) — evaluative: dataviz+pingala-visual-identity fired+helped (validator caught real brand failures); pingala-fabric-platform gap: layer-ID conventions undocumented (candidate skill update)
+- [eval-2026-07-23-fabric-licensing-quota-gap](eval-2026-07-23-fabric-licensing-quota-gap.md) — evaluative: fabric-licensing helped via manual grep (trigger bypassed) and lacks quota coverage; capture-hook sanitizer broke its own rule 4 on /handoff (sentinel caught it + a fabricated-password summary)
+- [eval-2026-07-28-datacompare-build](eval-2026-07-28-datacompare-build.md) — evaluative: pingala-fabric-platform + Python-over-PySpark default fired+helped (DataCompare Parts 1–2); one-card interview worked for 15 decisions; workspace agent roster (sentinel) doesn't load in project-rooted sessions
 
 ## Reference
 - [pingala-psi-context-library](pingala-psi-context-library.md) — pingala/ mount = shared Pingala skills repo (other employees contribute), first company shared-brain attempt; not a workspace project
@@ -42,3 +45,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [sow-fill-toolchain](sow-fill-toolchain.md) — SoW template + sow_fill.py traps: empty w:tc = Word "corrupt", Company controls data-bound to docProps/app.xml, header literal <Customer>; all fixed (unversioned in ~/.claude/tools); verify via Word COM + PDF probe
 - [atomic-lineage-engine](atomic-lineage-engine.md) — reusable Atomic lineage engine at customers/ElementLogic/LineageDocumentation (sqlglot static parse + online enrichment, HTML viewer, query CLI); portable rules in atomic_rules.py; first stop for "where does column X come from" at any Atomic customer
 - [pingala-palette-dataviz-conflict](pingala-palette-dataviz-conflict.md) — Pingala brand palette fails the dataviz validator (teal chroma+dE); use the validated chroma-boosted brand-hue sets (light/dark hexes inside) or re-derive with the same method
+- [fabric-cu-quota](fabric-cu-quota.md) — Fabric regional CU quota: per-sub/region ceiling, 400 BadRequest on scale/create, portal request can auto-deny → support ticket, reservations never block scaling; check headroom in customer-setup requirements

@@ -13,4 +13,4 @@ In design, architecture, and strategy discussions, Niels prefers to **talk it th
 
 **Why:** these conversations are exploratory — he's thinking out loud and refining the framing as he goes; premature either/or options constrain that and often miss the real fork.
 
-**How to apply:** present reasoning and the genuine decision points in prose, then ask an open question. Reserve AskUserQuestion for concrete, already-scoped, mutually-exclusive *implementation* choices late in a discussion — not for shaping direction. Relates to [[atomiccortex-vision]].
+**How to apply:** present reasoning and the genuine decision points in prose, then ask an open question. Reserve AskUserQuestion for concrete, already-scoped, mutually-exclusive *implementation* choices late in a discussion — not for shaping direction. Refined by [[feedback-interview-one-question]]: once a discussion reaches enumerable clarification points (an interview), switch to one AskUserQuestion card at a time. Relates to [[atomiccortex-vision]].

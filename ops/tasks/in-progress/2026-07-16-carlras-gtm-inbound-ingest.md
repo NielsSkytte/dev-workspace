@@ -6,7 +6,7 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by:
-activity:
+activity: TagManager
 fno_task:
 source: session
 ---
@@ -31,3 +31,4 @@ build step of the datahub project.
 
 ## Log
 - 2026-07-16 — created + started (session task); scoped to the LZ ingest first
+- 2026-07-27 — LZ ingest DONE and live: notebook + hourly pipeline in Landingzone-ETL/GTM (green), full backfill 2024-03→today verified exact (324,355,033 events, zero gaps/dups). Remaining in task scope: Raw layer (03 - Raw\GTM in Fabric-ETL), WI/SPN connection swap. Details in datahub/CONTEXT.md.

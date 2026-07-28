@@ -22,6 +22,12 @@ load `C:\Dev\.claude\settings.json` hooks.
 **How to apply:**
 - Element Logic hours 07-20..23 (fno 6001-01, task 45394) must be entered
   manually in `ops/time/timesheet/` — the substrate has nothing to roll up.
+- **Second confirmed instance (2026-07-28):** DataCompare session `1f323a74` (rooted at
+  `C:\Dev\customers\Matas\DataCompare\src\config-store`, ran 07-16 → 07-28) — zero
+  heartbeats, zero daily records; DataCompare hours 07-16..28 (fno 212-01) need manual
+  timesheet entry. **Extension:** the workspace *agent roster* doesn't cascade either —
+  the `sentinel` agent was not an available agent type at /log; its review must be done
+  by hand (README recipe) in sub-rooted sessions.
 - Fix direction to evaluate: register the three hooks in user-level settings
   (`~/.claude/settings.json`) with cwd-guards, or per-project settings stubs.
   Until fixed, per-project VS Code task sessions are ALSO untracked — the
