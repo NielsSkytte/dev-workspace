@@ -19,8 +19,9 @@ description: >
   link or an Azure Synapse Link", "how do I tell a Synapse link from a Fabric link", "which
   tables are in the link", "where is the Dataverse environment located / which region", "which
   Dataverse environment belongs to this F&O instance", "what is already set up in this tenant",
-  "we don't know which environment is which" (see section 0 — runnable scripts at
-  `C:\Dev\own\EnvDiscovery`). This skill covers Phase 1 of the Pingala Project
+  "we don't know which environment is which", "can two Dataverse environments share one Fabric
+  workspace", "why are there two different Link-to-Fabric guides" (see section 0 — runnable
+  scripts at `C:\Dev\own\EnvDiscovery`). This skill covers Phase 1 of the Pingala Project
   Playbook — use it even if the user only asks about one part (e.g. just Entra ID groups, just
   licences, or just the service principal).
 ---
@@ -66,6 +67,41 @@ is which, whether a link already exists, or where an environment lives.
 **Never answer these from environment names.** A customer's "MFO"/"GFO" may be project names, not
 environment names, and the portal label for the same feature has changed across product versions
 ("Link to Synapse" → "Azure Synapse Link" → "data link"). Classification keys off stored markers.
+
+### Two portal entry points for the same thing
+
+There are currently **two guides for creating a Fabric link**, and they produce the same link:
+
+- the **older path under Azure Synapse Link**, and
+- the newer **Link data** page (`make.powerapps.com` → **Link data**), which splits into
+  **Fabric Links** and **Other Links**; a Fabric link starts at **+ New link** → *Link data via
+  Fabric*. `Tables` → **Analyze** → *Analyze in Fabric* opens the same wizard and now creates
+  Fabric links **only** — an Azure Synapse Link can no longer be started from there.
+
+The steps are more or less identical; the styling differs. Don't treat a screenshot or a
+walkthrough that looks unfamiliar as a different feature, and don't infer the link *type* from
+which guide someone followed — read the markers.
+
+### Can two Dataverse environments share one Fabric workspace?
+
+**Yes — verified in a live tenant, 2026-07-31 (Niels).** Two different Dataverse environments can
+link to the same Fabric workspace; each link gets its own lakehouse, SQL endpoint and semantic
+model, so the workspace holds one item set per environment.
+
+MS Learn documents **no** statement either way on this direction (checked 2026-07-31 across the
+Link to Fabric page, the "unlock deep insights" page and the FAQ). What it *does* document is the
+**opposite** direction, which is still limited: "Today, a Dataverse environment links to a single
+Fabric workspace"; support for multiple Fabric links from one environment to different workspaces
+is stated as planned. Keep the two directions apart when answering — they are not the same claim.
+
+Constraint that still applies: the workspace must be in the same Azure region/geography as **each**
+Dataverse environment, so sharing only works for environments in the same region — check
+`AzureRegion`, not `Location`.
+
+The lakehouse name carries the environment name
+(`<environmentname>_<internalprofile>_<workspace>_<uniquevalue>`), so the two don't collide — but
+MS Learn says explicitly not to take a dependency on that name; reference workspace and lakehouse
+**IDs** instead.
 
 ### The scripts
 

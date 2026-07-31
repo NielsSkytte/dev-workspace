@@ -27,6 +27,20 @@ off stored markers.
 
 Low-latency is **inference** from one correlated observation, not a documented contract.
 
+## Portal / topology facts (2026-07-31)
+
+- **Two entry points, one feature.** The older guide under *Azure Synapse Link* and the newer
+  **Link data** page (Fabric Links / Other Links; `+ New link` -> *Link data via Fabric*) create the
+  same link. Steps are near-identical, styling differs. `Tables` -> *Analyze* now creates Fabric
+  links only. Don't infer link type from which guide was followed.
+- **Two Dataverse environments CAN share one Fabric workspace** - verified in a live tenant by
+  Niels, 2026-07-31. Each link gets its own lakehouse + SQL endpoint + semantic model. MS Learn
+  documents nothing either way on this direction (checked 2026-07-31: Link to Fabric page, the
+  "unlock deep insights" page, the FAQ). The **opposite** direction is documented and still
+  limited: "Today, a Dataverse environment links to a single Fabric workspace"; multiple links from
+  one environment to different workspaces is planned. Keep the two directions apart.
+- Region still binds: the workspace must share the Azure region/geography of **each** environment.
+
 ## Scripts
 
 - **`List-DataverseEnvironments.ps1`** — tenant-wide, needs Power Platform admin + the
