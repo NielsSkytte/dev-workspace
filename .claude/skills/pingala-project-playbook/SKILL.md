@@ -48,6 +48,15 @@ Phase 6: Presentation & Approval
 This phase provisions all Pingala consultants in the customer's environment so they have the
 access they need to deliver.
 
+### 1.0 Discover what the tenant already has
+
+Before writing the access request, establish on technical evidence — not on environment names —
+which Power Platform environments are F&O-backed, which already have a Link to Fabric or a real
+Azure Synapse Link, and which Azure region each sits in (region alignment with the capacity is
+irreversible). Two read-only scripts do this: `C:\Dev\own\EnvDiscovery`. See
+`fabric-project-access` **section 0** for when to run them, what the markers mean, and what the
+result feeds into the request.
+
 ### 1.1 Create external users for delivering consultants
 
 Create at least 4 Pingala consultants as **external users** in the customer's Entra ID tenant.
@@ -82,6 +91,7 @@ This resource must be granted **Azure DevOps Project Collection Administrator** 
 
 ### Phase 1 checklist
 
+- [ ] Tenant discovered: F&O-backed environments, existing links, and their Azure regions known
 - [ ] 4 external user accounts created in customer Entra ID
 - [ ] 4 guest user invitations sent and accepted (Pingala identities)
 - [ ] Entra ID groups and access rights assigned to external user accounts

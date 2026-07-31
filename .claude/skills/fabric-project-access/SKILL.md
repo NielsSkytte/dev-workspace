@@ -13,7 +13,14 @@ description: >
   draft an access-request email for a customer. Also trigger on Dataverse "Link to Microsoft
   Fabric" access problems — workspaces not appearing in the Link-to-Fabric picker, only Fabric
   Trial offered, "capacity you don't have access to", or capacity Contributor / capacity-admin
-  permission questions (see section 8.5). This skill covers Phase 1 of the Pingala Project
+  permission questions (see section 8.5). Also trigger on ENVIRONMENT DISCOVERY — establishing
+  what a customer tenant already has before or while the access request goes out: "which
+  environments are F&O-backed", "which environment has the Link to Fabric", "is that a Fabric
+  link or an Azure Synapse Link", "how do I tell a Synapse link from a Fabric link", "which
+  tables are in the link", "where is the Dataverse environment located / which region", "which
+  Dataverse environment belongs to this F&O instance", "what is already set up in this tenant",
+  "we don't know which environment is which" (see section 0 — runnable scripts at
+  `C:\Dev\own\EnvDiscovery`). This skill covers Phase 1 of the Pingala Project
   Playbook — use it even if the user only asks about one part (e.g. just Entra ID groups, just
   licences, or just the service principal).
 ---
@@ -33,7 +40,12 @@ It is the detailed reference for **Phase 1 — Users & Access** of the Pingala P
 Setting up access for a Fabric project involves eight workstreams. They can be requested from
 the customer in parallel but all must be completed before Fabric configuration can begin.
 
+Before (or alongside) the request, **section 0 — environment discovery** establishes what the
+tenant already has, so the request names the right environments, the right region, and the right
+capacity instead of guessing from environment names.
+
 ```
+0. Environment discovery (what already exists) — section 0
 1. Azure DevOps project
 2. Guest user accounts (Pingala identities)
 3. External user accounts (customer tenant, ext_ accounts)
@@ -43,6 +55,82 @@ the customer in parallel but all must be completed before Fabric configuration c
 7. Entra ID security groups
 8. Role & permission assignments
 ```
+
+---
+
+## 0 — Environment Discovery (what the tenant already has)
+
+Run this **before writing the access request**, and whenever anyone is unsure which environment
+is which, whether a link already exists, or where an environment lives.
+
+**Never answer these from environment names.** A customer's "MFO"/"GFO" may be project names, not
+environment names, and the portal label for the same feature has changed across product versions
+("Link to Synapse" → "Azure Synapse Link" → "data link"). Classification keys off stored markers.
+
+### The scripts
+
+Two read-only PowerShell scripts at **`C:\Dev\own\EnvDiscovery`** (own project; full detail,
+setup and troubleshooting in its `README.md`). They compose — the first writes a CSV the second
+consumes.
+
+```powershell
+# 1. tenant-wide: which environments exist, which are F&O-backed, and where they are
+#    needs Power Platform admin + Microsoft.PowerApps.Administration.PowerShell. No pac.
+.\List-DataverseEnvironments.ps1 -CsvPath .\envs.csv
+
+# 2. per environment: Fabric link vs Azure Synapse Link, and what each link carries
+#    pac CLI only - no PowerShell modules, no app registration, no tenant admin. Runs on macOS.
+.\Get-EnvironmentDataLinks.ps1 -EnvironmentCsv .\envs.csv -FinOpsOnly -CsvPath .\links.csv
+.\Get-EnvironmentDataLinks.ps1 -Login -EnvironmentName 'CRM Test'   # single environment
+```
+
+The split matters for access: step 1 needs tenant admin, step 2 does not. **They can be run by
+different people** — whoever has tenant admin produces the CSV; whoever has environment access
+runs the checks. That is why step 2 was built on `pac` (its first-party app) rather than an Entra
+app registration.
+
+### What the markers are
+
+| Question | Marker | Source |
+|---|---|---|
+| Is this environment F&O-backed? | `properties.finOpsMetadata.url` is set | Power Platform admin API |
+| Is the export link a **real Azure Synapse Link**? | a `datalakefolder` row with `isexternallake = 1` | Dataverse |
+| Is it a **Link to Fabric**? | profile `synapselinkprofile.extendedproperties` contains `"LinkedToFabric":true` | Dataverse |
+| Does the link carry F&O data? | selected tables with `entitysource = 1` (`0` = Dataverse) | Dataverse |
+| Low-latency (delta) mode? | same profile also carries `"EnabledForDlw":true` | Dataverse |
+
+Low-latency is **inference** from one correlated observation, not a documented contract — report
+it as its own column, never folded into the Fabric verdict. `LinkedToFabric` / `EnabledForDlw`
+live in an undocumented internal JSON blob; the scripts' `-DiscoverProfiles` / `-ClassifyProfiles`
+/ `-FindProperty` modes re-establish them from data if the shape changes.
+
+### What discovery feeds into the access request
+
+- **Region.** Capacity, Dataverse and F&O must share an Azure region, and the decision is
+  irreversible. Use `AzureRegion` (`properties.azureRegion`, e.g. `westeurope`) — **not**
+  `Location`, which is only the BAP geo (`europe`) and is too coarse to size a capacity against.
+- **Which environment to name.** Link to Fabric is **per Dataverse environment**, and the
+  F&O ↔ Dataverse mapping is 1:1. Two F&O instances resolve to two distinct environments, each
+  needing its own link.
+- **Access for step 2 itself.** A **Dataverse security role in each environment** is required —
+  Power Platform admin alone cannot read `synapselinkprofile`. Add it to the access request if
+  the run is to be done by a customer-side admin.
+- **`(no Dataverse)` rows are expected.** Every LCS-managed F&O sandbox/production gets an
+  "initial" Power Platform environment with no Dataverse database until Power Platform
+  Integration is enabled in LCS. `-DataverseOnly` hides them.
+
+### Reading the result
+
+- **A failed check is unknown, not absence.** An environment lacking the security role returns
+  `Status = ERROR`, never a silent zero. Do not report a missing link from a failed check.
+- Counts are **selected tables only**. The wizard's "available" side is metadata/catalog and is
+  not queryable from Dataverse — an approximation there would be worse than an omission.
+- **The linked Fabric workspace name is not in Dataverse.** Getting it needs the Fabric REST API.
+- If the discovery says a Fabric link exists but the wizard misbehaves for the person setting up
+  the next one, that is a permission question → **section 8.5**.
+
+Out of scope: AX 2012/AX9 on-premises and NAV/Business Central — neither appears in the Power
+Platform environment list.
 
 ---
 
