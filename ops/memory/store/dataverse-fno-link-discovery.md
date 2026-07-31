@@ -5,11 +5,12 @@ type: procedural
 scope: workspace
 source: session:746d591b
 tags: [reference, dataverse, fno, d365, synapse, fabric, powerplatform, pac, tooling, matas]
-description: "Name-independent discovery of which Dataverse environments are F&O-backed and whether their export link is real Azure Synapse or Link to Fabric; two PowerShell scripts at Matas/DataCompare/src/env-discovery"
+description: "Name-independent discovery of which Dataverse environments are F&O-backed and whether their export link is real Azure Synapse or Link to Fabric; two PowerShell scripts at own/EnvDiscovery"
 status: distilled
 ---
 
-Two scripts under `customers/Matas/DataCompare/src/env-discovery/`. Built because we could not
+Two scripts under `own/EnvDiscovery/` (built in `customers/Matas/DataCompare/src/env-discovery/`,
+moved out 2026-07-31 — the tooling is not Matas-specific). Built because we could not
 assume environment **names** identify anything (a customer's "MFO"/"GFO" may be project names, not
 environment names) and because the link *label* in the maker portal changed across product
 versions ("Link to Synapse" -> "Azure Synapse Link" -> "data link"), so classification has to key

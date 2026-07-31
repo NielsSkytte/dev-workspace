@@ -50,6 +50,23 @@
     },
 
     {
+      "label": "Claude · own/EnvDiscovery",
+      "detail": "Dataverse/F&O environment + Fabric-vs-Synapse link discovery scripts",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/own/EnvDiscovery"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    },
+
+    {
       "label": "Claude · own/DeployFabric",
       "detail": "Fabric workspace provisioning tool",
       "type": "shell",
