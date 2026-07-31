@@ -1,12 +1,12 @@
 ---
 title: Mail to Impact (cc Kasper) — continued setup for Marketo API access
-status: open
+status: in-progress
 created: 2026-07-07
 project: customers/Carl-Ras/datahub
 owner: self             # content/writing-voice drafts; email-outlook-ready (.md deliverable)
 priority: normal
 blocked_by:
-activity:
+activity: marketoimport
 fno_task:
 source: todo
 ---
@@ -25,3 +25,4 @@ project's stated next step (sessions log 2026-07-03, Carl Ras / Marketo entry).
 
 ## Log
 - 2026-07-07 — created (promoted from TODO 2026-07-06 at the day-start routing pass)
+- 2026-07-31 — started (session task)
