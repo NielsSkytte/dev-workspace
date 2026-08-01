@@ -232,6 +232,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
       <div class="filterbar" id="filterLeft">
         <span class="flabel">Show</span>
         <button class="chip" data-f="left.triage">Triage</button>
+        <button class="chip" data-f="left.internal">Internal hours</button>
         <button class="chip" data-f="left.tasks">Tasks</button>
         <button class="chip" data-f="left.attention">Attention</button>
         <span class="fsep"></span>
@@ -243,6 +244,11 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
       <section id="triageSection">
         <h2>Needs triage</h2>
         <div class="card" id="triage"></div>
+      </section>
+
+      <section id="internalSection">
+        <h2 id="internalHead">Internal hours</h2>
+        <div class="card" id="internal"></div>
       </section>
 
       <section id="tasksSection">
@@ -334,7 +340,7 @@ let D = null, Q = '';
 
 /* ---------- filters (persisted; every group defaults to all-on) ---------- */
 const F_DEFAULT = {
-  left:  {triage:true, tasks:true, attention:true},
+  left:  {triage:true, internal:true, tasks:true, attention:true},
   state: {'in-progress':true, open:true},
   scope: {customers:true, own:true, dev:true},
   right: {charts:true, inflight:true, quiet:true, customers:true},
@@ -377,8 +383,8 @@ function paintChips(){
     const [g,k] = b.dataset.f.split('.');
     b.classList.toggle('on', !!F[g][k]);
   });
-  for(const k in F.left) $('#' + {triage:'triageSection', tasks:'tasksSection',
-    attention:'attentionSection'}[k]).classList.toggle('hidden', !F.left[k]);
+  for(const k in F.left) $('#' + {triage:'triageSection', internal:'internalSection',
+    tasks:'tasksSection', attention:'attentionSection'}[k]).classList.toggle('hidden', !F.left[k]);
   const secs = {charts:'secCharts', inflight:'secInflight', quiet:'secQuiet', customers:'secCustomers'};
   for(const k in F.right) $('#' + secs[k]).classList.toggle('hidden', !F.right[k]);
 }
@@ -390,7 +396,7 @@ function bindChips(){
   document.querySelectorAll('.chip[data-period]').forEach(b => b.onclick = () => {
     PERIOD = b.dataset.period;
     try{ localStorage.setItem('dash.period', PERIOD); }catch(e){}
-    paintPeriod(); if(D){ dailyChart(); projChart(); }
+    paintPeriod(); if(D){ dailyChart(); projChart(); internalPanel(); }
   });
   document.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => {
     const [g,k] = b.dataset.f.split('.');
@@ -564,8 +570,8 @@ function tiles(){
     ['Today', h(t.today) + ' h', 'live — finalizes at /log'],
     ['This week', h(t.week_billable + t.week_internal) + ' h',
       `${h(t.week_billable)} billable · ${h(t.week_internal)} internal`],
-    ['This month', h(t.month_billable) + ' h',
-      `billable · ${h(t.month_internal)} h internal · ${h(t.month_billable+t.month_internal)} h total`],
+    ['This month', h(t.month_billable + t.month_internal) + ' h',
+      `${h(t.month_billable)} billable · ${h(t.month_internal)} internal`],
     ['Active projects', String(D.projects.filter(p => p.ctx_status.startsWith('active')).length),
       `${D.customers.length} customers · ${D.projects.length} projects total`],
     ['Open tasks', String(D.tasks.filter(x => x.state !== 'done' && x.state !== 'cancelled').length),
@@ -577,13 +583,65 @@ function tiles(){
      <div class="foot">${f}</div></div>`).join('');
 }
 
+/* Internal hours -- the left-pane summary. Deliberately a visible SECTION, not a link inside a
+   tile: this is a review surface you are meant to notice, and the numbers mean nothing without
+   the "which of these belongs to a customer" question attached. The drawer (openInternal) is the
+   working surface where the reassignment is chosen. */
+function internalPanel(){
+  const per = periodDays(), inP = new Set(per.days);
+  const rows = (D.internal || []).filter(r => inP.has(r.date));
+  const tot = rows.reduce((s,r) => s + r.hours, 0);
+  const cand = rows.filter(r => r.co.length);
+  const ch = cand.reduce((s,r) => s + r.hours, 0);
+  $('#internalHead').innerHTML = `Internal hours <span class="sub" style="font-weight:400">— `
+    + `${esc(per.label)} · ${h(tot)} h across Dev and own/</span>`;
+  if(!rows.length){
+    $('#internal').innerHTML = '<p class="sub" style="margin:0">No internal time in this period.</p>';
+    return;
+  }
+  const byProj = {};
+  rows.forEach(r => byProj[r.project] = (byProj[r.project] || 0) + r.hours);
+  $('#internal').innerHTML = `
+    <div class="sub" style="margin-bottom:8px">${cand.length} of ${rows.length} stretches were worked
+      in a session that also touched a customer project — <b>${h(ch)} h</b> worth. Those are the
+      candidates to move; the rest look genuinely internal.</div>
+    <div class="sub" style="margin-bottom:8px">Split per session to stay traceable, which adds a
+      buffer and a 0.5 h floor per fragment — so this runs above the ${h(D.totals.month_internal)} h
+      on the tile. Decide <i>what</i> moves here; take the figures from the day's timesheet.</div>
+    ${Object.entries(byProj).sort((a,b) => b[1]-a[1]).map(([p,v]) =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0">
+         <span>${esc(p)}</span><b>${h(v)} h</b></div>`).join('')}
+    ${Object.keys(PLAN).length ? `<div class="sub" style="margin-top:8px;color:var(--brand-2)">
+      <b>${Object.keys(PLAN).length} reassignment(s) saved</b> in this browser — not yet applied to
+      any timesheet.</div>` : ''}
+    <button class="primary" style="margin-top:12px;width:100%" data-opentriage>
+      Trace &amp; distribute these hours →</button>
+    <p class="sub" style="margin:8px 0 0">Opens each stretch with its session, what was being worked
+      on, and a chooser to bill it to a project, task and activity.</p>`;
+  $('#internal').querySelector('[data-opentriage]').onclick = openInternal;
+}
+
 function alerts(){
   const a = [], hy = D.hygiene;
-  if(D.active_sessions.length){
-    a.push(['var(--brand-2)', 'Session tag active: ' + D.active_sessions.map(s =>
-      `<code class="pill-link" data-goto="${esc(s.slug)}">${esc(s.slug)}</code>`).join(', ')
-      + ' — time is billing to that task.']);
-  }
+  /* Split by liveness: only a session still emitting heartbeats is actually billing. A tag left
+     by a closed window persists for 7 days (ops/time/README.md sec.2) and used to be reported as
+     active, which is the opposite of true -- nothing is being written for it. */
+  const tag = s => `<code class="pill-link" data-goto="${esc(s.slug)}">${esc(s.slug)}</code>`;
+  const since = s => s.idle_min == null ? 'never tracked'
+    : s.idle_min < 90 ? `idle ${s.idle_min} min` : `idle ${h(s.idle_min/60)} h`;
+  const byState = st => D.active_sessions.filter(s => s.state === st);
+  if(byState('live').length)
+    a.push(['var(--brand-2)', 'Billing right now: ' + byState('live').map(tag).join(', ')
+      + ' — a session is active on that task.']);
+  if(byState('idle').length)
+    a.push(['var(--brand-2)', 'Tagged but idle: ' + byState('idle').map(s =>
+      `${tag(s)} <span class="muted">(${since(s)})</span>`).join(', ')
+      + ' — the window may still be open; nothing is accruing.']);
+  if(byState('stale').length)
+    a.push(['var(--accent)', `${byState('stale').length} left-over task tag(s) from closed sessions: `
+      + byState('stale').map(s => `${tag(s)} <span class="muted">(${since(s)})</span>`).join(', ')
+      + ' — no time is billing to these. They expire 7 days after being set, or clear one now with '
+      + '<code>/switch-task off</code> in that project.']);
   if(hy.unfinalized.length)
     a.push(['var(--accent)', `${hy.unfinalized.length} day(s) with tracked time never finalized: `
       + hy.unfinalized.map(d => `<code>${d}</code>`).join(' ') + ' — run <code>/log</code>.']);
@@ -880,6 +938,180 @@ function openTask(slug){
   openDrawer();
 }
 
+/* ---------- internal-hours triage ----------
+   Answers "where did the internal hours go, and does any of it belong to a project?" by joining
+   each internal stretch to its session, the projects worked in that same session, and what was
+   actually said in it. The dashboard writes nothing (see dashboard.py docstring) -- this produces
+   a PLAN you copy; the timesheet edit stays a deliberate act at the review gate. */
+/* Triage choices persist in localStorage, NOT in the substrate -- the dashboard still writes
+   nothing. They survive a reload/auto-refresh so a stray F5 cannot discard an hour of triage.
+   Keyed by date|session|project, which is stable as long as the heartbeats are. */
+let PLAN = {}, TPLAN = {};                 // rowKey -> target project / target task slug
+const PKEY = 'dash.plan', TKEY = 'dash.tplan';
+function loadPlan(){
+  try{ PLAN = JSON.parse(localStorage.getItem(PKEY) || '{}');
+       TPLAN = JSON.parse(localStorage.getItem(TKEY) || '{}'); }
+  catch(e){ PLAN = {}; TPLAN = {}; }
+}
+function savePlan(){
+  try{ localStorage.setItem(PKEY, JSON.stringify(PLAN));
+       localStorage.setItem(TKEY, JSON.stringify(TPLAN)); }catch(e){}
+}
+const rkey = r => r.date + '|' + r.session + '|' + r.project;
+/* ops/time/README.md sec.2 sanctions Dev -> project only; own/ -> anywhere is project-to-project,
+   which that rule excludes. Flagged, not blocked -- the call is the owner's. */
+const isDeviation = (r, tgt) => !!tgt && r.project !== 'Dev';
+
+function openInternal(){
+  const per = periodDays(), inP = new Set(per.days);
+  const rows = (D.internal || []).filter(r => inP.has(r.date));
+  const tot = rows.reduce((s,r) => s + r.hours, 0);
+  const cands = D.projects.map(p => p.key).sort();
+
+  const card = r => {
+    const k = rkey(r), sel = PLAN[k] || '';
+    const opts = [`<option value="">Keep as internal</option>`]
+      .concat(r.co.length ? [`<optgroup label="Worked in this same session">`]
+        .concat(r.co.map(c => `<option value="${esc(c)}"${sel===c?' selected':''}>${esc(c)}</option>`))
+        .concat(['</optgroup>']) : [])
+      .concat([`<optgroup label="All projects">`])
+      .concat(cands.filter(c => c !== r.project).map(c =>
+        `<option value="${esc(c)}"${sel===c?' selected':''}>${esc(c)}</option>`))
+      .concat(['</optgroup>']).join('');
+    return `<div class="tcard" style="cursor:default" data-k="${esc(k)}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <b>${esc(r.date)}</b>
+        <span class="sub" style="margin-left:auto">${esc(r.project)}</span>
+        <b>${h(r.hours)} h</b>
+      </div>
+      <div class="sub" style="margin-top:2px">session ${esc(r.session)} · ${r.turns} turn${r.turns===1?'':'s'}${
+        r.co.length ? ' · also worked: <b>' + r.co.map(esc).join(', ') + '</b>'
+                    : ' · <span class="muted">no other project in this session</span>'}</div>
+      ${r.evidence && r.evidence.length ? `<ul class="tight" style="font-size:12px">${
+        r.evidence.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`
+        : '<p class="sub" style="margin:6px 0 0">no memory record for this session</p>'}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <span class="sub">Bill to</span>
+        <select data-sel="${esc(k)}" style="flex:1;min-width:170px">${opts}</select>
+        <span data-warn="${esc(k)}"></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap"
+           data-taskrow="${esc(k)}" ${sel ? '' : 'hidden'}>
+        <span class="sub">Task</span>
+        <select data-task="${esc(k)}" style="flex:1;min-width:170px"></select>
+      </div></div>`;
+  };
+
+  /* F&O resolves Project ID -> Activity -> Task; a task carries the latter two, so the second
+     select only appears once a project is chosen and lists that project's open tasks. */
+  const fillTasks = k => {
+    const row = $('#drawerBody').querySelector(`[data-taskrow="${CSS.escape(k)}"]`);
+    const sel = $('#drawerBody').querySelector(`[data-task="${CSS.escape(k)}"]`);
+    if(!row || !sel) return;
+    const proj = PLAN[k];
+    row.hidden = !proj;
+    if(!proj){ delete TPLAN[k]; return; }
+    const ts = (D.targets || []).filter(t => t.project === proj);
+    sel.innerHTML = [`<option value="">Project level — no task</option>`].concat(ts.map(t => {
+      const dims = [t.activity ? 'activity ' + t.activity : '', t.fno_task ? 'ADO ' + t.fno_task : '']
+        .filter(Boolean).join(' · ');
+      return `<option value="${esc(t.slug)}"${TPLAN[k]===t.slug?' selected':''}>${esc(t.title)}`
+        + `${dims ? ' — ' + esc(dims) : ' — no activity/task set'}</option>`;
+    })).join('');
+    if(!ts.length) sel.innerHTML = `<option value="">No open task on this project</option>`;
+  };
+
+  $('#drawerBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div><h3 style="font-size:18px">Internal hours — ${esc(per.label)}</h3>
+        <div class="sub">${rows.length} stretch${rows.length===1?'':'es'} · ${h(tot)} h across Dev and own/</div></div>
+      <button class="mini" onclick="closeDrawer()">Close</button>
+    </div>
+    <p class="sub" style="margin:10px 0 0">Hours here are <b>heartbeat-derived</b>, split per session
+      so each stretch can be traced. Splitting adds a 5 min buffer and a 0.5 h floor per fragment, so
+      this total runs <b>higher than the timesheet</b> — use it to decide <i>what</i> moves, then edit
+      the per-day timesheet for the actual figures.</p>
+    <div style="display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap">
+      <button class="primary" data-copyplan>Copy plan</button>
+      <button data-apply>Apply in a session →</button>
+      <button data-clearplan>Clear</button>
+    </div>
+    <div class="sub" id="planSummary" style="margin-bottom:6px"></div>
+    ${rows.length ? rows.map(card).join('')
+      : '<p class="sub" style="margin-top:16px">No internal time in this period.</p>'}`;
+
+  const summarise = () => {
+    const moves = rows.filter(r => PLAN[rkey(r)]);
+    const mh = moves.reduce((s,r) => s + r.hours, 0);
+    const dev = moves.filter(r => isDeviation(r, PLAN[rkey(r)])).length;
+    $('#planSummary').innerHTML = moves.length
+      ? `<b>${moves.length}</b> reassigned · <b>${h(mh)} h</b> leaving internal · ${h(tot-mh)} h staying`
+        + (dev ? ` · <span style="color:var(--accent)">${dev} deviate from the Dev-only rule</span>` : '')
+      : 'Nothing selected — every stretch stays internal.';
+    rows.forEach(r => {
+      const w = $('#drawerBody').querySelector(`[data-warn="${CSS.escape(rkey(r))}"]`);
+      if(w) w.innerHTML = isDeviation(r, PLAN[rkey(r)])
+        ? `<span class="pill" style="border-color:var(--accent)" title="ops/time/README.md sec.2 allows Dev -> project only; this is project-to-project.">deviation</span>` : '';
+    });
+  };
+  $('#drawerBody').querySelectorAll('[data-sel]').forEach(s => s.onchange = () => {
+    if(s.value) PLAN[s.dataset.sel] = s.value; else delete PLAN[s.dataset.sel];
+    delete TPLAN[s.dataset.sel];                       // project changed -> its task no longer applies
+    savePlan(); fillTasks(s.dataset.sel); summarise();
+  });
+  $('#drawerBody').querySelectorAll('[data-task]').forEach(s => s.onchange = () => {
+    if(s.value) TPLAN[s.dataset.task] = s.value; else delete TPLAN[s.dataset.task];
+    savePlan(); summarise();
+  });
+  rows.forEach(r => fillTasks(rkey(r)));
+  $('#drawerBody').querySelector('[data-copyplan]').onclick = async () => {
+    const moves = rows.filter(r => PLAN[rkey(r)]);
+    if(!moves.length){ toast('Nothing selected to move'); return; }
+    const txt = [`# Internal-hours reassignment plan - ${per.label}`,
+      `# Heartbeat-derived hours (per session). Apply by editing ops/time/timesheet/<YYYY-MM>/<date>.md;`,
+      `# re-check the day's real total there - do NOT copy these figures in verbatim.`,
+      `# Columns mirror F&O: Project ID -> Activity -> Task (ops/time/README.md sec.4).`, '',
+      `| Date | From | Hours | To project | Activity | Task | Session | Note |`,
+      `|---|---|---|---|---|---|---|---|`]
+      .concat(moves.map(r => {
+        const k = rkey(r), t = (D.targets || []).find(x => x.slug === TPLAN[k]);
+        return `| ${r.date} | ${r.project} | ${h(r.hours)} | ${PLAN[k]} | ${t && t.activity || '-'}`
+          + ` | ${t ? (t.fno_task || t.slug) : '-'} | ${r.session}`
+          + ` | ${isDeviation(r, PLAN[k]) ? 'DEVIATION project-to-project' : 'Dev -> project'} |`;
+      }))
+      .join('\n');
+    try{ await navigator.clipboard.writeText(txt); toast(`Copied plan (${moves.length} entries)`); }
+    catch(e){ toast('Copy failed: ' + e.message); }
+  };
+  /* Hand the plan to a session as the opening prompt: it carries itself, so there is no paste
+     step and no file for the dashboard to write. Collapsed to ONE line -- a newline in argv
+     survives Python's quoting but not reliably through `wt`. The prompt tells the session to
+     re-derive the hours from the day files, because the per-session figures here are inflated
+     by the fragmentation buffer and must never be written as-is. */
+  $('#drawerBody').querySelector('[data-apply]').onclick = () => {
+    const moves = rows.filter(r => PLAN[rkey(r)]);
+    if(!moves.length){ toast('Nothing selected to apply'); return; }
+    if(moves.length > 25){ toast('Too many for one prompt — use Copy plan instead'); return; }
+    const items = moves.map(r => {
+      const k = rkey(r), t = (D.targets || []).find(x => x.slug === TPLAN[k]);
+      return `${r.date} ${r.project} -> ${PLAN[k]}`
+        + (t ? ` (task ${t.slug}${t.activity ? ', activity ' + t.activity : ''})` : '')
+        + ` [session ${r.session}, panel shows ${h(r.hours)} h]`;
+    }).join(' ;; ');
+    doLaunch(D.root, 'claude',
+      `Reassign internal time in ops/time/timesheet/ per ops/time/README.md sections 2 and 5. `
+      + `Take each day's REAL hours from timesheet/<YYYY-MM>/<date>.md - the per-session figures `
+      + `below are inflated by the split and must not be copied in. Show me the diff before writing. `
+      + `Moves: ${items}`);
+  };
+  $('#drawerBody').querySelector('[data-clearplan]').onclick = () => {
+    if(!Object.keys(PLAN).length){ toast('Nothing to clear'); return; }
+    PLAN = {}; TPLAN = {}; savePlan(); closeDrawer(); openInternal(); toast('Plan cleared');
+  };
+  summarise();
+  openDrawer();
+}
+
 function openDrawer(){ $('#drawer').scrollTop = 0;
   $('#drawer').classList.add('open'); $('#scrim').classList.add('open'); }
 function closeDrawer(){ $('#drawer').classList.remove('open'); $('#scrim').classList.remove('open'); }
@@ -907,7 +1139,7 @@ const matchT = t => !Q || (t.title + ' ' + t.slug + ' ' + t.project + ' ' + t.wh
 /* ---------- boot + auto-refresh ---------- */
 function render(){
   const L = $('#paneLeft').scrollTop, R = $('#paneRight').scrollTop;   // survive a re-render
-  alerts(); tiles(); triage(); dailyChart(); projChart(); inflight(); idle();
+  alerts(); tiles(); triage(); internalPanel(); dailyChart(); projChart(); inflight(); idle();
   customers(); tasks(); hygiene();
   $('#paneLeft').scrollTop = L; $('#paneRight').scrollTop = R;
   stamp();
@@ -979,6 +1211,7 @@ new ResizeObserver(entries => {
 }).observe($('#dailyChart').closest('.chartbox'));
 
 bindChips(); paintChips(); paintPeriod();
+loadPlan();                       // restore triage choices before the first render
 setAuto(true);
 load(false);
 </script>

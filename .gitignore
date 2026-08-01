@@ -13,6 +13,11 @@
 .claude/hooks/.track_time_state.json
 __pycache__/
 
+# This repo HAS a remote (github.com/NielsSkytte/dev-workspace) — so unlike the local-only
+# unit repos under /customers/ and /own/, it must never carry credentials or bulk data.
+.secrets/
+data/
+
 # Time-tracking DATA is operational output, regenerable from heartbeats — not versioned.
 # (The system itself — ops/time/README.md + rollup.py — stays tracked.)
 /ops/time/heartbeats/

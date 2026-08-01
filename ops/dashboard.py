@@ -284,8 +284,87 @@ def collect_time(today):
     return entries, unfinalized
 
 
+def memory_index():
+    """{session8: [(yyyymmdd, first-user-line), ...]} from ops/memory/daily/.
+
+    The turn-hook writes `id: <utc-ts>Z-<session8>` above each record, which is the only join
+    between a heartbeat and what was actually being said in it."""
+    idx = {}
+    pat = re.compile(
+        r"id: (\d{8})T\d{6}Z-([0-9a-f]{6,12})\n.*?\n---\n\n\*\*User:\*\* (.*?)\n", re.S)
+    for path in sorted(glob.glob(os.path.join(ROOT, "ops", "memory", "daily", "*.md"))):
+        for day, sess, line in pat.findall(read(path)):
+            txt = plain(line)
+            # Skip harness noise (~10% of turns): a skill's injected preamble, a background-task
+            # notification, raw tool output echoed back. None of it says what the work WAS.
+            if (not txt or txt.startswith("Base directory for this skill")
+                    or txt.startswith("<") or "task-notification" in txt[:40]):
+                continue
+            idx.setdefault(sess, []).append((day, txt[:220]))
+    return idx
+
+
+def collect_internal(canon):
+    """Internal (Dev + own/) time joined to its session, co-worked projects and turn text.
+
+    Heartbeat-derived on purpose: the finalized timesheet is the billing truth but carries no
+    session id, so it cannot answer 'what was this time actually about'. Splitting per session
+    also fragments stretches -- each fragment earns its own 5 min buffer and 0.5 h floor -- so
+    these hours run HIGHER than the timesheet and are a triage signal, never a billing number.
+    Sorted so the rows with a co-worked project (the reassignment candidates) come first."""
+    # Canonicalize casing first: heartbeats carry historical casing variants (own/CapacityManager
+    # vs own/capacitymanager) which would otherwise split one project into two rows -- the same
+    # normalisation collect() applies to the timesheet rows.
+    hbs = []
+    for hb in rollup.load_heartbeats():
+        if not hb.get("session"):
+            continue
+        hb = dict(hb, project=canon.get(hb["project"].lower(), hb["project"]))
+        hbs.append(hb)
+    by_ds = {}
+    for hb in hbs:
+        by_ds.setdefault((hb["date"], hb["session"]), []).append(hb)
+
+    mem, rows = memory_index(), []
+    for (date, sess), group in by_ds.items():
+        projects = {hb["project"] for hb in group}
+        internal = sorted(p for p in projects if p == "Dev" or p.lower().startswith("own/"))
+        if not internal:
+            continue
+        co = sorted(p for p in projects if p not in internal)
+        turns = mem.get(sess, [])
+        same = [t for d, t in turns if d == date.replace("-", "")]
+        ev = list(dict.fromkeys(same or [t for _, t in turns]))[:3]   # dedupe, keep order
+        for proj in internal:
+            sub = [hb for hb in group if hb["project"] == proj]
+            hours = round(sum(r["hours"] for r in rollup.rows_for(sub)), 2)
+            if hours <= 0:
+                continue
+            rows.append({"date": date, "session": sess, "project": proj, "hours": hours,
+                         "turns": len(sub), "co": co, "evidence": ev,
+                         "scope": "dev" if proj == "Dev" else "own"})
+    rows.sort(key=lambda r: (not r["co"], r["date"], -r["hours"]))
+    return rows
+
+
+def last_heartbeat_by_session():
+    """{session8: last ts_end (UTC datetime)} -- the only evidence a tagged session still exists."""
+    seen = {}
+    for hb in rollup.load_heartbeats():
+        s = (hb.get("session") or "")[:8]
+        if s and (s not in seen or hb["end"] > seen[s]):
+            seen[s] = hb["end"]
+    return seen
+
+
 def active_sessions():
-    """Task tags held by live sessions (ops/time/active-task) -- what is being worked right now."""
+    """Task tags recorded in ops/time/active-task, each marked live or stale.
+
+    The file records which tag a SESSION ID holds and keeps entries for 7 days (ops/time/README.md
+    sec.2) -- it says nothing about whether that session still exists. A closed window therefore
+    leaves a tag behind that used to be reported as 'time is billing to that task' when nothing was
+    being written. Liveness comes from the heartbeats instead, using the rollup's own IDLE_TIMEOUT
+    so 'live' means the same thing here as it does in the 15+5 model."""
     raw = read(os.path.join(ROOT, "ops", "time", "active-task")).strip()
     if not raw:
         return []
@@ -305,6 +384,22 @@ def active_sessions():
     elif isinstance(data, dict):
         out.append({"slug": data.get("slug", ""), "session": (data.get("session") or "")[:8],
                     "set_at": data.get("set_at", "")})
+
+    seen = last_heartbeat_by_session()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    # Three states, because last-heartbeat is the ONLY evidence and it cannot prove a window is
+    # open. 'live' reuses the rollup's IDLE_TIMEOUT (a stretch is still accruing); 'idle' is a
+    # window that may well be open but is not being worked; 'stale' outlived its session and is
+    # what makes the alert lie. No heartbeat at all -> stale (tag set, session never tracked).
+    live_min = rollup.IDLE_TIMEOUT.total_seconds() / 60
+    STALE_MIN = 12 * 60
+    for o in out:
+        hb = seen.get(o["session"])
+        mins = (now - hb).total_seconds() / 60 if hb else None
+        o["last_seen"] = hb.strftime("%Y-%m-%d %H:%M") if hb else ""
+        o["idle_min"] = round(mins) if mins is not None else None
+        o["state"] = ("stale" if mins is None or mins > STALE_MIN
+                      else "live" if mins <= live_min else "idle")
     return [o for o in out if o["slug"]]
 
 
@@ -423,6 +518,16 @@ def collect():
         "projects": [projects[k] for k in sorted(projects)],
         "customers": [customers[k] for k in sorted(customers)],
         "tasks": tasks,
+        # canonical display key per lowercased path (customer nodes keep their plain path here --
+        # the "node:" prefix is an internal grouping key, not something to show or bill to)
+        "internal": collect_internal(
+            dict({k.lower(): k for k in projects},
+                 **{("customers/" + c).lower(): "customers/" + c for c in customers})),
+        # F&O is Project ID -> Activity -> Task (ops/time/README.md sec.4), so a reassignment
+        # target is a project AND optionally one of its tasks, which carries the two sub-dimensions.
+        "targets": [{"project": t["project"], "slug": t["slug"], "title": t["title"],
+                     "state": t["state"], "activity": t["activity"], "fno_task": t["fno_task"]}
+                    for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
         "active_sessions": active_sessions(),
         "todos": todos,
         "hygiene": {

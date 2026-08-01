@@ -12,6 +12,8 @@ status: active | prospect | paused | closed
 owner: customers/[client]
 contacts:            # key people — customer-side and partners
 infra:               # shared across projects: Fabric capacity, Entra tenant, Azure DevOps org, ...
+tenant_id:           # Entra tenant GUID — verify before any fab/az/pac command (Guardrail 11)
+account:             # the identity we sign in as, normally an account created in their tenant
 language: da | en
 
 ## About

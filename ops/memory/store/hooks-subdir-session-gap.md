@@ -6,7 +6,7 @@ scope: workspace
 source: session:14457941
 tags: [infrastructure, hooks, time-tracking, memory-capture]
 status: distilled
-description: "FIXED 2026-07-28 for time/capture (user-level registration + in-script guard); sessions below C:\\Dev previously got NO hooks (Element Logic 07-20..23, DataCompare 07-16..28 untracked - manual timesheet entry). STILL OPEN: agent roster + SessionStart snapshot don't cascade"
+description: "FIXED 2026-07-28 for time/capture (user-level registration + in-script guard) and FIXED 2026-08-01 for the agent roster (+ skills/commands, which were missing from most project roots entirely - heal-repos.ps1 keyed on git repos, not projects). Sessions below C:\\Dev previously got NO hooks (Element Logic 07-20..23, DataCompare 07-16..28 untracked). Only the SessionStart snapshot stays root-only, by design"
 ---
 
 Sessions rooted below `C:\Dev` do not get the workspace hooks. The Element Logic
@@ -38,7 +38,24 @@ load `C:\Dev\.claude\settings.json` hooks.
   a 3-lens adversarial workflow (which killed an initial Stop-dedup guard as a regression:
   a turn legitimately Stops several times; every Stop must write). The /new-project
   "time is captured automatically" claim is TRUE again.
-- **STILL OPEN:** the workspace *agent roster* (e.g. `sentinel`) and the `SessionStart`
-  snapshot hook do not reach sub-rooted sessions (snapshot deliberately root-only; the
-  roster gap is real — /log sentinel review must be done by hand in project sessions).
+- **FIXED 2026-08-01** (session 972e353e) — and the roster was only the visible half. The real
+  finding: `ops/bin/heal-repos.ps1` > `Link-Harness` junctioned **`commands` and `skills` but never
+  `agents`**, and it was applied only to *unit roots and nested git repos*. A project that is a
+  plain folder (`Matas/DataCompare`, `own/EnvDiscovery`) matched neither and had **no `.claude/`
+  at all** — no slash commands, no domain skills, no roster, no settings. Only 10 of 26 project
+  roots were provisioned, none with `agents`. The provisioner keyed on **repos**; the sessions key
+  on **projects** (`CLAUDE.md` > Reminders says to root sessions at the project folder), and the
+  two never lined up. Fix: `agents` added to `Link-Harness`, plus `Get-ProjectRoots` (any dir with
+  a `CLAUDE.md`, both storage-standard depths) linked in a link-only pass. All 26 roots now carry
+  `agents`/`skills`/`commands` junctions + a hard-linked `settings.json`; verified end-to-end on a
+  throwaway project. Held by two guarantees: `/new-project` links on creation (new step 6) and
+  `/log` re-runs the healer every wrap-up, so a hand-made project self-heals.
+- **This resolves the open question in [[eval-2026-07-30-env-discovery]]**: cause (1) holds.
+  `own/EnvDiscovery` had no `.claude/` whatsoever, so no skill *could* have fired there — the
+  ~70-turn session that prompted the trigger-tuning theory was never a trigger problem at all.
+  The workspace-level leg is separate and still a genuine trigger miss (see
+  [[eval-2026-07-31-skills-available-not-firing]]).
+- **Trap when unpicking this:** never `Remove-Item -Recurse` a `.claude/` subfolder — PowerShell
+  5.1 can follow the junction and empty the workspace original. Use `cmd /c rmdir <link>`.
+- **STILL OPEN (by design):** only the `SessionStart` *snapshot* hook stays root-only.
 - Related: [[claude-auto-memory-disable]]

@@ -21,10 +21,13 @@
        each by its 'origin' remote against ops/config/internal-remotes.txt: internal/personal
        (GitHub, PingalaGlobal) = ignored only; customer-facing (any other remote) = ignored AND
        guarded; no-remote nested repo = flagged (fold it in, or give it a remote)
-    3. a harness-managed block in .gitignore (.claude, venvs, detected sub-repos)
-    4. the harness link: <unit>\.claude\{commands,skills} -> C:\Dev\.claude\{...} (dir junctions)
+    3. a harness-managed block in .gitignore (.claude, venvs, .secrets/, data/, detected sub-repos)
+    4. the harness link: <unit>\.claude\{commands,skills,agents} -> C:\Dev\.claude\{...} (dir junctions)
        plus <unit>\.claude\settings.json hard-linked to C:\Dev\.claude\settings.json (no elevation)
-       so the SessionStart/Stop/UserPromptSubmit hooks (memory capture + time tracking) load every session
+       so the SessionStart/Stop/UserPromptSubmit hooks (memory capture + time tracking) load every session.
+       The SAME link is made at every project root (any dir with a CLAUDE.md, at both storage-standard
+       depths) - sessions are rooted at the project, and none of commands/skills/agents cascade down
+       from the unit (added 2026-07-31; see memory 'hooks-subdir-session-gap')
     5. for each DevOps (customer-facing) sub-repo: link the harness there too, and add the
        internal-only harness names (.claude/, CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) to its
        .git\info\exclude (LOCAL) so internal info can never be committed to the customer's repo.
@@ -90,14 +93,35 @@ function Link-Harness($root) {
   if (-not (Test-Path $dc)) { New-Item -ItemType Directory -Path $dc | Out-Null }
   $a = New-JunctionIfMissing $dc "commands"
   $b = New-JunctionIfMissing $dc "skills"
-  $c = New-FileLinkIfMissing $dc "settings.json"
-  return ($a -or $b -or $c)
+  # agents/ added 2026-07-31: the roster does not cascade either, so a project-rooted session
+  # could not spawn M/Q/sentinel (5 logged occurrences; memory 'hooks-subdir-session-gap').
+  $c = New-JunctionIfMissing $dc "agents"
+  $d = New-FileLinkIfMissing $dc "settings.json"
+  return ($a -or $b -or $c -or $d)
+}
+
+function Get-ProjectRoots($unit) {
+  # A project root = any dir holding a CLAUDE.md, at the two storage-standard depths (same scan
+  # as Get-SubRepos). Sessions are rooted at the PROJECT (CLAUDE.md > Reminders), but harness
+  # linking used to key on unit + nested git repo - so a plain-folder project (Matas\DataCompare,
+  # own\EnvDiscovery) got no commands/skills/agents at all. Added 2026-07-31.
+  $skip = @(".claude", ".project-meta", ".git", ".vscode")
+  $out = @()
+  foreach ($child in (Get-ChildItem $unit -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
+    if (Test-Path (Join-Path $child.FullName "CLAUDE.md")) { $out += $child.FullName }
+    foreach ($gc in (Get-ChildItem $child.FullName -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
+      if (Test-Path (Join-Path $gc.FullName "CLAUDE.md")) { $out += $gc.FullName }
+    }
+  }
+  return $out
 }
 
 function Ensure-Excludes($repo) {
-  # Local ignore (never committed) so a customer-facing DevOps repo can NEVER carry
-  # internal-only harness files, even if one is accidentally created inside it.
-  $patterns = @(".claude/", "CLAUDE.md", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md")
+  # Local ignore (never committed) so a repo WITH A REMOTE can NEVER carry internal-only
+  # harness files or credentials, even if one is accidentally created inside it.
+  # .secrets/ is here rather than in the unit .gitignore on purpose: unit repos are
+  # local-only backups and may hold secrets; a repo that goes online never may.
+  $patterns = @(".claude/", "CLAUDE.md", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md", ".secrets/")
   $ex = Join-Path $repo ".git\info\exclude"
   if (-not (Test-Path $ex)) { return }
   $existing = Get-Content $ex
@@ -145,7 +169,17 @@ function Set-ManagedIgnore($unit, $subrepos) {
     ".claude/",
     "",
     "# Environments (regenerable)",
-    "**/venv/", "**/.venv/", "__pycache__/")
+    "**/venv/", "**/.venv/", "__pycache__/",
+    "",
+    "# NOTE: .secrets/ is deliberately NOT ignored here. Unit repos are LOCAL-ONLY private",
+    "# backups, so credentials belong in them - ignoring would leave them unbacked. Secrets",
+    "# are blocked at the repos that go ONLINE instead (Ensure-Excludes, below).",
+    "",
+    "# Data folders are ignored on principle: what lands there is either sensitive",
+    "# (customer personal data, API extracts) or bulky (samples, dumps). Reference",
+    "# material that genuinely belongs in the repo goes in with 'git add -f' and",
+    "# stays tracked once added - this rule only stops NEW files being picked up.",
+    "data/")
   if ($subrepos.Count -gt 0) {
     $block += ""
     $block += "# Nested project repos with their own remote (DevOps/wiki): code backed up there, not here."
@@ -231,6 +265,16 @@ function Heal-Unit($unit) {
     }
   }
   Sync-SubrepoMeta $unit $nestedRepos
+
+  # Harness link for every project root, so a session rooted at the project (the documented way
+  # to open one) resolves commands/skills/agents. Link-only: no git init, no sub-repo metadata -
+  # a plain-folder project is tracked by its unit repo, and .gitignore's bare '.claude/' pattern
+  # already matches at any depth, so nothing new becomes committable.
+  $linked = @()
+  foreach ($proj in (Get-ProjectRoots $unit)) {
+    if (Link-Harness $proj) { $linked += (Resolve-Path -Relative $proj) }
+  }
+  if ($linked.Count) { Write-Host "   project roots linked: [$($linked -join ', ')]" }
 
   $head = git -C $unit rev-parse --verify --quiet HEAD 2>$null
   if (-not $head) {

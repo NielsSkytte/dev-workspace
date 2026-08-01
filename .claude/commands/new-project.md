@@ -102,11 +102,25 @@ If the owner says skip, move on. Never push.
    - cwd: `${workspaceFolder}/[path]`
    - Insert before the "ADD NEW PROJECTS" comment block.
 
-6. Confirm in one block:
+6. **Link the harness into the new project** — run the healer against the project's unit
+   (`C:\Dev\own` for an own project, `C:\Dev\customers\<Client>` for a customer one):
+
+   ```
+   powershell -NoProfile -File C:\Dev\ops\bin\heal-repos.ps1 -Only C:\Dev\own
+   ```
+
+   This junctions `.claude\{commands,skills,agents}` and hard-links `.claude\settings.json` into
+   the new project folder. **Load-bearing — run it after the CLAUDE.md exists** (the healer keys on
+   `CLAUDE.md` to find project roots): none of commands, skills or agents cascade down from the
+   workspace root, so without this a session rooted at the project has no `/log`, no domain skills,
+   and cannot spawn `M`/`Q`/`sentinel`. Verify with `Get-Item <path>\.claude\agents` → `Junction`.
+
+7. Confirm in one block:
    ```
    Project scaffolded: [path]
    Type/scale/focus: [type] / [scale] / [focus]
    Task added: Claude · [path]
+   Harness linked: commands + skills + agents + settings.json
    Open via: Ctrl+Shift+P → Run Task → Claude · [path]
    ```
    Note: time for this project is tracked automatically once you open sessions rooted at its folder

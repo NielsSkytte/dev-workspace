@@ -85,6 +85,10 @@ def load_heartbeats():
                         "start": start, "end": end,
                         "project": hb.get("project") or "Dev",
                         "task": hb.get("task"),
+                        # passthrough only -- the rollup never groups by it (that would fragment
+                        # stretches and add a buffer + 0.5 h floor per session). The dashboard's
+                        # internal-hours triage uses it to join a stretch to its memory record.
+                        "session": hb.get("session") or "",
                         "date": ls.strftime("%Y-%m-%d"),
                         "week": "%04d-W%02d" % (iso[0], iso[1]),
                     })
