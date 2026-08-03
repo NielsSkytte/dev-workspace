@@ -267,13 +267,17 @@ MERGE_THRESHOLD = 2.0   # a day-entry at/over this stays put; under it gets merg
 DAY_CAP = 9.0           # a merged entry is never placed where it pushes a day over this
 
 
-def consolidate_week(entries, period_dates):
+def consolidate_week(entries, period_dates, threshold=None):
     """Reduce small scattered entries. Any day-entry >= MERGE_THRESHOLD stays untouched. For each
     project, its sub-threshold day-entries within an ISO week are summed and placed on ONE day of
     that week, chosen so the day's total stays <= DAY_CAP. (Days already over the cap from untouched
-    >=2 h entries are not used as placement targets and are not redistributed.)"""
-    fixed = [e for e in entries if e["hours"] >= MERGE_THRESHOLD]
-    small = [e for e in entries if e["hours"] < MERGE_THRESHOLD]
+    entries are not used as placement targets and are not redistributed.)
+
+    `threshold` overrides MERGE_THRESHOLD for one call -- the F&O entry page passes a higher one to
+    get the fewest possible lines to type. Callers that omit it (the /time reports) are unchanged."""
+    thr = MERGE_THRESHOLD if threshold is None else threshold
+    fixed = [e for e in entries if e["hours"] >= thr]
+    small = [e for e in entries if e["hours"] < thr]
     day_total = {}
     for e in fixed:
         day_total[e["date"]] = day_total.get(e["date"], 0.0) + e["hours"]
@@ -290,11 +294,28 @@ def consolidate_week(entries, period_dates):
         own_days = sorted(set(x["date"] for x in es))               # days actually worked
         week_days = sorted(d for d in period_dates if week_key(d) == wk)
         order = own_days + [d for d in week_days if d not in own_days]
-        chosen = next((d for d in order if day_total.get(d, 0.0) + total <= DAY_CAP), own_days[0])
-        day_total[chosen] = day_total.get(chosen, 0.0) + total
-        placed.append({"date": chosen, "project": project, "proj_id": pid, "activity": activity,
-                       "fno_task": fno_task, "hours": total, "billable": billable,
-                       "live": any(x["live"] for x in es)})
+        live = any(x["live"] for x in es)
+        row = lambda d, hrs: {"date": d, "project": project, "proj_id": pid, "activity": activity,
+                              "fno_task": fno_task, "hours": hrs, "billable": billable,
+                              "live": live}
+        # Fill the FEWEST days that can hold the group, each up to DAY_CAP, preferring days the
+        # line was actually worked. A group larger than the cap used to land whole on one day --
+        # at MERGE_THRESHOLD 2.0 that was rare, but a caller passing a higher threshold sweeps in
+        # bigger entries and could produce a 15 h day, which is not enterable.
+        left = total
+        for d in order:
+            if left <= 0:
+                break
+            room = round_quarter(DAY_CAP - day_total.get(d, 0.0))
+            if room <= 0:
+                continue
+            take = min(left, room)
+            day_total[d] = day_total.get(d, 0.0) + take
+            placed.append(row(d, take))
+            left = round(left - take, 2)
+        if left > 0:                      # every day in the week is at the cap -- keep the hours
+            day_total[own_days[0]] = day_total.get(own_days[0], 0.0) + left
+            placed.append(row(own_days[0], left))
     return fixed + placed
 
 

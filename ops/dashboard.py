@@ -32,6 +32,12 @@ PORT = int(os.environ.get("DASHBOARD_PORT", "8787"))
 # Freshness buckets (days since a project was last worked) -> status role in the palette.
 FRESH_GOOD, FRESH_WARN, FRESH_SERIOUS = 7, 21, 60
 
+# Consolidation threshold for the F&O ENTRY PAGE only: any day-entry below this is merged into one
+# day per ISO week per F&O line, so there are as few lines to type as possible. Higher than
+# rollup.MERGE_THRESHOLD (2.0), which the /time reports keep -- this view exists to be typed into
+# F&O, not to describe how the days actually ran. rollup.DAY_CAP still bounds where a merge lands.
+ENTRY_MERGE_THRESHOLD = 5.0
+
 
 # ---------- rollup reuse (the 15+5 model lives there; do not reimplement) ----------
 
@@ -325,6 +331,21 @@ def collect_internal(canon):
     for hb in hbs:
         by_ds.setdefault((hb["date"], hb["session"]), []).append(hb)
 
+    # How much internal time each project STILL has on each finalized day. Heartbeats are
+    # immutable (README: correct the timesheet, never the heartbeats), so without this the panel
+    # keeps offering already-reassigned stretches forever and a second Apply would double-count.
+    remaining = {}
+    for date in {d for d, _ in by_ds}:
+        sheet = rollup.parse_daily_file(date)
+        if sheet is None:
+            continue                      # not finalized yet -> nothing has been applied to it
+        per = {}
+        for r in sheet:
+            if not r["billable"]:
+                per[r["project"].lower()] = round(per.get(r["project"].lower(), 0.0)
+                                                  + r["hours"], 2)
+        remaining[date] = per
+
     mem, rows = memory_index(), []
     for (date, sess), group in by_ds.items():
         projects = {hb["project"] for hb in group}
@@ -340,10 +361,16 @@ def collect_internal(canon):
             hours = round(sum(r["hours"] for r in rollup.rows_for(sub)), 2)
             if hours <= 0:
                 continue
+            # applied = the day is finalized and this project has NO internal hours left on it,
+            # so every stretch it holds has already been reassigned. A partial move cannot be
+            # attributed to one stretch, so anything above zero stays open for triage.
+            left = remaining.get(date)
+            applied = left is not None and left.get(proj.lower(), 0.0) <= 0
             rows.append({"date": date, "session": sess, "project": proj, "hours": hours,
-                         "turns": len(sub), "co": co, "evidence": ev,
+                         "turns": len(sub), "co": co, "evidence": ev, "applied": applied,
+                         "remaining": None if left is None else left.get(proj.lower(), 0.0),
                          "scope": "dev" if proj == "Dev" else "own"})
-    rows.sort(key=lambda r: (not r["co"], r["date"], -r["hours"]))
+    rows.sort(key=lambda r: (r["applied"], not r["co"], r["date"], -r["hours"]))
     return rows
 
 
@@ -355,6 +382,176 @@ def last_heartbeat_by_session():
         if s and (s not in seen or hb["end"] > seen[s]):
             seen[s] = hb["end"]
     return seen
+
+
+# ---------- F&O time entry ----------
+
+# Excel 'Kunde' values that do not normalize onto the workspace customer folder. Everything else
+# matches after lowercasing and folding spaces/hyphens/Danish letters (Vestforbraending, Element
+# Logic, Carl-Ras all resolve on their own).
+CUSTOMER_ALIASES = {
+    "jtj": "joeandthejuice",
+    # Typo in the source sheet: it reads "Vestforbraeding", missing the n after ae
+    # (correct Danish is Vestforbraending). Aliased so the entry page works; fix the xlsx and
+    # this line becomes dead.
+    "vestforbraeding": "vestforbraending",
+}
+
+
+def _norm_customer(name):
+    s = (name or "").strip().lower()
+    for a, b in (("æ", "ae"), ("ø", "oe"), ("å", "aa"),
+                 ("Æ", "ae"), ("Ø", "oe"), ("Å", "aa")):
+        s = s.replace(a, b)
+    s = re.sub(r"[\s\-_/.]", "", s)
+    return CUSTOMER_ALIASES.get(s, s)
+
+
+def read_companies():
+    """Parse ops/TidsregInfo.xlsx -> [{firma, kunde, projektnr, aktivitet, task_note}].
+
+    Read straight from the workbook (stdlib zipfile + ElementTree, no openpyxl) so the owner's
+    own sheet stays the single source for the internal-company grouping -- edit the xlsx and the
+    dashboard follows, with no exported copy to drift."""
+    # Resolve case-insensitively: the file is TidsregInfo.xlsx on disk and Windows does not care,
+    # but a hard-coded lowercase path would break anywhere else.
+    folder = os.path.join(ROOT, "ops")
+    path = ""
+    try:
+        for name in os.listdir(folder):
+            if name.lower() == "tidsreginfo.xlsx":
+                path = os.path.join(folder, name)
+                break
+    except OSError:
+        return []
+    if not path:
+        return []
+    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    try:
+        import zipfile, xml.etree.ElementTree as ET
+        z = zipfile.ZipFile(path)
+        shared = []
+        if "xl/sharedStrings.xml" in z.namelist():
+            for si in ET.fromstring(z.read("xl/sharedStrings.xml")):
+                shared.append("".join(t.text or "" for t in si.iter(ns + "t")))
+        grid = []
+        for row in ET.fromstring(z.read("xl/worksheets/sheet1.xml")).iter(ns + "row"):
+            cells = {}
+            for c in row.iter(ns + "c"):
+                ref = re.match(r"([A-Z]+)", c.get("r") or "A")
+                col = 0
+                for ch in (ref.group(1) if ref else "A"):
+                    col = col * 26 + (ord(ch) - 64)
+                v = c.find(ns + "v")
+                txt = ""
+                if c.get("t") == "s" and v is not None:
+                    idx = int(v.text)
+                    txt = shared[idx] if idx < len(shared) else ""
+                elif c.get("t") == "inlineStr":
+                    txt = "".join(t.text or "" for t in c.iter(ns + "t"))
+                elif v is not None:
+                    txt = v.text or ""
+                cells[col - 1] = txt.strip()
+            grid.append([cells.get(i, "") for i in range(max(cells) + 1)] if cells else [])
+    except Exception:
+        return []
+
+    out = []
+    for row in grid[1:]:                       # row 0 is the header
+        row = row + [""] * 5
+        firma, kunde = row[0].strip(), row[1].strip()
+        if not firma or not kunde:
+            continue
+        out.append({"firma": firma, "kunde": kunde, "key": _norm_customer(kunde),
+                    "projektnr": row[2].strip(), "aktivitet": row[3].strip(),
+                    "task_note": row[4].strip()})
+    return out
+
+
+def collect_entry(entries, customers, today):
+    """F&O entry rows: one per date/customer/project/activity/task, tagged with the internal
+    company (Firma). F&O takes one timesheet PER COMPANY, so the company is the outermost grouping
+    on the page -- it is the thing you open a separate sheet for.
+
+    Returned FLAT (every date, not pre-bucketed) so the timesheet page can slice any range --
+    a month, last week, the week before -- without the collector knowing which."""
+    comp = read_companies()
+    by_key = {c["key"]: c for c in comp}
+    ws_keys = {_norm_customer(c): c for c in customers}
+
+    def decorate(e, agg, unmapped):
+        """One timesheet entry -> one F&O entry row (company, customer, resolved Proj ID)."""
+        p = e["project"]
+        cust = p.split("/")[1] if p.lower().startswith("customers/") and "/" in p else ""
+        row_c = by_key.get(_norm_customer(cust)) if cust else None
+        if cust and row_c is None:
+            unmapped[cust] = round(unmapped.get(cust, 0.0) + e["hours"], 2)
+        firma = row_c["firma"] if row_c else ("" if cust else "INTERNAL")
+
+        # Proj ID: the timesheet's own value wins; the sheet fills a gap; disagreement is flagged,
+        # never silently resolved.
+        ws_id = e["proj_id"]
+        xl_id = row_c["projektnr"] if row_c else ""
+        weak = (not ws_id) or ws_id in ("UNSET", "") or ws_id.startswith("PENDING")
+        proj_id = (xl_id or ws_id) if weak else ws_id
+        conflict = bool(xl_id and not weak and xl_id != ws_id)
+        activity = e["activity"] or (row_c["aktivitet"] if row_c else "")
+
+        k = (firma, e["date"], cust, p, proj_id, activity, e["fno_task"])
+        cell = agg.setdefault(k, {"firma": firma, "date": e["date"], "customer": cust,
+                                  "project": p, "proj_id": proj_id, "activity": activity,
+                                  "fno_task": e["fno_task"], "hours": 0.0,
+                                  "from_sheet": weak and bool(xl_id), "conflict": conflict,
+                                  "ws_proj_id": ws_id, "task_note": row_c["task_note"] if row_c else ""})
+        cell["hours"] = round(cell["hours"] + e["hours"], 2)
+
+    def build(src):
+        a, u = {}, {}
+        for e in src:
+            decorate(e, a, u)
+        return (sorted(a.values(), key=lambda r: (r["firma"], r["date"], r["customer"],
+                                                  r["project"], r["activity"])), u)
+
+    rows, unmapped = build(entries)
+
+    # Consolidated variants. The scatter of sub-2 h day-entries is exactly what
+    # rollup.consolidate_week exists for (ops/time/README.md sec.5, and what /time shows by
+    # default) -- reuse it rather than reimplement the rule in the page. It groups by ISO week,
+    # so each range the page can show gets its own pass; totals are unchanged, only the spread
+    # across days.
+    d0 = datetime.date.fromisoformat(today)
+    ranges = {}
+    for key, first, last in (
+            ("month0", d0.replace(day=1), None),
+            ("month1", (d0.replace(day=1) - datetime.timedelta(days=1)).replace(day=1), None),
+            ("week1", d0 - datetime.timedelta(days=7 + d0.weekday()), 7),
+            ("week2", d0 - datetime.timedelta(days=14 + d0.weekday()), 7)):
+        if last is None:                       # whole calendar month
+            nxt = (first.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+            span = (nxt - first).days
+        else:
+            span = last
+        ranges[key] = [(first + datetime.timedelta(days=i)).isoformat() for i in range(span)]
+
+    merged = {}
+    for key, dates in ranges.items():
+        inr = set(dates)
+        src = [e for e in entries if e["date"] in inr]
+        if not src:
+            merged[key] = []
+            continue
+        merged[key] = build(rollup.consolidate_week(src, dates, ENTRY_MERGE_THRESHOLD))[0]
+
+    return {
+        "rows": rows,
+        "merged": merged,
+        "ranges": ranges,
+        "companies": sorted({c["firma"] for c in comp}),
+        "mapping": comp,
+        "unmapped": sorted(({"customer": k, "hours": v} for k, v in unmapped.items()),
+                           key=lambda x: -x["hours"]),
+        "no_project": sorted(c["kunde"] for c in comp if c["key"] not in ws_keys),
+    }
 
 
 def active_sessions():
@@ -528,6 +725,7 @@ def collect():
         "targets": [{"project": t["project"], "slug": t["slug"], "title": t["title"],
                      "state": t["state"], "activity": t["activity"], "fno_task": t["fno_task"]}
                     for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
+        "entry": collect_entry(entries, customers, today),
         "active_sessions": active_sessions(),
         "todos": todos,
         "hygiene": {
@@ -590,13 +788,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        path = self.path.split("?", 1)[0]          # a query string is not part of the route
         if self.path.startswith("/api/data"):
             try:
                 self._send(200, json.dumps(collect()))
             except Exception as exc:
                 self._send(500, json.dumps({"error": str(exc)}))
             return
-        if self.path in ("/", "/index.html"):
+        if path in ("/", "/index.html"):
             html = read(os.path.join(HERE, "dashboard.html"))
             if not html:
                 self._send(500, "dashboard.html not found", "text/plain")

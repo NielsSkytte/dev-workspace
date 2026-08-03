@@ -72,6 +72,22 @@ h3{font-size:15px;margin:0 0 6px;letter-spacing:-.01em;font-weight:600}
 .sub{color:var(--muted);font-size:12px}
 header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 header .grow{flex:1;min-width:120px}
+.navlinks{display:flex;gap:14px;flex-wrap:wrap}
+.navlinks a{color:var(--brand-2);text-decoration:none;font-size:12.5px;font-weight:600;
+  border-bottom:1px solid transparent;padding-bottom:1px}
+.navlinks a:hover{border-bottom-color:currentColor}
+.navlinks a.on{color:var(--ink);border-bottom-color:currentColor}
+/* In the dark header the links must read as header text, like h1 and .sub -- brand-2 on brand
+   goes muddy. Scoped to the top bar so #tsBack, which sits on the light page, keeps its own. */
+.app > .top .navlinks a{color:var(--brand-ink);opacity:.8}
+.app > .top .navlinks a:hover,
+.app > .top .navlinks a.on{opacity:1;border-bottom-color:currentColor}
+/* .app is a fixed-height flex column with overflow:hidden (the panes scroll internally), so this
+   page needs its own scroll box or it is simply clipped. */
+#timesheetPage{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:14px clamp(14px,1.6vw,28px) 40px}
+#timesheetPage .stickybar{position:sticky;top:0;z-index:3;background:var(--bg);
+  padding:6px 0 10px;margin-bottom:4px;box-shadow:0 6px 10px -8px rgba(0,0,0,.35)}
 
 /* ── full-viewport shell: brand band, alert strip, two independently scrolling panes ── */
 .app{height:100%;display:flex;flex-direction:column;overflow:hidden}
@@ -215,6 +231,11 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
   <div class="top">
     <header>
       <h1>DEV — Workspace Dashboard</h1>
+      <nav class="navlinks">
+        <a href="#timesheet/month">Month timesheet</a>
+        <a href="#timesheet/week1">Last week timesheet</a>
+        <a href="#timesheet/week2">Previous week</a>
+      </nav>
       <div class="grow sub" id="stamp"></div>
       <input type="search" id="q" placeholder="Filter projects, customers, tasks…">
       <button id="auto" class="mini" title="Toggle auto-refresh">Auto ⏸</button>
@@ -322,6 +343,15 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
       </section>
     </div>
   </div>
+
+  <!-- ── Timesheet page: a route (#timesheet/...), not a dashboard section ── -->
+  <div id="timesheetPage" class="hidden">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px">
+      <h2 id="tsHead" style="margin:0"></h2>
+      <a href="#" class="navlinks" id="tsBack" style="margin-left:auto">← Back to dashboard</a>
+    </div>
+    <div id="tsBody"></div>
+  </div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -396,7 +426,7 @@ function bindChips(){
   document.querySelectorAll('.chip[data-period]').forEach(b => b.onclick = () => {
     PERIOD = b.dataset.period;
     try{ localStorage.setItem('dash.period', PERIOD); }catch(e){}
-    paintPeriod(); if(D){ dailyChart(); projChart(); internalPanel(); }
+    paintPeriod(); if(D){ dailyChart(); projChart(); internalPanel(); if(ROUTE) renderTimesheet(); }
   });
   document.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => {
     const [g,k] = b.dataset.f.split('.');
@@ -589,14 +619,18 @@ function tiles(){
    working surface where the reassignment is chosen. */
 function internalPanel(){
   const per = periodDays(), inP = new Set(per.days);
-  const rows = (D.internal || []).filter(r => inP.has(r.date));
+  const all = (D.internal || []).filter(r => inP.has(r.date));
+  const rows = all.filter(r => !r.applied);
+  const done = all.length - rows.length;
   const tot = rows.reduce((s,r) => s + r.hours, 0);
   const cand = rows.filter(r => r.co.length);
   const ch = cand.reduce((s,r) => s + r.hours, 0);
   $('#internalHead').innerHTML = `Internal hours <span class="sub" style="font-weight:400">— `
     + `${esc(per.label)} · ${h(tot)} h across Dev and own/</span>`;
   if(!rows.length){
-    $('#internal').innerHTML = '<p class="sub" style="margin:0">No internal time in this period.</p>';
+    $('#internal').innerHTML = '<p class="sub" style="margin:0">'
+      + (done ? `All ${done} internal stretch${done===1?'':'es'} in this period have been reassigned.`
+              : 'No internal time in this period.') + '</p>';
     return;
   }
   const byProj = {};
@@ -842,6 +876,228 @@ function hygiene(){
   $('#hygiene').innerHTML = out.join('') || '<p class="muted">Clean.</p>';
 }
 
+/* ---------- F&O time entry ----------
+   One block per internal company, because F&O takes a SEPARATE TIMESHEET per company -- the
+   grouping comes from ops/tidsreginfo.xlsx (Firma -> Kunde), read live from the workbook.
+   Within a company: one line per date / customer / project / activity / task, which is the
+   granularity F&O actually accepts (Project ID -> Activity -> Task). */
+let ROUTE = '';                         // '' = dashboard, else month | week1 | week2
+let TSMONTH = 0;                        // months back on the month route: 0 = current, 1 = previous
+let TSOFF = new Set();                  // companies toggled OFF on the timesheet page
+let TSCUST = new Set();                 // customers toggled OFF on the timesheet page
+let TSMERGE = true;                     // consolidate sub-2h entries by week (as /time does)
+
+/* Ranges are built field-wise from D.today -- never via Date(string)/toISOString, which shift by
+   the UTC offset and can land the week on the wrong day. Weeks are ISO (Monday start). */
+function tsRange(which){
+  const [Y,M,Dd] = D.today.split('-').map(Number);
+  if(which === 'month'){
+    const y = M - TSMONTH > 0 ? Y : Y - 1, m = ((M - 1 - TSMONTH) % 12 + 12) % 12 + 1;
+    const last = new Date(y, m, 0).getDate(), days = [];
+    for(let d = 1; d <= last; d++) days.push(`${y}-${pad(m)}-${pad(d)}`);
+    return {days, label: `${MONTHS[m-1]} ${y}`, kind: 'Month timesheet'};
+  }
+  const back = which === 'week2' ? 14 : 7;
+  const d = new Date(Y, M-1, Dd - back);
+  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay()+6) % 7));
+  const days = [];
+  for(let i = 0; i < 7; i++){
+    const x = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i);
+    days.push(`${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`);
+  }
+  return {days, label: `${shortDate(days[0])} – ${shortDate(days[6])}`,
+          kind: which === 'week2' ? 'Previous week' : 'Last week timesheet'};
+}
+
+function showRoute(){
+  const m = (location.hash || '').match(/^#timesheet\/(month|week1|week2)$/);
+  ROUTE = m ? m[1] : '';
+  $('#timesheetPage').classList.toggle('hidden', !ROUTE);
+  ['.top .tiles','#alerts','.panes'].forEach(sel => {
+    const n = document.querySelector(sel); if(n) n.classList.toggle('hidden', !!ROUTE);
+  });
+  document.querySelectorAll('header .navlinks a').forEach(a =>
+    a.classList.toggle('on', a.getAttribute('href') === location.hash));
+  if(ROUTE && D) renderTimesheet();
+  window.scrollTo(0,0);
+}
+
+function renderTimesheet(){
+  const E = D.entry, per = tsRange(ROUTE);
+  // The backend owns the range windows so raw and consolidated always cover identical days
+  // (tsRange supplies the label only).
+  const rkey2 = ROUTE === 'month' ? 'month' + TSMONTH : ROUTE;
+  const inR = new Set((E.ranges && E.ranges[rkey2]) || per.days);
+  const rows = TSMERGE ? ((E.merged || {})[rkey2] || [])
+                       : (E.rows || []).filter(r => inR.has(r.date));
+  $('#tsHead').innerHTML = `${esc(per.kind)} <span class="sub" style="font-weight:400">— `
+    + `${esc(per.label)} · ${h(rows.reduce((s,r)=>s+r.hours,0))} h</span>`;
+
+  // Month route carries its own current/previous switch -- both months are entered in the same
+  // sitting (the month closes after the 1st), so they belong on one page, not two links.
+  const monthChips = ROUTE !== 'month' ? '' :
+    `<span class="flabel">Month</span>` +
+    [0,1].map(n => {
+      const save = TSMONTH; TSMONTH = n; const lbl = tsRange('month').label; TSMONTH = save;
+      return `<button class="chip${n===TSMONTH?' on':''}" data-tsmonth="${n}">${esc(lbl)}</button>`;
+    }).join('') + `<span class="fsep"></span>`;
+
+  const allFirmas = [...new Set(rows.map(r => r.firma))]
+    .sort((a,b) => (a==='INTERNAL')-(b==='INTERNAL') || (a==='')-(b==='') || a.localeCompare(b));
+  if(allFirmas.length && allFirmas.every(f => TSOFF.has(f))) TSOFF.clear();   // never fully empty
+
+  // Customer filter, scoped to the companies still shown -- a customer chip for a hidden company
+  // would be dead weight. Internal rows have no customer; they group under '(internal)'.
+  const custOf = r => r.customer || (r.firma === 'INTERNAL' ? '(internal)' : '(none)');
+  const allCusts = [...new Set(rows.filter(r => !TSOFF.has(r.firma)).map(custOf))].sort();
+  if(allCusts.length && allCusts.every(c => TSCUST.has(c))) TSCUST.clear();
+  const custHours = c => rows.filter(r => custOf(r) === c).reduce((s,r) => s + r.hours, 0);
+  const visible = r => !TSOFF.has(r.firma) && !TSCUST.has(custOf(r));
+
+  // A company whose every customer is filtered out drops out too -- an empty block reads as a bug.
+  const firmas = allFirmas.filter(f => !TSOFF.has(f) && rows.some(r => r.firma === f && visible(r)));
+
+  const nameOf = f => f === 'INTERNAL' ? 'Internal' : f === '' ? 'No company' : f;
+  const hoursOf = f => rows.filter(r => r.firma === f).reduce((s,r) => s + r.hours, 0);
+
+  const shown = rows.filter(visible).reduce((s,r) => s + r.hours, 0);
+  const total = rows.reduce((s,r) => s + r.hours, 0);
+
+  /* Companies are FILTER chips, not jump links: a long table (PING was 49 rows in July) buries
+     every other company, and the workflow is one company at a time anyway -- that is what a
+     separate F&O timesheet means. The bar is sticky so the selection stays visible and
+     deselectable however far you scroll. */
+  const chips = `<div class="stickybar"><div class="filterbar">${monthChips}
+    <span class="flabel">Companies</span>
+    ${allFirmas.map(f => `<button class="chip${TSOFF.has(f)?'':' on'}" data-firma="${esc(f)}">`
+      + `${esc(nameOf(f))} · ${h(hoursOf(f))} h</button>`).join('')}
+    <span class="fsep"></span>
+    <span class="flabel">Customers</span>
+    ${allCusts.map(c => `<button class="chip${TSCUST.has(c)?'':' on'}" data-cust="${esc(c)}">`
+      + `${esc(c)} · ${h(custHours(c))} h</button>`).join('')}
+    <span class="fsep"></span>
+    <button class="chip${TSMERGE?' on':''}" data-tsmerge
+      title="Fewest lines: per F&amp;O line (customer/project/activity/task), day-entries under 5 h are summed within an ISO week and packed onto as few days as possible, max 9 h a day. Totals never change -- only how many lines you type. The /time reports keep the 2 h rule.">Consolidated</button>
+    <span style="margin-left:auto"><b>${h(shown)} h</b>${
+      shown !== total ? ` <span class="muted">of ${h(total)} h</span>` : ''}</span>
+    </div></div>`;
+
+  const bind = () => {
+    $('#tsBody').querySelectorAll('[data-tsmonth]').forEach(b =>
+      b.onclick = () => { TSMONTH = +b.dataset.tsmonth; renderTimesheet(); });
+    $('#tsBody').querySelectorAll('[data-firma]').forEach(b =>
+      b.onclick = () => {
+        const f = b.dataset.firma;
+        TSOFF.has(f) ? TSOFF.delete(f) : TSOFF.add(f);
+        renderTimesheet();
+      });
+    $('#tsBody').querySelectorAll('[data-cust]').forEach(b =>
+      b.onclick = () => {
+        const c = b.dataset.cust;
+        TSCUST.has(c) ? TSCUST.delete(c) : TSCUST.add(c);
+        renderTimesheet();
+      });
+    const m = $('#tsBody').querySelector('[data-tsmerge]');
+    if(m) m.onclick = () => { TSMERGE = !TSMERGE; renderTimesheet(); };
+  };
+
+  if(!rows.length){
+    $('#tsBody').innerHTML = chips + '<div class="card"><p class="sub" style="margin:0">'
+      + 'No time in this period.</p></div>';
+    bind();
+    return;
+  }
+
+  /* Per-company totals for whichever view is open. Deliberately covers EVERY company in the
+     period regardless of the company filter -- this is the reconciliation figure (one F&O
+     timesheet per company), not a view of the current selection. Line counts follow the
+     Consolidated toggle, so they say how many lines you will actually type. */
+  const totalsCard = (() => {
+    const enterable = allFirmas.filter(f => f !== 'INTERNAL');
+    const sumOf = f => rows.filter(r => r.firma === f).reduce((s,r) => s + r.hours, 0);
+    const nOf = f => rows.filter(r => r.firma === f).length;
+    const toEnter = enterable.reduce((s,f) => s + sumOf(f), 0);
+    const line = (label, n, hrs, note, strong) =>
+      `<tr style="${strong?'border-top:1px solid var(--axis);font-weight:600':'border-top:1px solid var(--ring)'}">
+        <td style="padding:4px 8px 4px 0">${esc(label)}</td>
+        <td style="padding:4px 8px;color:var(--muted)">${n} line${n===1?'':'s'}</td>
+        <td style="padding:4px 8px;text-align:right">${h(hrs)} h</td>
+        <td style="padding:4px 0 4px 8px" class="sub">${note||''}</td></tr>`;
+    return `<div class="card" style="margin-bottom:14px">
+      <h3 style="font-size:15px;margin:0 0 8px">Totals per company — ${esc(per.label)}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        ${allFirmas.map(f => line(nameOf(f), nOf(f), sumOf(f),
+            f === 'INTERNAL' ? 'not entered in F&amp;O'
+            : TSOFF.has(f) ? 'hidden below' : '')).join('')}
+        ${line('To enter in F&O', enterable.reduce((s,f) => s + nOf(f), 0), toEnter,
+               `across ${enterable.length} timesheet${enterable.length===1?'':'s'}`, true)}
+        ${allFirmas.includes('INTERNAL')
+          ? line('Period total', rows.length, total, 'incl. internal', false) : ''}
+      </table></div>`;
+  })();
+
+  const block = (f, i) => {
+    const rs = rows.filter(r => r.firma === f && !TSCUST.has(custOf(r)));
+    const tot = rs.reduce((s,r) => s + r.hours, 0);
+    const title = f === 'INTERNAL' ? 'Internal (Dev / own) — not entered in F&O'
+      : f === '' ? 'No company — customer not found in tidsreginfo.xlsx' : f;
+    const warn = f === 'INTERNAL'
+      ? 'Tracked here only — internal time is not entered in F&amp;O. Shown so the month reconciles.'
+      : f === '' ? 'These hours cannot be placed on a company timesheet until the sheet lists the customer.' : '';
+    return `<div class="card" style="margin-bottom:14px" data-block="${i}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h3 style="font-size:15px;margin:0">${esc(title)}</h3>
+        <b>${h(tot)} h</b>
+        ${f === 'INTERNAL' ? '<span class="sub" style="margin-left:auto">not entered</span>'
+          : `<button class="mini" data-copyfirma="${esc(f)}" style="margin-left:auto">Copy rows</button>`}
+      </div>
+      ${warn ? `<p class="sub" style="color:var(--accent);margin:6px 0 0">${warn}</p>` : ''}
+      <!-- overflow-y MUST be explicit: with only overflow-x set, the other axis computes to
+           'auto', making every table a vertical scroll container that swallows the wheel. -->
+      <div style="overflow-x:auto;overflow-y:hidden;margin-top:10px">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="text-align:left;color:var(--muted)">
+          <th style="padding:3px 8px 3px 0">Date</th><th style="padding:3px 8px">Customer</th>
+          <th style="padding:3px 8px">Project</th><th style="padding:3px 8px">Proj ID</th>
+          <th style="padding:3px 8px">Activity</th><th style="padding:3px 8px">Task</th>
+          <th style="padding:3px 0 3px 8px;text-align:right">Hours</th></tr>
+        ${rs.map(r => `<tr style="border-top:1px solid var(--ring)">
+          <td style="padding:3px 8px 3px 0;white-space:nowrap">${esc(r.date)}</td>
+          <td style="padding:3px 8px">${esc(r.customer || '-')}</td>
+          <td style="padding:3px 8px">${esc(r.project.replace(/^customers\//,''))}</td>
+          <td style="padding:3px 8px">${esc(r.proj_id || '-')}${
+            r.from_sheet ? ' <span class="sub" title="filled from tidsreginfo.xlsx; the project CLAUDE.md has no fno_code">(sheet)</span>' : ''}${
+            r.conflict ? ` <span style="color:var(--accent)" title="workspace says ${esc(r.ws_proj_id)}">conflict</span>` : ''}</td>
+          <td style="padding:3px 8px">${esc(r.activity || '-')}</td>
+          <td style="padding:3px 8px">${esc(r.fno_task || '-')}</td>
+          <td style="padding:3px 0 3px 8px;text-align:right">${h(r.hours)}</td></tr>`).join('')}
+      </table></div></div>`;
+  };
+
+  const flags = [];
+  if(E.unmapped && E.unmapped.length) flags.push(`Customers with tracked time but no row in the sheet: `
+    + E.unmapped.map(u => `<b>${esc(u.customer)}</b> (${h(u.hours)} h)`).join(', '));
+  if(E.no_project && E.no_project.length) flags.push(`In the sheet with no workspace project: `
+    + E.no_project.map(n => `<b>${esc(n)}</b>`).join(', '));
+
+  $('#tsBody').innerHTML = chips + totalsCard
+    + (flags.length ? `<div class="card" style="margin-bottom:14px"><div class="sub">`
+      + flags.map(f => `<div>${f}</div>`).join('') + `</div></div>` : '')
+    + firmas.map((f,i) => block(f,i)).join('');
+  bind();
+
+  $('#tsBody').querySelectorAll('[data-copyfirma]').forEach(b => b.onclick = async () => {
+    const rs = rows.filter(r => r.firma === b.dataset.copyfirma);
+    // TSV: pastes straight into Excel or an F&O grid, one line per F&O time-entry line
+    const txt = ['Date\tCustomer\tProject\tProj ID\tActivity\tTask\tHours']
+      .concat(rs.map(r => [r.date, r.customer || '', r.project.replace(/^customers\//,''),
+        r.proj_id || '', r.activity || '', r.fno_task || '', h(r.hours)].join('\t'))).join('\n');
+    try{ await navigator.clipboard.writeText(txt);
+         toast(`Copied ${rs.length} rows for ${b.dataset.copyfirma || 'unassigned'}`); }
+    catch(e){ toast('Copy failed: ' + e.message); }
+  });
+}
+
 /* ---------- drill-down ---------- */
 function openProject(key){
   const p = D.projects.find(x => x.key === key);
@@ -964,9 +1220,19 @@ const isDeviation = (r, tgt) => !!tgt && r.project !== 'Dev';
 
 function openInternal(){
   const per = periodDays(), inP = new Set(per.days);
-  const rows = (D.internal || []).filter(r => inP.has(r.date));
+  const all = (D.internal || []).filter(r => inP.has(r.date));
+  const rows = all.filter(r => !r.applied);         // already reassigned -> not triage any more
+  const done = all.length - rows.length;
   const tot = rows.reduce((s,r) => s + r.hours, 0);
   const cands = D.projects.map(p => p.key).sort();
+  // Drop saved choices whose stretch is gone (applied, or out of period): a stale selection
+  // would otherwise sit in the plan and be applied a second time.
+  const live = new Set(all.map(rkey));
+  let pruned = 0;
+  for(const k in PLAN) if(live.has(k) && !rows.some(r => rkey(r) === k)){
+    delete PLAN[k]; delete TPLAN[k]; pruned++;
+  }
+  if(pruned) savePlan();
 
   const card = r => {
     const k = rkey(r), sel = PLAN[k] || '';
@@ -987,6 +1253,9 @@ function openInternal(){
       <div class="sub" style="margin-top:2px">session ${esc(r.session)} · ${r.turns} turn${r.turns===1?'':'s'}${
         r.co.length ? ' · also worked: <b>' + r.co.map(esc).join(', ') + '</b>'
                     : ' · <span class="muted">no other project in this session</span>'}</div>
+      ${r.remaining != null && r.remaining < r.hours ? `<div class="sub" style="color:var(--accent)">
+        The timesheet has only <b>${h(r.remaining)} h</b> internal left on ${esc(r.project)} that day —
+        less than this stretch shows, so the move will be capped there.</div>` : ''}
       ${r.evidence && r.evidence.length ? `<ul class="tight" style="font-size:12px">${
         r.evidence.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`
         : '<p class="sub" style="margin:6px 0 0">no memory record for this session</p>'}
@@ -1024,7 +1293,8 @@ function openInternal(){
   $('#drawerBody').innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
       <div><h3 style="font-size:18px">Internal hours — ${esc(per.label)}</h3>
-        <div class="sub">${rows.length} stretch${rows.length===1?'':'es'} · ${h(tot)} h across Dev and own/</div></div>
+        <div class="sub">${rows.length} stretch${rows.length===1?'':'es'} · ${h(tot)} h across Dev and own/${
+          done ? ` · <b>${done} already reassigned</b>, hidden` : ''}</div></div>
       <button class="mini" onclick="closeDrawer()">Close</button>
     </div>
     <p class="sub" style="margin:10px 0 0">Hours here are <b>heartbeat-derived</b>, split per session
@@ -1141,6 +1411,7 @@ function render(){
   const L = $('#paneLeft').scrollTop, R = $('#paneRight').scrollTop;   // survive a re-render
   alerts(); tiles(); triage(); internalPanel(); dailyChart(); projChart(); inflight(); idle();
   customers(); tasks(); hygiene();
+  if(ROUTE) renderTimesheet();          // keep the open timesheet fresh on auto-refresh
   $('#paneLeft').scrollTop = L; $('#paneRight').scrollTop = R;
   stamp();
 }
@@ -1212,6 +1483,9 @@ new ResizeObserver(entries => {
 
 bindChips(); paintChips(); paintPeriod();
 loadPlan();                       // restore triage choices before the first render
+$('#tsBack').onclick = e => { e.preventDefault(); location.hash = ''; showRoute(); };
+window.addEventListener('hashchange', showRoute);
+showRoute();
 setAuto(true);
 load(false);
 </script>
