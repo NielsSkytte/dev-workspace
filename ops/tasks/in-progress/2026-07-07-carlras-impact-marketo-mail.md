@@ -6,7 +6,7 @@ project: customers/Carl-Ras/datahub
 owner: self             # content/writing-voice drafts; email-outlook-ready (.md deliverable)
 priority: normal
 blocked_by:
-activity: marketoimport
+activity: MarketoImport
 fno_task:
 source: todo
 ---
