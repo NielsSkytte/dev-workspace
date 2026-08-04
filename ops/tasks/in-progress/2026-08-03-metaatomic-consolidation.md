@@ -1,11 +1,11 @@
 ---
 title: Consolidate lineage engine + Tystofte source extraction into MetaAtomic
-status: open
+status: in-progress
 created: 2026-08-03
 project: own/MetaAtomic
 owner: architect
 priority: high
-blocked_by: initial Element Logic setup still being built — move happens after it completes (owner, 2026-08-03)
+blocked_by: (unblocked 2026-08-04 — v1 delivered; steps 0-3 and 6 done, step 1 commit awaiting owner)
 activity:
 fno_task:
 source: direct
@@ -70,3 +70,4 @@ unless deliberately preserved. Undecided whether deployments import via path, su
 
 ## Log
 - 2026-08-03 — created
+- 2026-08-04 - v1 delivered to Element Logic and tagged `v1-elementlogic`. Steps 2-3 DONE: engine moved via subtree (history preserved), EL re-pointed via a `.pth`, run reproduces exactly (23,396 / 22,453 / 531). Step 6 DONE EARLY and PASSED: Carl Ras `Fabric-ETL` parsed with zero engine changes (7,687 / 6,650 / 122, 0 DDL failures), one edge set hand-verified against raw SQL. Step 1 partially open: the EL `git rm` is staged, not committed (customer repo). Step 4 (Tystofte source side) not started.
