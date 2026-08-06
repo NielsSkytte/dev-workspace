@@ -340,6 +340,18 @@ preference outside the week.
 tier table with multipliers, and every file touched with its line count, kind and class. This is what
 you show when asked to justify a charge. `value/<date>.jsonl` is the same data machine-readable.
 
+Each project block also carries a one-line **`Focus:`** -- the dominant files by share of weighted
+lines, with two or more files from one directory collapsed into that directory. It answers "what was
+this time actually for" without reading the whole deliverables table, and exists because that question
+was only asked after a day had already been billed: 2026-08-04 charged Element Logic for a stretch
+that was `describe.py 64%, ops/memory/store/ 28%` -- capability development, not the customer's
+deliverable (corrected 2026-08-06).
+
+> **Read `Focus:` as a prompt, not a verdict.** It is computed from file writes only, so a stretch of
+> advice, analysis or review that wrote nothing contributes hours but no focus -- and a line reading
+> `ops/memory/store/ 100%` means those were the only *files written*, not that the whole line was
+> bookkeeping. Use it to decide what to look at, then read the tier table and the transcript.
+
 `value.py` modes:
 - `python ops/time/value.py` -- derive every complete past day not yet written. Use at `/log`.
 - `python ops/time/value.py --preview` -- today's live tally; writes nothing.

@@ -569,6 +569,56 @@ def apply_caps(records):
 
 # ---------------------------------------------------------------- rendering
 
+FOCUS_MIN_PCT = 5      # below this a group is noise, not focus
+FOCUS_MAX_PARTS = 3
+FOCUS_MAX_KEY = 46     # a deep artifact path is unreadable in a one-line summary
+
+
+def _short(key):
+    """Deep paths keep their last two segments; ASCII only (PS 5.1)."""
+    if len(key) <= FOCUS_MAX_KEY:
+        return key
+    segs = [s for s in key.split("/") if s]
+    return ".../" + "/".join(segs[-2:]) + ("/" if key.endswith("/") else "")
+
+
+def focus_line(deliverables):
+    """One line saying what a stretch was actually spent on, by share of weighted
+    lines. Exists because the deliverables table answers "was this customer work"
+    only if you read all of it -- 2026-08-04 billed a day to Element Logic that
+    was 64% describe.py and 28% local-LLM memory records, which is capability
+    development, not the customer's deliverable (corrected at /log 2026-08-06).
+
+    Files sharing a directory collapse into that directory when more than one of
+    them was touched, so a scatter of small memory records reads as one item
+    rather than crowding out the file that dominated the work."""
+    agg = {}
+    for d in deliverables:
+        agg[d["path"]] = agg.get(d["path"], 0) + d["weighted"]
+    total = sum(agg.values())
+    if not total:
+        return ""
+    dirs = {}
+    for path in agg:
+        dirs[path.rsplit("/", 1)[0] if "/" in path else ""] = \
+            dirs.get(path.rsplit("/", 1)[0] if "/" in path else "", 0) + 1
+    groups = {}
+    for path, w in agg.items():
+        parent = path.rsplit("/", 1)[0] if "/" in path else ""
+        key = (parent + "/") if dirs[parent] > 1 else path.rsplit("/", 1)[-1]
+        cell = groups.setdefault(key, [0, 0])
+        cell[0] += w
+        cell[1] += 1
+    parts = []
+    for key in sorted(groups, key=lambda k: (-groups[k][0], k))[:FOCUS_MAX_PARTS]:
+        w, n = groups[key]
+        pct = int(round(100.0 * w / total))
+        if pct < FOCUS_MIN_PCT:
+            continue
+        parts.append("%s%s %d%%" % (_short(key), (" (%d files)" % n) if n > 1 else "", pct))
+    return ", ".join(parts)
+
+
 def render_day(date, records, moves, flags):
     day = [r for r in records if r["date"] == date]
     day.sort(key=lambda r: (not r["billable"], r["project"], r["activity"], r["fno_task"]))
@@ -626,6 +676,9 @@ def render_day(date, records, moves, flags):
         out.append("Weighted      : %.2f h" % r["weighted_h"])
         if r["keyboard_min"] > 0:
             out.append("Effective     : %.1fx" % (r["weighted_h"] * 60 / r["keyboard_min"]))
+        focus = focus_line(r["deliverables"])
+        if focus:
+            out.append("Focus         : %s" % focus)
         if r.get("fallback_turns"):
             out.append("Attribution   : %d of %d turns had no covering heartbeat and borrowed"
                        % (r["fallback_turns"], r["turns"]))
