@@ -13,12 +13,16 @@ by hand by any LLM or by the user -- delete `.claude/` and nothing here is lost.
 ops/time/
   README.md              <- this file: the spec + by-hand recipe (source of truth)
   rollup.py              <- accelerator that implements the algorithm below (tool-neutral python)
+  value.py               <- accelerator for the VALUE model (section 7); derive-only
   active-task            <- present only while a task is "started"; holds one task slug (set by /task)
   heartbeats/            <- raw, append-only: one JSONL file per UTC date
     YYYY-MM-DD.jsonl
   timesheet/             <- rolled-up, reviewed output (the deliverable)
     YYYY-MM/             <- one folder per month (keeps the daily pile manageable)
       YYYY-MM-DD.md      <- a finalized day (local date); the unit of F&O entry
+  value/                 <- derived value records (section 7); evidence, not the timesheet
+    YYYY-MM-DD.md        <- the audit record: keyboard time, tiers, deliverables
+    YYYY-MM-DD.jsonl     <- the same, machine-readable
 ```
 
 The split mirrors memory's `daily/` (raw) -> `store/` (curated): **heartbeats are immutable raw;
@@ -247,3 +251,100 @@ Task -> hours).
 **The daily file is the unit of F&O entry** -- time is entered per date. The `--week`/`--month` report
 modes (section 5) are just the daily files stacked into one by-date view for a week or a month, so you
 can pull a whole period at once without a separate aggregate file.
+
+## 7. Value model (ADR-004, PROVISIONAL -- re-evaluate end of 2026-08)
+
+Sections 1-6 measure **time**. This section derives a second number, **weighted hours**, from what
+the session actually produced, and keeps a **keyboard time** figure beside it so any charge can be
+justified. It does not change the timesheet: `rollup.py` still owns section 6, and nothing here is
+invoiced automatically. See `ops/decisions/ADR-004-value-based-billing.md` for the reasoning and for
+the explicit split between what is derived and what is judgement.
+
+**Evidence source.** Heartbeats give attribution (project, task); the session transcript gives
+duration and evidence (which tools ran, which files were written, how many lines). Under Claude Code
+the transcripts live in `~/.claude/projects/**/*.jsonl`. This is the one part of the substrate that
+depends on a specific tool -- `ops/time/value/` is therefore the durable record and **must be backed
+up** (section 5). Another LLM would need to emit an equivalent per-turn evidence stream.
+
+### 7.1 Keyboard time (measured)
+
+A turn runs from the user prompt to its **last production event** (assistant message or tool result),
+bounded by *both* the transcript and the heartbeat. The transcript ends a turn whose `Stop` hook never
+fired; the heartbeat bounds a turn whose segmentation broke on a resumed session. Both cases are real:
+a 1-minute turn on 2026-08-03 recorded a 340-minute heartbeat, and a 131-minute turn on 2026-07-23
+contained 8.8 minutes of activity.
+
+Within a turn, each inter-event gap is capped at **5 minutes** -- the same rule already used between
+turns (section 3), applied one level down. A pending permission prompt or a long-running tool call is
+not keyboard time.
+
+### 7.2 Tiers (derived from tool evidence)
+
+| Tier | Condition | Multiplier |
+|---|---|---|
+| T1 Junior Assistant | no tools, or <=2 read-type calls | 2.0x |
+| T2 Analyst | >=3 reads, or web/docs search, or a subagent spawn | 3.0x |
+| T3 Consultant | state-changing execution, or a sub-20-line edit | 3.0x |
+| T4 Senior Consultant | >=20 weighted changed lines written | 6.0x |
+| T5 Principal Consultant | **per stretch**: >=600 weighted lines, or one new file >=300 | 25.0x |
+
+**The multipliers are judgement, not evidence.** T1-T4 are Niels's estimate of the acceleration; T5
+was fitted to one completed deliverable and is exactly determined, therefore untested. Do not cite
+the fit as validation. Everything else in this section is derived and reproducible.
+
+Weighted hours = sum over turns of `keyboard minutes x multiplier`, plus gaps (capped at 5 min) and a
+5-minute tail per stretch **at 1.0x**, then rounded to 0.25 h with the same 0.5 h floor as section 3.
+
+### 7.3 Deliverable classes
+
+The weight scales the **changed-line count** -- which feeds the tier gates and the repeat-work call --
+never the hours directly. Knowledge is denser per line than code.
+
+| Class | Weight |
+|---|---|
+| `CONTEXT.md`, `README.md`, `CLAUDE.md`, `docs/`, `wiki/` | 2.00x |
+| other `.md` | 1.50x |
+| code, notebooks, anything else inside a project | 1.00x |
+| `ops/memory/` | 0.50x |
+| other `ops/` | 0.25x |
+| `ops/tasks/`, `ops/time/`, `ops/memory/daily/` | 0.00x |
+
+`ops/memory/daily/` is zero because those records are written by the local summarizer hook, not by
+the engagement.
+
+### 7.4 Repeat work
+
+A ledger keyed by file path, rebuilt from scratch on every run (nothing persisted can drift):
+a path not seen before is `new`; >=150 weighted lines on a seen path is a `rebuild`; >=30 is a
+`revision`; below 30 it is an `adjustment` -- **tier drops one and nothing is credited**.
+
+### 7.5 Caps
+
+| Level | Threshold | Type |
+|---|---|---|
+| per **customer** per day | 9 h | hard -- spills to another day, same customer, same month |
+| all customers per day | 15 h | soft -- review flag only, never moves hours |
+| all customers per day | 24 h | hard -- assertion |
+
+A day over 9 h across *different* customers is fine: customers cannot see each other, so the only cap
+that binds is the one on their own line. Spill is section 5's `consolidate_week` run backwards, plus
+two guardrails: never cross a month boundary (it may be invoiced), and distance beats the worked-day
+preference outside the week.
+
+**The 15 h flag counts weighted hours, not clock hours.** It means "check the classifier", never
+"you worked 15 hours."
+
+### 7.6 Output
+
+`value/<date>.md` is the **audit record** -- per F&O line: keyboard time, turn and stretch counts, the
+tier table with multipliers, and every file touched with its line count, kind and class. This is what
+you show when asked to justify a charge. `value/<date>.jsonl` is the same data machine-readable.
+
+`value.py` modes:
+- `python ops/time/value.py` -- derive every complete past day not yet written. Use at `/log`.
+- `python ops/time/value.py --preview` -- today's live tally; writes nothing.
+- `python ops/time/value.py --date YYYY-MM-DD` -- one date (rewrites it).
+- `python ops/time/value.py --month [YYYY-MM]` -- by-customer report; writes nothing.
+
+**By hand:** for each turn, note the active minutes (excluding any gap over 5 minutes), classify it
+against the table in 7.2 using what the turn actually did, multiply, and sum per project per day.

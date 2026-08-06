@@ -22,4 +22,5 @@ data/
 # (The system itself — ops/time/README.md + rollup.py — stays tracked.)
 /ops/time/heartbeats/
 /ops/time/timesheet/
+/ops/time/value/
 /ops/time/active-task
