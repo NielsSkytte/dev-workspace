@@ -37,3 +37,21 @@ prompt-adherence rather than knowledge, that is worth more than extra parameters
 
 Always confirm acceleration with `ollama ps` before trusting an estimate — the `100% CPU`
 field is what exposed the Arc problem, and nothing else in the output hints at it.
+
+**Measured on an RTX 5060 Ti 16GB over the LAN (2026-08-04), same workload:**
+
+| Model | Fit | Throughput | Full 2,840-object run |
+|---|---|---|---|
+| `gemma4:12b` | 100% GPU | **38.5 tok/s** warm | ~1 h |
+| `mistral-small3.2:24b` q4_K_M | **85% GPU** (13.7 of 16.0 GB) | 5.6 tok/s | ~6 h |
+
+**30x over CPU** for the 12B, confirming the bandwidth reasoning above. The 24B result
+is the more useful lesson: at ~15 GB of weights it **cannot fully fit a 16GB card** once
+the display reserve is taken, so ~15% spills to CPU and dominates the timing. Lowering
+context does not rescue it — KV cache was never the binding constraint. Treat "model size
+< VRAM" as insufficient; the usable figure was ~13.7 GB, not 16.
+
+Two further findings: **first-run numbers include model load** (30.3 tok/s cold vs 38.5
+warm — quote the warm figure), and **output is deterministic at temperature 0** (18 of 20
+descriptions byte-identical across two configurations), which makes a small fixed test set
+a reliable instrument for comparing models and prompts.

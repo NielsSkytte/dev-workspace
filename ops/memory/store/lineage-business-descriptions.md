@@ -39,6 +39,31 @@ table/column names, data types, DAX and SQL view expressions; **no row data**.
 `--backend anthropic` (Message Batches, `claude-opus-5`, structured outputs, cached system
 prompt) remains available and needs credentials.
 
+**Evaluated 2026-08-04** against a fixed 20-object probe set (`descriptions/testset.json`,
+13 measures spanning simple/complex/multi-dependency + 7 columns, each recording the
+behaviour it tests) plus a hand-authored reference set as a ceiling. Findings:
+
+* **`gemma4:12b` and `mistral-small3.2:24b` fail differently, neither dominates.** Mistral
+  caught the distinctive branch in 1,800 chars of DAX (an unknown-category bucket) that
+  gemma4 missed, and gave real provenance on plain columns; but it restated the DAX
+  verbatim on simple aggregations — and **135 of 265 measures are simple SUMs**, so its
+  loss lands on the bulk while its wins land on the tail.
+* **The transitive closure demonstrably works**: a measure whose entire DAX is
+  `ABS([... Variance % ...])` was described through to the underlying budget-vs-actual
+  ratio, which is only recoverable from its 12 upstream measures.
+* **Prompt v3 rules came from the gaps against the reference set**: decode codes into
+  meaning (`MST` → "the company's accounting currency"), say *why* an operation is there
+  (`ABS` so overruns and underruns rank together), state what is deliberately NOT done
+  (the `| Core` → `| Std` distinction in this model is an exchange-rate conversion applied
+  by a calculation group — neither model surfaced it unprompted), report sentinel handling
+  (a `NULLIF` that turns `1900-01-01` into "missing"), lead with business meaning, and say
+  plainly when an object is a technical helper. Measures improved clearly; columns stayed
+  flat.
+* **One class of error no prompt can fix:** both models described `salesprice / priceunit`
+  as division by "quantity"/"unit count". `PriceUnit` is a D365 price-basis field and
+  nothing in the lineage says so. This is the concrete case for the source-system metadata
+  step — and the fingerprint store will regenerate exactly these when it arrives.
+
 **Measured quality of a 12B local model on this evidence:** it genuinely reads the lineage —
 surfaced a source field four layers upstream, read `ALL('DimDates'[CalendarDate])` as
 "ignoring all date filters", and picked a `DaysPastDueDate > 0` filter out of the DAX. It
