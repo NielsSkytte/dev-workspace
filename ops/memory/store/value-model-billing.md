@@ -72,3 +72,12 @@ deliverable evidence, so no part of the tier model can validate them either.
 tool-neutrally so it can be re-implemented; `rollup.py`, the timesheet and F&O entry stay
 independent of it. Transcript retention is a live dependency - days not yet derived are lost if
 Claude Code prunes.
+
+**Floor invariant (stated by the owner 2026-08-06):** billable time may never fall below
+actual time spent, keyboard plus processing. It holds structurally today - every tier
+multiplier is >= 2.0x, and capped hours with nowhere to spill stay on the record as
+`UNPLACED` rather than being dropped. Verified against the worst measured day (2026-07-23:
+0.82 h keyboard + 1.41 h discarded processing = 2.23 h actual vs 5.25 h weighted, 2.4x).
+The pressure point is the 5-minute cap on intra-turn gaps, which discards real processing
+time - 12% of it in August but **34% in July**, the month with the workflow runs. See
+`value-model-mode-pricing`.
