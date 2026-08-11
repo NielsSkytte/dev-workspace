@@ -90,6 +90,7 @@ Update procedure: `/update-skills`
 | `pingala-project-playbook` | Pingala project setup and delivery playbook |
 | `pingala-visual-identity` | Pingala brand and visual identity |
 | `fabric-pipeline-notebook` | Best practices for pipeline-orchestrated notebooks |
+| `fabric-deployment` | Promoting Fabric items DEV -> TEST -> PROD: what a deployment does not carry, the four-step release, and the failure modes with their error strings |
 | `fabric-project-access` | Setting up access rights for Fabric projects |
 | `fabric-rename-entity` | Safely rename Fabric items |
 | `medallion-migration-validation` | Validate medallion layer migrations |

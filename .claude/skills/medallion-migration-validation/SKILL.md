@@ -10,6 +10,12 @@ description: Best practices for migrating, validating, and operating medallion a
 
 A pipeline that runs without errors is not necessarily correct. Silent data loss, wrong metrics, and schema mismatches are common and undetectable without explicit validation queries.
 
+> **Scope.** "Migration" here means moving from one system or platform to another (Databricks or
+> a legacy warehouse -> Fabric), and validating the result. Promoting the *same* items between
+> Fabric stages (DEV -> TEST -> PROD through a deployment pipeline) is a different problem with
+> different failure modes — see the `fabric-deployment` skill. The go-live checklist below is
+> reusable as the smoke test after a promotion.
+
 ---
 
 ## Go-Live Validation Checklist

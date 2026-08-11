@@ -57,6 +57,7 @@ Custom skills (`.claude/skills/`) — these fire by context, but reach for them 
 | `fabric-pipeline-notebook` | Pipeline-orchestrated notebooks, JSON ingestion, silent-data-loss debugging |
 | `medallion-migration-validation` | Migration go-lives, QC queries, watermark/tracking patterns, backfills |
 | `timestamp-timezone-pipelines` | Watermarks, date filters to APIs, timezone boundary bugs |
+| `fabric-deployment` | Promoting items DEV -> TEST -> PROD: what a deployment does not carry, the four-step release, and the failure modes |
 | `fabric-rename-entity` | Renaming Git-connected Fabric items safely |
 | `fabric-project-access` | Entra ID groups, SPNs, Key Vault, licences, access-request emails |
 

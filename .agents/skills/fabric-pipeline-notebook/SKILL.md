@@ -80,6 +80,10 @@ def get_recursive_files(path, extension=".json"):
 ### Watermark Query Must Target the Correct Lakehouse
 The Lookup activity must explicitly reference the correct lakehouse connection. In multi-environment setups, verify the connection in the Lookup activity settings — never assume it points to the right place.
 
+> Environment portability generally — a notebook or pipeline that carries a literal workspace
+> id and therefore reads and writes the *source* environment while reporting success — is the
+> `fabric-deployment` skill. Use it whenever an item will be promoted DEV -> TEST -> PROD.
+
 ### Validate Watermark Advancement
 A healthy watermark advances proportionally to pipeline cadence. Replace <tracking_table> and <cadence_minutes> with your values:
 ```sql

@@ -32,7 +32,7 @@ The Fabric domain is split in three around the semantic model (the model is the 
 - **Domain**: Fabric backend — pipelines, notebooks, lakehouses, warehouses, Delta tables, provisioning, gateways, REST APIs; sources → gold/curated
 - **Deploy when**: building, debugging, or designing anything from extraction up to the curated layer
 - **Strengths**: deep platform knowledge, knows constraints and workarounds, opinionated about Python over PySpark
-- **Skills**: `pingala-fabric-platform`, `fabric-pipeline-notebook`, `medallion-migration-validation`, `timestamp-timezone-pipelines`, `fabric-rename-entity`, `fabric-project-access`; vendor: sqldw/spark/realtime/dataflows/migrations bundles
+- **Skills**: `pingala-fabric-platform`, `fabric-pipeline-notebook`, `fabric-deployment`, `medallion-migration-validation`, `timestamp-timezone-pipelines`, `fabric-rename-entity`, `fabric-project-access`; vendor: sqldw/spark/realtime/dataflows/migrations bundles
 
 ### Semantic (`semantic`)
 - **Domain**: Microsoft semantic models — star schema, relationships, DAX measures, Direct Lake vs Import, refresh/processing, VertiPaq optimization, RLS/OLS, model documentation, Prep for AI, Fabric data agents
@@ -87,7 +87,7 @@ The Fabric domain is split in three around the semantic model (the model is the 
 | `/update-skills` | Pull the skills-for-fabric vendor submodule | DEV root |
 | `/cwd`, `/exit` | Show session cwd; graceful close (prompts /handoff + /log) | Any context |
 
-**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 20 custom + vendor submodule): the
+**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 18 custom + vendor submodule): the
 authoritative list is the folder itself; each agent's definition names the skills it reaches for.
 Don't duplicate the list here — it drifts.
 

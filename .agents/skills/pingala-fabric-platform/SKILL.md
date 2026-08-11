@@ -465,6 +465,17 @@ environments. The pipeline has three stages: Development, Test, and Production.
 - Fabric items are version-controlled: Notebooks, Pipelines, Semantic Models,
   Reports, Lakehouses, Warehouses
 
+> **The mechanics of an actual promotion live in the `fabric-deployment` skill.** This section
+> covers the strategy — branch model, three stages, who may change what. What a deployment does
+> *not* carry (data, variable-library value sets, item identity, hardcoded literals), the
+> four-step release (deploy -> seed -> re-stamp identity -> check value sets), and the failure
+> modes with their cryptic error strings are all there. Reach for it before promoting anything,
+> and whenever a deployment or a first run in a new stage fails.
+>
+> Note that "connection parameters are managed via deployment rules" above is the older
+> mechanism. Where a customer uses **variable libraries**, that is the environment contract —
+> see `fabric-deployment`.
+
 ---
 
 ## Fabric capacity and cost
