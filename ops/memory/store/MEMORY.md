@@ -51,3 +51,5 @@ and the record shape live in [`../README.md`](../README.md).
 - `fabric-notebook-token-identity` — a pipeline-triggered notebook's token is Fabric's internal one, not the SPN's app registration; `/v1.0/myorg` refuses it, `/v1/*` accepts it, and your own minted token gives a false pass
 - `skills-fabric-deployment-late-trigger` — `fabric-deployment` and `fabric-pipeline-notebook` both failed to fire across a full day of exactly the work they describe
 - `capture-turn-records-expanded-help` — `capture_turn.py` stores a command's expanded help text as the User line, starving the summarizer; sentinel blocked the 2026-08-11 distillation on 7 records
+- `carlras-marketo-ax09-bridge` — Marketo->AX09 email bridge resolves 87.0% to a debitor via `contactperson.CUSTACCOUNT`; the 15.9% ambiguity is real people on several customers, so the bridge stays many-to-many
+- `eval-2026-08-11-stale-context-restart` — a session resumed after 8 days nearly re-delivered a superseded number as new; re-check inputs before delivering anything computed before a long pause
