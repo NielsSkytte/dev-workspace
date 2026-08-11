@@ -187,12 +187,40 @@ environment, or one the SPN has no role on - neither surfaces until a pipeline r
 Grant with `POST /connections/{id}/roleAssignments`, which must be called as an owner (the SPN
 cannot grant to itself).
 
-**Unverified, flagged for test:** a semantic model has its own owner (`configuredBy`) which
-`fabric_identity.py` does not move. A TEST refresh POST returned 403 for an SPN that could
-read the dataset and its refresh history, on a model whose `configuredBy` was a user account.
-Model ownership is the leading hypothesis, not a proven cause; the test is
-`POST /datasets/{id}/Default.TakeOver` as the SPN, then re-run. Semantic-model refresh
-behaviour otherwise belongs to the `semantic` agent.
+**Resolved 2026-08-11 - it was not model ownership.** This entry previously flagged a
+semantic model's `configuredBy` owner as the leading hypothesis for a 403 on refresh. It
+is not. The same SPN, using an externally minted client-credentials token, got `202` on
+`POST /v1.0/myorg/groups/{ws}/datasets/{ds}/refreshes` and ran a refresh to `Completed` on
+that model, with `configuredBy` unchanged. Do not spend a day on `Default.TakeOver`.
+
+The real cause is the token, and it is a trap for anything a notebook calls:
+
+> A notebook run triggered by a pipeline or the Job Scheduler API gets its token from
+> **Fabric's internal token service**, not from the service principal's app registration.
+> Decode it and the `appid` claim is *not* the SPN's client id; it carries `scp` and no
+> `roles`. The Power BI surface (`/v1.0/myorg/*`) refuses that token with **403 and an
+> empty body**, while the Fabric surface (`/v1/*`) accepts it. Same token, one line apart.
+
+Consequences worth knowing before debugging any 403 in a notebook:
+
+- **A 403 with an empty body from `/v1.0/myorg/*` is not a permissions problem.** Verified:
+  the SPN was workspace Admin throughout, and `/v1/workspaces/{id}` succeeded with the same
+  token in the same cell.
+- **Testing with your own minted SPN token gives a false pass.** An externally minted token
+  for the *same principal* succeeds where the notebook's internal one fails.
+- **semantic-link is only partly usable.** Under the default token service Microsoft
+  supports a documented subset - `FabricRestClient`, `list_items`, the `resolve_*` helpers -
+  and `refresh` is not on it, nor is anything reaching XMLA (`list_tables`). Name resolution
+  via `list_workspaces`/`resolve_workspace_name` routes through the Power BI endpoint and
+  403s. Upgrading semantic-link in-notebook with `%pip` "works" but downgrades PyJWT under
+  Fabric's own OneLake access layer, so it is not a production fix.
+- **The fix is to mint your own token** from an SPN secret in Key Vault and call the REST
+  API directly - `notebookutils.credentials.getSecret` -> client credentials -> the endpoint.
+  Reference: `Fabric-ETL/Util/Code/NB_Refresh_SemanticModel_Full.Notebook`, which does this
+  for enhanced refresh and reads the model's table list from `getDefinition` instead of XMLA.
+  Where a `/v1/*` equivalent exists, prefer it and mint nothing.
+
+Semantic-model refresh behaviour otherwise belongs to the `semantic` agent.
 
 ---
 
