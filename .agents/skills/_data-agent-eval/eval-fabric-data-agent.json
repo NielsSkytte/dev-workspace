@@ -1,0 +1,22 @@
+[
+  {"query": "we're standing up a fabric data agent on our finance semantic model and it keeps using Gross Sales when people ask about 'sales' — how do i get it to pick Net Sales instead?", "should_trigger": true},
+  {"query": "i unchecked like 15 tables in the data agent for our sales model but it behaves exactly the same. is the deselect even doing anything??", "should_trigger": true},
+  {"query": "client wants a chat-over-data poc in fabric for their ops team next month. how should i scope it and what goes in the agent instructions vs on the model?", "should_trigger": true},
+  {"query": "what's the difference between prep for ai on the semantic model and the instructions i write on the data agent itself? and where do verified answers fit in", "should_trigger": true},
+  {"query": "our fabric data agent answers fine in the playground but the answers are inconsistent, sometimes right sometimes wrong for the same question. how do i make it more reliable?", "should_trigger": true},
+  {"query": "can a fabric data agent use more than one source? we have a lakehouse, two semantic models and a kql db for telemetry", "should_trigger": true},
+  {"query": "how do i ground a data agent on our business glossary? the definitions live in a word doc, can i just upload it?", "should_trigger": true},
+  {"query": "writing the data source instructions for our warehouse-backed agent, it keeps guessing the wrong status values in the WHERE clause. any tips on leading words?", "should_trigger": true},
+  {"query": "should we build one big fabric data agent for the whole company or a few smaller specialized ones?", "should_trigger": true},
+  {"query": "thinking about using a fabric IQ ontology to ground our data agent instead of the raw semantic model. is that actually ready and what are the gotchas?", "should_trigger": true},
+  {"query": "how do i run evaluate_data_agent against a set of known question/answer pairs to score my fabric data agent's accuracy?", "should_trigger": false},
+  {"query": "our fabric data agent is eating capacity, how much does each question actually cost in CU and where do i see it?", "should_trigger": false},
+  {"query": "can i see what questions people are actually asking our fabric data agent? is there a prompt log somewhere?", "should_trigger": false},
+  {"query": "i need to build a clean star schema semantic model in fabric with proper explicit measures and relationships for our sales data", "should_trigger": false},
+  {"query": "help me design a power bi report with a sales-by-region map and a yoy trend chart for the exec dashboard", "should_trigger": false},
+  {"query": "setting up a bronze/silver/gold medallion lakehouse in fabric with pyspark notebooks, what's the pattern", "should_trigger": false},
+  {"query": "i need to set up a capacity alert so our data agent usage doesn't blow through our F64 sku — how?", "should_trigger": false},
+  {"query": "i want to build an agent in azure ai foundry that calls a few tools and a vector store for RAG", "should_trigger": false},
+  {"query": "what's the dax for a year-over-year growth measure that ignores filters on the date table?", "should_trigger": false},
+  {"query": "our copilot in power bi keeps giving weird summaries on the report page, how do i fix the copilot narrative visual?", "should_trigger": false}
+]

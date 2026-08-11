@@ -1,0 +1,22 @@
+[
+  {"query": "how much capacity / CU does a fabric data agent actually consume per question? trying to cost a 50-person rollout", "should_trigger": true},
+  {"query": "can i see what users are actually asking our fabric data agent — is there any prompt logging out of the box?", "should_trigger": true},
+  {"query": "our data agent usage is spiking the F-sku, how do i set an alert before it throttles the capacity?", "should_trigger": true},
+  {"query": "how do i set up purview to capture our fabric data agent interactions for audit / governance?", "should_trigger": true},
+  {"query": "how do i promote a fabric data agent from dev to test to prod, and will the data source bindings re-point?", "should_trigger": true},
+  {"query": "do i need to worry about the semantic model and the data agent drifting out of sync in git?", "should_trigger": true},
+  {"query": "what's the realistic total cost of ownership for a production fabric data agent? is F2 actually enough?", "should_trigger": true},
+  {"query": "is a fabric data agent a git item? can i diff its config and version the table selection?", "should_trigger": true},
+  {"query": "i want to build a usage dashboard for our data agent — who's using it and how often", "should_trigger": true},
+  {"query": "can we call the fabric data agent from our own app using a service principal instead of a user login?", "should_trigger": true},
+  {"query": "how do i write prep for ai and verified answers so the agent picks the right measure?", "should_trigger": false},
+  {"query": "how do i run the accuracy evaluation harness against a ground-truth set for the agent?", "should_trigger": false},
+  {"query": "how do i size fabric capacity for our whole data platform — etl, semantic models, reports?", "should_trigger": false},
+  {"query": "set up a power bi usage metrics report so i can see who's viewing my reports", "should_trigger": false},
+  {"query": "how do i set up git integration and deployment pipelines for my fabric notebooks?", "should_trigger": false},
+  {"query": "configure purview sensitivity labels and dlp for our lakehouse data generally", "should_trigger": false},
+  {"query": "build a data agent on our warehouse and help me write the data source instructions", "should_trigger": false},
+  {"query": "my fabric capacity keeps throttling during the nightly etl refresh, how do i fix that?", "should_trigger": false},
+  {"query": "i want to test whether the data agent's answers are still accurate after we changed the model", "should_trigger": false},
+  {"query": "how do i monitor spark job and livy session performance in fabric?", "should_trigger": false}
+]

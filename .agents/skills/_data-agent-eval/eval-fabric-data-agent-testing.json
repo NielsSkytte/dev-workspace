@@ -1,0 +1,22 @@
+[
+  {"query": "how do i run evaluate_data_agent against a set of question/answer pairs to score my fabric data agent?", "should_trigger": true},
+  {"query": "we changed the semantic model and i'm worried it broke the data agent's answers. how do i regression test that nothing broke?", "should_trigger": true},
+  {"query": "i need to build a ground truth test set for our fabric data agent — how many questions, and what makes a good one?", "should_trigger": true},
+  {"query": "the eval keeps marking correct answers wrong because of number formatting and casing. can i change how the judge decides?", "should_trigger": true},
+  {"query": "how do i validate my few-shot example queries for the data agent before they go live? worried some conflict with each other", "should_trigger": true},
+  {"query": "what's the difference between the verified answers / few-shots i give the agent and an actual held-out test set?", "should_trigger": true},
+  {"query": "is my fabric data agent actually answering accurately? i want to measure it properly, not just eyeball the playground", "should_trigger": true},
+  {"query": "set up CI so that every time someone changes the data agent or its model we re-run the accuracy tests", "should_trigger": true},
+  {"query": "the agent answers correctly in the fabric UI but wrong through the SDK in my eval notebook — why would that happen?", "should_trigger": true},
+  {"query": "writing a custom critic prompt for evaluate_data_agent, what placeholders does it need and how strict should it be?", "should_trigger": true},
+  {"query": "how do i write the agent instructions so the data agent stops picking the wrong measure for 'sales'?", "should_trigger": false},
+  {"query": "how much CU does each fabric data agent question cost and how do i monitor it?", "should_trigger": false},
+  {"query": "how do i unit test my DAX measures in the semantic model with something like a dax query view test", "should_trigger": false},
+  {"query": "how do i evaluate my RAG pipeline accuracy with an llm-as-judge in python, not fabric specific", "should_trigger": false},
+  {"query": "i want to confirm my fabric data pipeline loaded all the rows correctly from the source system after go-live", "should_trigger": false},
+  {"query": "ground my new data agent on our lakehouse and help me pick which tables to expose", "should_trigger": false},
+  {"query": "can i see the actual prompts users send the agent so compliance can audit them?", "should_trigger": false},
+  {"query": "benchmark two different semantic models for dax query performance", "should_trigger": false},
+  {"query": "how do i watch the fabric capacity metrics app for throttling on our F-sku?", "should_trigger": false},
+  {"query": "validate that our power bi report totals match the source erp numbers", "should_trigger": false}
+]
