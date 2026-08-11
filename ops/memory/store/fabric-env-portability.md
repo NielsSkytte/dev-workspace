@@ -30,6 +30,21 @@ Silent cross-environment write, the worst class of this bug. Fixed `f3be10b` wit
   wrong — read the code. See [[eval-2026-08-11-binding-is-not-code]].
 - Portability review = grep the item for GUIDs, account for every one.
 
+**Estate sweep done 2026-08-11.** Four code-level hits, all Marketo, three notebooks — fixed in
+`147b13e`: `NB_Raw_ExplodeActivityAttributes_Marketo` (`raw_workspace_id`),
+`NB_Metadata_Marketo` (`util_workspace_id`), `NB_Generate_ViewTransform_Marketo`
+(`warehouse_workspace_id`, `util_workspace_id`). The explode notebook is an *activity inside*
+`PL_Ingest_Lakehouse_Raw_Marketo`, so every TEST run of that pipeline was writing
+`activity_attributes` into DEV. AX09, CVR and the `Util/Code` notebooks are clean — their only
+matches are the META binding line the deployment pipeline rewrites. No item-level GUIDs are
+hardcoded anywhere in code, only workspace ids.
+
+**Fix pattern** where the id sits in a PARAMETERS CELL: keep the parameter, default it to `""`,
+and resolve after the imports —
+`util_workspace_id = util_workspace_id or runtime.context["currentWorkspaceId"]`. Deliberate
+cross-workspace targeting stays possible; the wrong default goes away. (`notebookutils` is not
+imported yet inside a parameters cell, so the resolution cannot live there.)
+
 ## 2. Variable libraries are the environment contract
 
 `VL_DatastoreId`, `VL_ConnectionId`, `VL_WorkspaceId`, `VL_ModelId`, `VL_PingalaUtils`. A pipeline
@@ -57,3 +72,11 @@ binds them under aliases in its `libraryVariables` block:
   item, never its data.
 - A **failed warehouse import leaves the item behind unpaired** (`targetItemId: null`), so the
   retry collides on display name. Delete the orphan in the target stage before redeploying.
+- **`Lakehouse_Util` is a data-carrying dependency, not just an item.** The house ingest reads
+  `Lakehouse_Util.rawtablekeymap_<source>` on every run, and the deployment pipeline copies the
+  lakehouse item without it. `PL_Ingest_Lakehouse_Raw_Marketo` failed in TEST with
+  `[TABLE_OR_VIEW_NOT_FOUND] Lakehouse_Util.rawtablekeymap_marketo`. Cure: run
+  `NB_Table_PrimaryKeyMap_<source>` once per environment before the first ingest — its own header
+  says so. Standing up a source in a new stage therefore means seeding `Lakehouse_Util`
+  (`rawtablekeymap_*`, and for Marketo also `marketo_entities` / `marketo_columns` from
+  `NB_Metadata_Marketo`) as well as the Raw lakehouse.
