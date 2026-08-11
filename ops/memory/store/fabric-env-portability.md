@@ -75,8 +75,13 @@ binds them under aliases in its `libraryVariables` block:
 - **`Lakehouse_Util` is a data-carrying dependency, not just an item.** The house ingest reads
   `Lakehouse_Util.rawtablekeymap_<source>` on every run, and the deployment pipeline copies the
   lakehouse item without it. `PL_Ingest_Lakehouse_Raw_Marketo` failed in TEST with
-  `[TABLE_OR_VIEW_NOT_FOUND] Lakehouse_Util.rawtablekeymap_marketo`. Cure: run
-  `NB_Table_PrimaryKeyMap_<source>` once per environment before the first ingest — its own header
-  says so. Standing up a source in a new stage therefore means seeding `Lakehouse_Util`
-  (`rawtablekeymap_*`, and for Marketo also `marketo_entities` / `marketo_columns` from
-  `NB_Metadata_Marketo`) as well as the Raw lakehouse.
+  `[TABLE_OR_VIEW_NOT_FOUND] Lakehouse_Util.rawtablekeymap_marketo`. Standing up a source in a new
+  stage therefore means seeding `Lakehouse_Util` (`rawtablekeymap_*`, and for Marketo also
+  `marketo_entities` / `marketo_columns` from `NB_Metadata_Marketo`) as well as the Raw lakehouse.
+  - **Superseded same day:** commit `3d0825d` folded all three `NB_Table_PrimaryKeyMap_*` notebooks
+    into `PL_IaC_PopulateLakehouseUtil`, so seeding is now one repeatable step per environment
+    (`CREATE OR REPLACE`, safe to re-run) rather than a hand-run notebook. The same commit records
+    why it mattered: DEV's key map went eight weeks stale and broke the AX09 raw load.
+  - **A release is deploy + seed + re-stamp identity + check value sets** — `tools/fabric_release.py`
+    (2026-08-11). A Fabric deployment carries only item definitions; value sets, seeded tables and
+    `LastModifiedBy` are all left behind, and the last one decides which principal an item runs as.
