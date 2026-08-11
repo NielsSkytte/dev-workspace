@@ -97,6 +97,24 @@ python -m stream_matrix customers/<Customer>/<Project>/design/stream_matrix_data
 # -> architecture_overview.html beside the sidecar; --check validates without writing
 ```
 
+### Standing up a customer that has no matrix yet
+
+Do NOT hand-write the document. Derive it:
+
+```
+python -m lineage_engine <their-fabric-repo> -o out/metaAtomic    # once, ~60s
+python -m stream_matrix init customers/<Customer>/<Project>       # writes the draft
+```
+
+`init` derives the stream set, the per-stage labels and the warehouse table/view counts from the
+repo, and leaves every judgement field blank and listed. Fill those in (Steps 1-3 above), then
+render. It deliberately does not assert landing-zone or raw counts — those objects are created at
+runtime, so the repo under-counts them; fill them from the live workspace.
+
+Check `customer` before rendering: it is the display name in the H1 of a document you email to that
+customer, so it must read as the company writes it, not as the folder is named. `check` flags a
+value that looks like a slug.
+
 ```
 python -m stream_matrix <sidecar> --verify   # structural claims vs the lineage store
 ```
