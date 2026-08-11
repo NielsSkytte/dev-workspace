@@ -9,6 +9,17 @@ Be short and to the point, /s
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
 `feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).
+
+**If you can do it, do it — then report.** The ask line is blast radius, not difficulty: changes
+that stay on this machine and that you can undo (reading, authoring, internal commits) are done and
+reported; a customer-facing push, a customer-tenant mutation, anything destructive, and any costly
+or long run are asked first. A proven fix is a reason to act, not to ask. Ladder in `AGENTS.md` >
+Conventions; memory record `feedback-act-then-report`.
+
+**Ask closed.** When a question IS warranted: recommendation first, two or three named options
+carrying their concrete values, and state what a bare "yes" triggers. No "your call", no open
+either/or without a recommendation (see memory record `feedback-closed-questions`).
+
 ## Claude harness map
 
 The harness *accelerates* routines that are fully described in `AGENTS.md`. Where the pieces live:
