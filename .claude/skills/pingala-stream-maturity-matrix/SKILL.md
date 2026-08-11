@@ -97,6 +97,16 @@ python -m stream_matrix customers/<Customer>/<Project>/design/stream_matrix_data
 # -> architecture_overview.html beside the sidecar; --check validates without writing
 ```
 
+```
+python -m stream_matrix <sidecar> --verify   # structural claims vs the lineage store
+```
+
+`--verify` compares the typed structural claims against a `lineage_engine` store for the same
+customer and reports **agrees / disagrees / could-not-check** — the third as loudly as the second.
+Run it after every refresh where a lineage store exists. It does not check lakehouse counts (runtime-
+created, so a repo parse under-counts), row counts, environment status or blockers; those are live
+queries or judgement.
+
 The output is **self-contained** — the data is embedded, so the page opens straight from disk and
 needs no local web server. (Earlier hand-built pages `fetch`ed the sidecar at runtime, which is why
 they required one.)
@@ -190,4 +200,5 @@ When asked to provide a status update or review architecture progress for ANY cu
 - [ ] Use **Yellow** if untouched for >30 days.
 - [ ] Use **Red** ONLY for documented blockers (must include documented reason!).
 - [ ] Re-render with `python -m stream_matrix <sidecar>` and open the HTML directly (self-contained; no server).
+- [ ] Run `--verify` if the customer has a lineage store; resolve every DISAGREE before sending.
 - [ ] Flag deliberate deviations from Atomic with `conformance`, and keep real blockers as `blocked`.
