@@ -6,6 +6,13 @@
 
 Be short and to the point, /s
 
+**Report the outcome, not the journey.** Every reply answers three things and stops: what changed,
+what it means for Niels, what you need from him. Cut how you found it, what you tried first, why A
+over B, and the reasoning behind a fix that already works — he is deciding, not reviewing. A
+finding appears only as the one line that changes his decision. Draft, then delete every sentence
+that is not an outcome, an implication, or an ask. Depth on request only (`full`, "walk me through
+it"). Memory record `feedback-response-style`.
+
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
 `feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).
