@@ -14,6 +14,10 @@ contacts:            # key people — customer-side and partners
 infra:               # shared across projects: Fabric capacity, Entra tenant, Azure DevOps org, ...
 tenant_id:           # Entra tenant GUID — verify before any fab/az/pac command (Guardrail 11)
 account:             # the identity we sign in as, normally an account created in their tenant
+# Fab auth: fill in tenant_id above, then log in ONCE in a real PowerShell window —
+#   ops\bin\fab-as.ps1 <Customer> login   (or: cd here, then  fab auth login -t <tenant_id>)
+# After that every session at or under this folder resolves to this customer automatically.
+# An SPN is an optional shortcut at some customers, never a prerequisite. (Guardrail 11)
 language: da | en
 
 ## About

@@ -100,6 +100,52 @@ function Link-Harness($root) {
   return ($a -or $b -or $c -or $d)
 }
 
+function Write-ShimIfChanged($path, $lines, $eol) {
+  # LF for the /bin/sh shim (a CRLF shebang breaks it under git-bash), CRLF for the .cmd.
+  $text = ($lines -join $eol) + $eol
+  if (Test-Path $path) {
+    $cur = [IO.File]::ReadAllText($path)
+    if ($cur -eq $text) { return $false }
+  }
+  [IO.File]::WriteAllText($path, $text, [Text.Encoding]::ASCII)
+  return $true
+}
+
+function Install-TenantShims {
+  # Tenant-scoped credentials (Guardrail 11). `fab` hardcodes its state dir to ~/.config/fab,
+  # so one Windows user gets one Fabric tenant. These shims sit on PATH ahead of the real
+  # fab.exe and route each invocation to the profile for the customer owning the cwd - see
+  # ops/bin/tenant_shim.py for the full why.
+  #
+  # ~/.local/bin is already on PATH ahead of the Python Scripts dir holding fab.exe (verified
+  # 2026-08-03: index 29 vs 43 in git-bash, 21 vs 22 in PowerShell), so no PATH change is
+  # needed. NOTE this does NOT hold for az: its wbin sits at PATH index 2, far ahead of
+  # ~/.local/bin, which is one reason az stays out of scope.
+  $binDir = Join-Path $env:USERPROFILE ".local\bin"
+  if (-not (Test-Path $binDir)) { New-Item -ItemType Directory -Path $binDir -Force | Out-Null }
+
+  $resolver = "C:/Dev/ops/bin/tenant_shim.py"
+  $note1 = "Tenant-scoped fab - routes to the customer profile for the current directory."
+  $note2 = "Installed by ops/bin/heal-repos.ps1; edit the resolver, not this file."
+
+  $sh = @(
+    '#!/bin/sh',
+    "# $note1",
+    "# $note2",
+    "exec python `"$resolver`" --shim-dir `"`$(dirname `"`$0`")`" fab `"`$@`""
+  )
+  $cmd = @(
+    '@echo off',
+    "rem $note1",
+    "rem $note2",
+    "python `"$resolver`" --shim-dir `"%~dp0.`" fab %*"
+  )
+
+  $a = Write-ShimIfChanged (Join-Path $binDir "fab")     $sh  "`n"
+  $b = Write-ShimIfChanged (Join-Path $binDir "fab.cmd") $cmd "`r`n"
+  if ($a -or $b) { Write-Host "== tenant shims installed/healed in $binDir" }
+}
+
 function Get-ProjectRoots($unit) {
   # A project root = any dir holding a CLAUDE.md, at the two storage-standard depths (same scan
   # as Get-SubRepos). Sessions are rooted at the PROJECT (CLAUDE.md > Reminders), but harness
@@ -286,6 +332,8 @@ function Heal-Unit($unit) {
     Write-Host "   initial commit created"
   }
 }
+
+Install-TenantShims
 
 if ($Only) {
   Heal-Unit ((Resolve-Path $Only).Path)

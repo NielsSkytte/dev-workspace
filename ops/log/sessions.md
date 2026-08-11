@@ -372,3 +372,21 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Tasks:** Created, tested, and verified implementation progress overviews for Carl-Ras, Matas, and Tystoftefonden. Updated skill `pingala-stream-maturity-matrix`.
 - **Next:** Register `NB_Raw_GTM` into `PL_Execute_Raw` for Carl-Ras in DEV/TEST; promote Marketo TEST ingestion pipeline to verify >0 rows; update `SOLUTION_DESIGN.md` to v0.2.
 
+### Carl Ras Datahub — operation hardening: refresh rebuilt, DEV→TEST release machinery
+- **Did:**
+  - **Root-caused the `PL_MainExecution` 403** and disproved the standing hypothesis (model ownership). A notebook run triggered by a pipeline gets its token from **Fabric's internal token service**: the `appid` claim is not the SPN's app registration and it carries `scp` with no `roles`. `/v1.0/myorg/*` refuses it with 403 and an empty body; `/v1/*` accepts the same token. An externally minted client-credentials token for the same SPN reached `202` and refreshed to `Completed` — so **testing with your own token gives a false pass**.
+  - **Rebuilt `NB_Refresh_SemanticModel_Full`** on the enhanced-refresh REST API: token minted from `DataHubServicePrincipal` in `KeyVaultDataHub`, table list from `getDefinition` (TMDL) instead of XMLA, **sempy and semantic-link-labs removed entirely** (the unpinned `%pip install` went with them).
+  - **Replaced the hand-curated refresh tiers with an adaptive load** that halves a batch only on out-of-memory, down to a single table then `dataOnly`+`calculate`; split balanced by `rows × columns`; parallelism capped at batch size. The plan is **remembered** in `Lakehouse_Util.SemanticModelRefreshLog` so the next run starts from the batching that worked — the rediscovery failure measured at **683 s** of a 26 min run.
+  - **Settled the memory arithmetic**: effective command limit = SKU per-model limit − resident model (F16 = 5120 MB; measured `2734+2385=5119`, `26+5093=5119`). `consumed` in the error is a tripwire reading, not a requirement. Rung 1 needs the model under ~1766 MB; it is 2734 MB.
+  - **Fixed the AX09 raw load**: DEV's `rawtablekeymap_ax09` was 8 weeks stale because `PL_IaC_PopulateLakehouseUtil` seeded dates and enums but never the key maps. Added all three `NB_Table_PrimaryKeyMap_*` to it.
+  - **Granted 3 of 23 connections** the SPN could not use (the notebook connection `PL_ScaleProcess_SP` uses — its only role assignment was one named person — and both Marketo connections). `fabric_identity.py` now grants instead of only reporting.
+  - **Built `tools/fabric_release.py`**: deploy → seed → re-stamp → verify (value sets non-empty, every `CON*` id resolvable in the target), audit by default, runs entirely as the SPN. The `fabric-deployment` skill now cites it as its reference implementation.
+  - **Corrected the `fabric-deployment` skill** — the semantic-model-ownership entry it flagged as unverified is wrong; replaced with the token finding and its consequences.
+  - Established the **repo inventory**: 5 ADO repos (3 cloned) and 4 deployment pipelines, one per repo; only DEV workspaces are git-connected. Recorded at the Carl Ras customer node by agent M, with a matching workspace convention.
+- **Decided:**
+  - Refresh calls the REST API with a Key Vault-minted token, **not sempy** — `refresh` is outside the semantic-link subset supported for SPN-triggered runs.
+  - Refresh batching is **derived at runtime and remembered**, not curated — the old plan had drifted from the model (its fact list named a table that does not exist).
+  - A release is **deploy → seed → re-stamp → verify**, one command parameterised by stage, so DEV→TEST and TEST→PROD are the same procedure.
+  - **PROD is out of scope** until DEV→TEST is clean (Niels).
+- **Tasks:** `2026-08-11-carlras-operation-hardening` in-progress — most of the day's work sits under it.
+- **Next:** Update from Git in DEV → `fabric_release.py --to Test --apply` → fill `VL_DatastoreId.Test.Warehouse_Enriched_Marketo` → check TEST's 04:30 run and whether `SemanticModelRefreshLog` shows the learned plan engaging. Open decisions: `Volume_WmsLocation` in DEV (Currency overflow on AX sentinels, not ours to drop), a `CON-WI-Notebook` connection for TEST, SPN as admin on the Model and Sales deployment pipelines.

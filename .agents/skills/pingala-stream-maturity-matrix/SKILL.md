@@ -56,14 +56,14 @@ This skill defines the canonical methodology for **Agent M** (Head of Operations
    * **`PRODUCTION GO-LIVE PROGRESS: X% LIVE IN PROD`** (e.g. `0 of 24 Medallion Stages Live in PROD`).
    * A multi-segment visual progress bar displaying the exact distribution across PROD (Green), TEST (Indigo), DEV (Blue), Blocked (Red), and Planned (Gray).
 
-7. **Strict Deliverable & Styling Rules:**
+8. **Strict Deliverable & Styling Rules:**
    * **No Agent Names:** Internal agent persona names (`Agent M`, `Agent Q`, `Sentinel`, etc.) MUST NEVER appear in customer-facing HTML files, headings, or callout boxes.
    * **Pingala Typography:** Headings in `Aptos Display`, body & matrix grid in `Aptos`. NEVER use cursive/script fonts (`Ink Free`) for technical callouts or architecture notes.
    * **Pingala Color Palette:** Primary Teal (`#60756E`), Deep Teal (`#4D7878`), Terracotta Accent (`#B5442A`), Warm Cream Background (`#F5EFEA`).
 
 ---
 
-## 2. Automated Inspection & Update Protocol Going Forward
+## 2. Automated Inspection & Update Protocol
 
 When Agent M or Agent Q is asked to update or refresh the matrix for ANY project, follow this 4-step inspection protocol:
 
@@ -83,14 +83,89 @@ Check if the item is registered in master execution pipelines (`PL_Execute_Raw` 
 
 ### Step 4: Auto-Update Sidecar & Re-Render Visual Deliverable
 1. Update `customers/<Customer>/<Project>/design/stream_matrix_data.json`.
-2. Re-render `customers/<Customer>/<Project>/design/carlras_architecture_overview.html`.
-3. Serve local HTTP preview URL (`http://127.0.0.1:8080/customers/<Customer>/<Project>/design/carlras_architecture_overview.html`) and open browser.
+2. Re-render: `python -m stream_matrix customers/<Customer>/<Project>/design/stream_matrix_data.json`.
+3. Open `architecture_overview.html` directly — it is self-contained, no server needed.
 
 ---
 
-## 2. Maintaining State via Data Sidecar (`stream_matrix_data.json`)
+## 3. Rendering: the generator owns the HTML — never hand-write it
 
-Store the stream definitions, stage metrics, and blocker descriptions in `customers/<Customer>/<Project>/design/stream_matrix_data.json`:
+The renderer lives in **MetaAtomic**: `own/MetaAtomic/stream_matrix/`. Do not author the HTML.
+
+```
+python -m stream_matrix customers/<Customer>/<Project>/design/stream_matrix_data.json
+# -> architecture_overview.html beside the sidecar; --check validates without writing
+```
+
+### Standing up a customer that has no matrix yet
+
+Do NOT hand-write the document. Derive it:
+
+```
+python -m lineage_engine <their-fabric-repo> -o out/metaAtomic    # once, ~60s
+python -m stream_matrix init customers/<Customer>/<Project>       # writes the draft
+```
+
+`init` derives the stream set, the per-stage labels and the warehouse table/view counts from the
+repo, and leaves every judgement field blank and listed. Fill those in (Steps 1-3 above), then
+render. It deliberately does not assert landing-zone or raw counts — those objects are created at
+runtime, so the repo under-counts them; fill them from the live workspace.
+
+Check `customer` before rendering: it is the display name in the H1 of a document you email to that
+customer, so it must read as the company writes it, not as the folder is named. `check` flags a
+value that looks like a slug.
+
+```
+python -m stream_matrix <sidecar> --verify   # structural claims vs the lineage store
+```
+
+`--verify` compares the typed structural claims against a `lineage_engine` store for the same
+customer and reports **agrees / disagrees / could-not-check** — the third as loudly as the second.
+Run it after every refresh where a lineage store exists. It does not check lakehouse counts (runtime-
+created, so a repo parse under-counts), row counts, environment status or blockers; those are live
+queries or judgement.
+
+The output is **self-contained** — the data is embedded, so the page opens straight from disk and
+needs no local web server. (Earlier hand-built pages `fetch`ed the sidecar at runtime, which is why
+they required one.)
+
+This exists because the three customer pages were forked copies that had already diverged: Carl Ras
+gained two-way tracks and a status class the other two lacked, and the grid column widths drifted.
+One generator, three documents.
+
+### Genericity: Atomic is the default, not a requirement
+
+* **`stages_spec`** — a document may declare its own stage columns. Omit it and you get the Atomic
+  five (`source`, `landing`, `raw`, `enriched`, `curated`). A discovery engagement with no landing
+  zone declares the stages it actually has.
+* **`section1_title` / `section1_note` / `platform_label` / `identity_column_title`** — override the
+  Atomic wording where it does not fit.
+
+### Conformance: opt-in, and never an error
+
+A stream or a whole document may carry a `conformance` block. **Absent means nothing renders** — it
+is a flag you enable, not a check that runs. `follows: false` renders a neutral slate chip
+(`⬦ <label>`) with the reason on hover. It is deliberately not a warning colour: a deviation from the
+house pattern is a fact about the design and is often entirely correct.
+
+```json
+"conformance": {
+  "standard": "Pingala Atomic",
+  "follows": false,
+  "label": "Shortcut ingest",
+  "note": "Landing is a OneLake shortcut onto the existing Event Hub Capture container rather than an Atomic copy pipeline — deliberate, the customer already owns the capture infrastructure."
+}
+```
+
+`follows: false` with no `note` is the one thing `--check` complains about: the annotation exists to
+carry the reason, not just the fact. Genuine blockers stay `blocked: true` + `blocker_reason` and
+stay red — do not use conformance for those.
+
+---
+
+## 4. Maintaining State via Data Sidecar (`stream_matrix_data.json`)
+
+Store the stream definitions, stage metrics, and blocker descriptions in `customers/<Customer>/<Project>/design/stream_matrix_data.json`. Stage fields are `label`, `metric_value`, `metric_env`, `dev`, `test`, `prod`, `artifacts[]`, `missing_actions[]`, plus optional `blocked` / `blocker_reason`. Two-way streams carry `inbound_track` / `outbound_track` instead of `stages`:
 
 ```json
 {
@@ -133,54 +208,7 @@ Store the stream definitions, stage metrics, and blocker descriptions in `custom
 
 ---
 
-## 3. Standard HTML Architecture Matrix Template
-
-Generate the deliverable HTML file at `customers/<Customer>/<Project>/design/architecture_overview.html` using this exact Pingala visual structure:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[Customer] Datahub — Solution Architecture Matrix</title>
-  <style>
-    @font-face { font-family: 'Aptos Display'; src: local('Aptos Display'), local('Calibri'); }
-    @font-face { font-family: 'Aptos'; src: local('Aptos'), local('Calibri'); }
-
-    :root {
-      --pingala-bg: #F5EFEA;
-      --pingala-card-bg: #FFFFFF;
-      --pingala-teal-deep: #4D7878;
-
-      /* 4-Color Status Palette */
-      --status-prod-bg: #E6F4EA;
-      --status-prod-text: #059669;
-
-      --status-neutral-bg: #F1F5F9;
-      --status-neutral-border: #475569;
-      --status-neutral-text: #334155;
-
-      --status-stale-bg: #FEF3C7;
-      --status-stale-border: #D97706;
-      --status-stale-text: #92400E;
-
-      --status-blocked-bg: #FEF2F2;
-      --status-blocked-border: #DC2626;
-      --status-blocked-text: #991B1B;
-    }
-    /* Matrix styling */
-  </style>
-</head>
-<body>
-  <!-- Executive Matrix HTML -->
-</body>
-</html>
-```
-
----
-
-## 4. Summary Checklist for Agent M & Agent Q
+## 5. Summary Checklist
 
 When asked to provide a status update or review architecture progress for ANY customer project:
 - [ ] Split all data sources into **one stream per source system**.
@@ -189,4 +217,6 @@ When asked to provide a status update or review architecture progress for ANY cu
 - [ ] Use **Neutral Slate** by default for active DEV/TEST stages.
 - [ ] Use **Yellow** if untouched for >30 days.
 - [ ] Use **Red** ONLY for documented blockers (must include documented reason!).
-- [ ] Render `architecture_overview.html` and serve local HTTP preview URL (`http://127.0.0.1:8080/...`).
+- [ ] Re-render with `python -m stream_matrix <sidecar>` and open the HTML directly (self-contained; no server).
+- [ ] Run `--verify` if the customer has a lineage store; resolve every DISAGREE before sending.
+- [ ] Flag deliberate deviations from Atomic with `conformance`, and keep real blockers as `blocked`.

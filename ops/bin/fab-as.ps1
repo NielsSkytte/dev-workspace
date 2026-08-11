@@ -81,7 +81,12 @@ if (-not $id.Tenant) {
 }
 
 New-Item -ItemType Directory -Force -Path $id.Home | Out-Null
+$callerProfile = $env:USERPROFILE
 $env:USERPROFILE = $id.Home
+# `fab` below resolves to the PATH shim (~\.local\bin\fab.cmd -> ops\bin\tenant_shim.py), which
+# would otherwise re-resolve the identity from the CURRENT DIRECTORY and quietly override the
+# customer named on the command line. This says "explicit wins" (added 2026-08-11).
+$env:TENANT_PROFILE_HOME = $id.Home
 
 if (-not $FabArgs -or $FabArgs.Count -eq 0) {
     $FabArgs = @('auth', 'status')
@@ -93,5 +98,16 @@ elseif ($FabArgs[0] -eq 'login') {
     if ($id.Account) { Write-Host "Sign in as $($id.Account) (tenant $($id.Tenant))." }
 }
 
-& fab @FabArgs
-exit $LASTEXITCODE
+try {
+    & fab @FabArgs
+    $code = $LASTEXITCODE
+}
+finally {
+    # Restore the caller's environment. Dot-sourced or called with '&', this script runs in the
+    # SAME PROCESS, so leaving USERPROFILE redirected would move '~' for every later git/gh/az
+    # command in that shell - the exact blunt-instrument hazard the per-invocation shim avoids.
+    # (Fixed 2026-08-11 after observing a polluted parent shell.)
+    $env:USERPROFILE = $callerProfile
+    Remove-Item Env:\TENANT_PROFILE_HOME -ErrorAction SilentlyContinue
+}
+exit $code
