@@ -50,3 +50,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-08-07-convenient-sample](eval-2026-08-07-convenient-sample.md) — scoped a query to one month then generalised from it ("never been used" vs 3,263 Fable turns the month before); second consecutive day of concluding from a self-bounded sample
 - `fabric-notebook-token-identity` — a pipeline-triggered notebook's token is Fabric's internal one, not the SPN's app registration; `/v1.0/myorg` refuses it, `/v1/*` accepts it, and your own minted token gives a false pass
 - `skills-fabric-deployment-late-trigger` — `fabric-deployment` and `fabric-pipeline-notebook` both failed to fire across a full day of exactly the work they describe
+- `capture-turn-records-expanded-help` — `capture_turn.py` stores a command's expanded help text as the User line, starving the summarizer; sentinel blocked the 2026-08-11 distillation on 7 records
