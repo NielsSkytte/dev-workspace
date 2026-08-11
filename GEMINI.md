@@ -19,8 +19,23 @@ The harness accelerates routines fully described in [`AGENTS.md`](AGENTS.md).
 | Memory & Time Substrate | `ops/memory/`, `ops/time/` | *Memory*, *Time tracking* |
 | Dashboard | `ops/dashboard.py` | *Dashboard* (`http://127.0.0.1:8787/`) |
 | Action & Log capture | `ops/TODO.md`, `ops/tasks/`, `ops/log/sessions.md` | *Continuity loop* |
+| Workspace Custom Commands | `.claude/commands/*.md` | *Command routines (`/log`, `/todo`, `/task`, `/brief`, `/checkin`, `/dashboard`, `/handoff`, `/switch-task`, `/new-project`, `/time`, `/update-skills`)* |
 
-## Continuity Loop & Routine Execution
+## Workspace Custom Commands (`.claude/commands/`)
+
+Whenever the user invokes or references a slash command (e.g. `/log`, `/todo`, `/task`, `/brief`, `/checkin`, `/dashboard`, `/handoff`, `/switch-task`, `/new-project`, `/time`, `/update-skills`), **immediately inspect and execute the instructions** in its corresponding file under `file:///C:/Dev/.claude/commands/<command>.md`:
+
+- **`/log`** (`.claude/commands/log.md`) — Session log, memory distillation, time rollup, backup & git commit.
+- **`/todo`** (`.claude/commands/todo.md`) — Quick action/idea capture to `ops/TODO.md`.
+- **`/task`** (`.claude/commands/task.md`) — Create or triage a workspace task in `ops/tasks/`.
+- **`/brief`** (`.claude/commands/brief.md`) — Workspace/project morning briefing & task walk.
+- **`/checkin`** (`.claude/commands/checkin.md`) — Mid-session status check & task review.
+- **`/dashboard`** (`.claude/commands/dashboard.md`) — Workspace status dashboard & metrics.
+- **`/handoff`** (`.claude/commands/handoff.md`) — Generate structured handover notes.
+- **`/switch-task`** (`.claude/commands/switch-task.md`) — Switch active task context & set active task.
+- **`/new-project`** (`.claude/commands/new-project.md`) — Scaffold a new customer or internal project.
+- **`/time`** (`.claude/commands/time.md`) — Log or review time heartbeats & timesheet totals.
+- **`/update-skills`** (`.claude/commands/update-skills.md`) — Re-index and update skill registry.
 
 When starting or running a session:
 

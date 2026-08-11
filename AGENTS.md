@@ -52,7 +52,7 @@ DEV/
 └── .claude/              ← Claude harness (accelerators, not load-bearing): agents/, commands/, skills/
 ```
 
-Everything under `ops/`, `customers/`, `own/`, `_templates/` is the portable substrate. `.claude/` and `.vscode/` are tool-specific accelerators — deletable without losing knowledge or capability (per the acid test).
+Everything under `ops/`, `customers/`, `own/`, `_templates/` is the portable substrate. `.claude/` and `.vscode/` are tool-specific accelerators — deletable without losing knowledge or capability (per the acid test). Command definitions under `.claude/commands/*.md` wrap operational routines (`/log`, `/todo`, `/task`, `/brief`, `/checkin`, `/dashboard`, `/handoff`, `/switch-task`, `/new-project`, `/time`, `/update-skills`) documented in plain prose across `ops/` and `AGENTS.md`. Any LLM assistant encountering a slash command must inspect and execute the matching markdown file under `.claude/commands/`.
 
 ## The two buckets
 
