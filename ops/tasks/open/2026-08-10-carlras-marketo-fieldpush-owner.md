@@ -38,7 +38,16 @@ was unobtainable. We have the SQL; it is no longer a blocker.
    grain, `len(WebOrderId) > 2` for contact dates, and a 28-value `departmentId` whitelist for
    contact store counts.
 6. **`Account Segment1` / `Account Discount Group`?** Master data from `silver_customer`, not
-   computed.
+   computed. Now resolved to source: `CUSTTABLE.SEGMENTID` (100.0% agreement) and
+   `CUSTTABLE.LINEDISC` (100.0%).
+7. **`silver_*` -> AX09 mapping** — derived from data 2026-08-12, no Impact involvement.
+   `silver_order` = `CUSTINVOICEJOUR` + `CUSTINVOICETRANS` (invoice-line grain, **not**
+   SALESTABLE/SALESLINE — `LineAmountMST` and `InventTransId` do not exist there);
+   `silver_customer` = `CUSTTABLE`; `silver_contact` = `CONTACTPERSON`; `departmentId` =
+   `DIMENSION` (dimension 1, decoded via `DIMENSIONS` where `DIMENSIONCODE = 0`).
+   `sum(LINEAMOUNTMST)` reproduces `totalSalesAccount` at median ratio 1.0000; distinct `SALESID`
+   reproduces `OrderCountAccount` at median ratio 1.000, r = 0.9904. Full table:
+   `design/MARKETO_WRITEBACK_GOAL.md` section 9.
 
 ## Still open
 1. **Is the June SQL snapshot still current?** The files are from 2026-06-22. Partly self-checking
@@ -50,13 +59,18 @@ was unobtainable. We have the SQL; it is no longer a blocker.
    Create / Mirror). That last one answers full-vs-delta push, which Marketo cannot tell us
    because it logs no no-ops. Ask for screenshots of the sync's mapping page and schedule —
    Census is dashboard-configured, there is no config file.
-3. **`silver_*` -> AX09 mapping.** The SQL reads `silver_order`, `silver_contact`,
-   `silver_customer`, `silver_address`, plus `inriver_productdata` and `lookup_tables.cr_segment`.
-   Which AX09 tables and columns these correspond to is **not established**, and it is the real
-   work in the port. `LineAmountMST`, `InventTransId`, `departmentId`, `WebOrderId` and `Status`
-   are the load-bearing columns.
-4. **`HasWebLogin` needs Microsoft Graph** — `prod.msgraph.users__identities`, not AX09. Is that
-   source available to us, or does the field get dropped?
+3. ~~`silver_*` -> AX09 mapping~~ **done 2026-08-12** (see answered item 7). Residue only:
+   - `Status = 'Delivered'` is **not** `SALESSTATUS = 2` — that value covers 0.23% of orders,
+     while an unfiltered sum reproduces Marketo exactly. Whatever Impact's silver calls
+     `Delivered` passes essentially every invoiced line. Settle before the port ships.
+   - `silver_address` has no ingested source; only feeds the Randers segment zip test.
+   - ~1/3 of accounts don't reproduce exactly despite median ratio 1.0000 — a cluster shows
+     matching revenue with ~6x the order count, unexplained. Suspect incumbent staleness.
+   - **AX09 history coverage:** `SALESTABLE` is effectively 2024+ in our landing zone while the
+     invoice tables reach 2016/2021. Is upstream AX09 deeper, or is the extract windowed?
+4. **`HasWebLogin` needs Microsoft Graph** — `prod.msgraph.users__identities`, not AX09. But
+   `CONTACTPERSON.WEBLOGIN` exists in AX09; if it agrees with the 10,717 leads carrying the field,
+   the Graph dependency drops out of the port entirely. Test this before asking anyone.
 5. **Who writes the custom objects** (`purchase_c`, `orderLine_c`)? Their activities carry no
    `Modifying User`, so it cannot be derived. Their write pattern spreads across the working day
    rather than batching, which points at the webshop or a middleware rather than Impact's
@@ -82,3 +96,5 @@ targeting stale numbers. The transformation being in hand removes the largest un
 - 2026-08-10 — created (handoff from the Marketo activity-data exploration)
 - 2026-08-12 — Census/Fivetran identified; Impact's gold SQL found in `datahub/data/`; rescoped,
   priority high -> normal, six questions closed and the source-mapping gap opened
+- 2026-08-12 — `silver_*` -> AX09 mapping derived from data alone, no Impact involvement. The
+  critical path is closed; the port has a source for every load-bearing column. Goal doc section 9.
