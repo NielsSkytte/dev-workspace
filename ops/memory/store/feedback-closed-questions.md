@@ -42,3 +42,24 @@ recommendation**, never on a bare "what do you think". [[feedback-interview-one-
 too: one question at a time, and a card is the right vehicle once a discussion has reached
 enumerable, already-scoped implementation choices. This record governs the *content* of a question
 (recommendation, values, what yes means); those two govern its *vehicle* and *pacing*.
+
+---
+
+**Recurrence, 2026-08-12 (Carl Ras / datahub).** Broken the session after this record was written.
+Niels: *"ending on this, what am i supposed to do? we really need to work on how you answer and
+instruct me on how to proceed."*
+
+Two shapes, both new enough to name:
+
+1. **Ending a completed work pass with a findings list instead of a directive.** Pass 1 and pass 2
+   of the Marketo source mapping each closed with "still open, in order of weight: ..." - four
+   items, no recommendation, no split between what I do next and what he decides. A findings list
+   is a report; it is not an instruction. **Every reply that ends a pass must end with: the one
+   decision that is his (closed, per this record), and the list of what I do next without asking.**
+   If nothing is his to decide, say so explicitly and state what happens next.
+2. **The literal banned phrase shipped verbatim** - *"Reproduce the bug or fix it is your call"* -
+   on the account-grain store-count defect, where a strong recommendation existed and went unsaid
+   (reproduce bug-for-bug so the cutover diffs to zero, then fix as a separate agreed change).
+
+**The tell:** if the last paragraph of a reply is a list of open items, the reply is not finished.
+Sort them first into *mine to do* and *his to decide*, recommend on each of his, and lead with that.
