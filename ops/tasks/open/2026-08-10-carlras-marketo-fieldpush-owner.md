@@ -1,10 +1,10 @@
 ---
-title: Carl Ras — identify who computes and pushes the AX09 aggregates into Marketo (Databricks migration blocker)
+title: Carl Ras — confirm the Census sync and the source mapping behind the Marketo field push
 status: open
 created: 2026-08-10
 project: customers/Carl-Ras/datahub
 owner: fabric-back
-priority: high
+priority: normal
 blocked_by:
 activity: MarketoImport
 fno_task:
@@ -12,65 +12,73 @@ source: handoff
 ---
 
 ## What
-Establish which system computes the commerce aggregates on Marketo person records
-(`Total Sales Account`, `Order Count Contact`, `Latest Purchase Date Account Store`, …) and
-pushes them into Marketo over the REST API — and on what schedule.
+Originally: "find out who computes and pushes the AX09 aggregates into Marketo." **Mostly
+answered.** Rescoped 2026-08-12 to the questions that are actually still open.
 
-**Partly answered from the data on 2026-08-10** (see Evidence). Still open:
-1. ~~Which account holds the Marketo API credentials?~~ **`ben+carlras@impact.dk`** — an Impact
-   account, 99.8% of API-sourced field changes, via `importLead`.
-2. ~~How often does it run?~~ **Daily at 07:00 UTC**, 69 of 69 observed days.
-3. **Which system runs it?** Still unknown. The Marketo user is Impact's; whether the job runs in
-   the Databricks Data Hub or elsewhere in Impact's estate is not established.
-4. **Where does it read from** — Databricks, AX09 directly, or something else?
-5. **Is the aggregation logic documented or readable anywhere?** Specifically: what marks a sale
-   as `Store` vs `Online`, and how are `Account Segment1` and `Account Discount Group` derived?
-6. Are we replacing it or running alongside it first, and who agrees the cutover date?
+The chain is now established end to end:
 
-Kasper (Impact) is the contact. Simon internally may know which side owns it.
+```
+AX09 -> Impact's Databricks silver_* -> gold_census_contacts -> Census
+     -> Marketo (importLead, ben+carlras@impact.dk, ~07:10 UTC daily)
+```
 
-## Why
-**This is a migration blocker, and it fails silently.**
+**Priority dropped from high to normal.** It was a blocker because the Store/Online split rule
+was unobtainable. We have the SQL; it is no longer a blocker.
 
-Pingala replaces whatever is in Databricks. If the field-push job lives there, switching Databricks
-off stops those Marketo fields updating. Nothing errors — Marketo campaign segmentation simply
-starts targeting stale sales figures, and nobody finds out until someone notices a campaign
-behaving oddly.
+## Answered — do not re-ask
+1. **Which account writes?** `ben+carlras@impact.dk` — Impact's, 99.8% of API-sourced changes.
+2. **How often?** Daily, 2-3 bulk `importLead` batches inside 07:08-07:14 UTC, ~2,948 leads x 25
+   fields each.
+3. **What tool?** Census, now shipping as "Fivetran Activations" (Fivetran acquired Census
+   2025-05-01). Explains why Niels recalled both names.
+4. **What is the transformation?** We hold it — four Databricks DLT files in `datahub/data/`,
+   delivered 2026-06-22 with the GTM access and never described. See
+   `design/MARKETO_WRITEBACK_GOAL.md` sections 3-4.
+5. **Store vs Online?** Solved, and it is three different rules: `WebOrderId != '0'` at account
+   grain, `len(WebOrderId) > 2` for contact dates, and a 28-value `departmentId` whitelist for
+   contact store counts.
+6. **`Account Segment1` / `Account Discount Group`?** Master data from `silver_customer`, not
+   computed.
 
-## Evidence
-From the landed Marketo activity data, 2026-08-10 (`design/MARKETO_INGEST_DESIGN.md` §7):
+## Still open
+1. **Is the June SQL snapshot still current?** The files are from 2026-06-22. Partly self-checking
+   — a ported rule that reproduces the reference set for June but not August indicates drift
+   (goal doc 4.6) — but a direct confirmation is cheaper.
+2. **The Census sync itself.** The transformation is the warehouse side; the sync holds the
+   mapping to Marketo field names (`LatestOrderDateAccount` -> `Latest Purchase Date Account`),
+   the schedule, the matching identifier, and the **sync behaviour** (Update Only / Update or
+   Create / Mirror). That last one answers full-vs-delta push, which Marketo cannot tell us
+   because it logs no no-ops. Ask for screenshots of the sync's mapping page and schedule —
+   Census is dashboard-configured, there is no config file.
+3. **`silver_*` -> AX09 mapping.** The SQL reads `silver_order`, `silver_contact`,
+   `silver_customer`, `silver_address`, plus `inriver_productdata` and `lookup_tables.cr_segment`.
+   Which AX09 tables and columns these correspond to is **not established**, and it is the real
+   work in the port. `LineAmountMST`, `InventTransId`, `departmentId`, `WebOrderId` and `Status`
+   are the load-bearing columns.
+4. **`HasWebLogin` needs Microsoft Graph** — `prod.msgraph.users__identities`, not AX09. Is that
+   source available to us, or does the field get dropped?
+5. **Who writes the custom objects** (`purchase_c`, `orderLine_c`)? Their activities carry no
+   `Modifying User`, so it cannot be derived. Their write pattern spreads across the working day
+   rather than batching, which points at the webshop or a middleware rather than Impact's
+   warehouse — **if so it is out of scope for the takeover.**
+6. **Are we replacing the incumbent or running alongside first, and who agrees the cutover date?**
+7. **`lookup_tables.cr_segment` and `inriver_productdata`** are referenced but not supplied. Only
+   `cr_segment` matters for the segment flags; `inriver_productdata` feeds brand fields that never
+   reach Marketo.
+8. **Nine defects need a reproduce-or-fix decision** (goal doc section 7). Three are real bugs:
+   store order count counts distinct dates instead of order ids; account-grain counts and dates
+   ignore the `Status = 'Delivered'` filter that the sums apply; email dedupe is
+   nondeterministic. Raising these with Impact is also a courtesy — they are live defects in a
+   system Impact still owns.
 
-- `Change Data Value` (activity type 13) is **44.7% of activity rows, 53.4% of payload** —
-  3,099,313 rows across 54,920 people.
-- 97 distinct changed fields; top 20 = 94.2%. Roughly **66% are commerce aggregates**:
-  `Total Sales` / `Order Count` / `Latest Purchase Date`, at both `Account` and `Contact` grain,
-  each split blank / `Store` / `Online`.
-- The `source` attribute is **`Web service API` on 69.6%** of type-13 rows
-  (`Marketo Flow Action` 30.2%, everything else 0.2%).
+Kasper (Impact) is the contact. Simon internally may know which side owns the order feed.
 
-**Updated 2026-08-10 — both earlier inferences are now measured.**
-
-- The `Modifying User` attribute names the caller directly: **`ben+carlras@impact.dk`**, on
-  2,153,157 of 2,157,817 API-sourced rows (**99.8%**), via `API Method Name = importLead`.
-  Impact operating the job is therefore **established**. *Which* Impact system runs it is not.
-- `source` x field cross-tabulated: every commerce field is **100% `Web service API`**; both
-  `Soft Bounce` fields are **100% `Marketo Flow Action`**. The two groups do not overlap.
-- Cadence: **99.8% of push volume lands in the 07:00 UTC hour**, on 69 of 69 days.
-
-Full derivation: `design/MARKETO_WRITEBACK_GOAL.md`. Reference data:
-`Lakehouse_Util.marketo_fieldpush_reference` (3,099,313 rows).
-
-## Why it matters beyond the block
-The same field list is the **requirement spec for the Marketo write-back workstream** (Niels,
-2026-08-10: *"we just need to replicate what they are aggregating from our version and push that to
-Marketo"*). AX09 is already in Fabric — only the aggregation and the push are missing.
-
-The type-13 change log additionally gives the **cadence** and the **value history** of the incumbent
-job, so a Fabric replacement can be validated against what is actually being written today rather
-than against a spec.
-
-Recommend capturing and retaining **one clean type-13 window as the reference set** before type 13
-is excluded from routine activity ingest (§7.5).
+## Why it still matters
+Retiring Databricks stops those Marketo fields updating. Nothing errors — segmentation just starts
+targeting stale numbers. The transformation being in hand removes the largest unknown, but the
+`silver_*` -> AX09 mapping (item 3) is now the critical path.
 
 ## Log
 - 2026-08-10 — created (handoff from the Marketo activity-data exploration)
+- 2026-08-12 — Census/Fivetran identified; Impact's gold SQL found in `datahub/data/`; rescoped,
+  priority high -> normal, six questions closed and the source-mapping gap opened
