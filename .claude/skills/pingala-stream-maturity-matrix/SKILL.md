@@ -97,6 +97,24 @@ python -m stream_matrix customers/<Customer>/<Project>/design/stream_matrix_data
 # -> architecture_overview.html beside the sidecar; --check validates without writing
 ```
 
+
+### Provenance: say who produced every number
+
+Every document carries a `sources` block, rendered as a **BASED ON:** strip. Two methods, and they
+are not equal:
+
+* **`automated`** — MetaAtomic tooling derived it from the repo. Reproducible, marked verified.
+* **`agent`** — a session asserted it. Recorded `verified: false` and rendered as a distinct
+  half-filled amber chip.
+
+`agent` is the DEFAULT for anything not derived, because that is what these documents are made of:
+no person reads a workspace and types numbers into one. An agent reporting "read live from Fabric"
+is a claim, not a reading — and local-model output claiming completed actions that never happened is
+a logged, repeated failure in this workspace. Never record an agent's figure as manual or verified.
+
+A figure only becomes verified by `stream_matrix verify` agreeing with a lineage store, or by
+tooling reading the workspace directly (`lineage_engine` online mode).
+
 ### Standing up a customer that has no matrix yet
 
 Do NOT hand-write the document. Derive it:
