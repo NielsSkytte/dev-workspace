@@ -87,7 +87,7 @@ The Fabric domain is split in three around the semantic model (the model is the 
 | `/update-skills` | Pull the skills-for-fabric vendor submodule | DEV root |
 | `/cwd`, `/exit` | Show session cwd; graceful close (prompts /handoff + /log) | Any context |
 
-**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 18 custom + vendor submodule): the
+**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 19 custom + vendor submodule): the
 authoritative list is the folder itself; each agent's definition names the skills it reaches for.
 Don't duplicate the list here — it drifts.
 

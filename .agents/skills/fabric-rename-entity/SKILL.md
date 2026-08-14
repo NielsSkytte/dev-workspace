@@ -1,7 +1,7 @@
 ---
 name: fabric-rename-entity
 bundle: custom
-description: How to safely rename (or move) a Microsoft Fabric item — notebook, lakehouse, warehouse, data pipeline, semantic model — when the workspace is connected to Git, without breaking references from other items. Use this skill whenever renaming or cleaning up the name of any Fabric item that is serialised to a Git repo (folders like `<Name>.Notebook`, `<Name>.Lakehouse`, `.platform` files), removing an import-artifact suffix (e.g. a trailing `(1)`), or whenever an item rename needs to survive a Fabric Source-control "Update" with no broken pipeline activities, notebook dependencies, or connection bindings. Also use when a rename via `git mv` produced a folder/displayName mismatch or a reference stopped resolving after a rename.
+description: How to safely rename (or move) a Microsoft Fabric ITEM — notebook, lakehouse, warehouse, data pipeline, semantic model — when the workspace is connected to Git, without breaking references from other items. Use this skill whenever renaming or cleaning up the name of any Fabric item that is serialised to a Git repo (folders like `<Name>.Notebook`, `<Name>.Lakehouse`, `.platform` files), removing an import-artifact suffix on an ITEM name (e.g. a trailing `(1)` on a duplicated notebook), or whenever an item rename needs to survive a Fabric Source-control "Update" with no broken pipeline activities, notebook dependencies, or connection bindings. Also use when a rename via `git mv` produced a folder/displayName mismatch or a reference stopped resolving after a rename. NOT for a `(1)` suffix on a TABLE name inside a warehouse error or inside `xmla.json` — that is a legitimate semantic-model namespace collision, not an import artifact, and renaming it breaks the warehouse; use `fabric-warehouse-git`.
 ---
 
 # Renaming Fabric Items Under Git Integration
@@ -121,7 +121,7 @@ grow.
 |-----------|--------------------------|---------------------------|--------|
 | Notebook | `notebookId` (= `logicalId`) in pipeline `TridentNotebook` activities | `%run` / `notebookutils.notebook.run("name")` between notebooks — **by name** | ✅ verified (Tystofte 2026-06-02) |
 | Lakehouse | `artifactId`/GUID in notebook `.platform` `dependencies`, pipeline `connectionSettings` | `default_lakehouse_name`, abfss paths, `connectionSettings.name` may embed the name | ⚠️ inspect files |
-| Warehouse | connection bindings / dataset references | T-SQL three-part names, semantic-model source bindings | ⚠️ inspect files |
+| Warehouse | connection bindings / dataset references | T-SQL three-part names in `<viewschema>/Views/*.sql`; **`xmla.json` names every table and column twice** (physical + view, second one suffixed `(N)`) | ✅ verified (Carl Ras 2026-08-14) — see `fabric-warehouse-git` |
 | Data Pipeline | `pipelineId`/GUID in `InvokePipeline` activities | low, but confirm | ⚠️ inspect files |
 | Semantic Model | dataset binding from reports | report `definition` source name; TMDL expressions referencing source names | ⚠️ inspect files |
 | Report | bound to a semantic model | model name in `definition.pbir` / connection | ⚠️ inspect files |

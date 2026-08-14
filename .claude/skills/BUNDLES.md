@@ -91,6 +91,7 @@ Update procedure: `/update-skills`
 | `pingala-visual-identity` | Pingala brand and visual identity |
 | `fabric-pipeline-notebook` | Best practices for pipeline-orchestrated notebooks |
 | `fabric-deployment` | Promoting Fabric items DEV -> TEST -> PROD: what a deployment does not carry, the four-step release, and the failure modes with their error strings |
+| `fabric-warehouse-git` | Fabric Warehouse as code in a git-connected workspace: the three-file column contract (view + DDL + `xmla.json`), DacFx rebuild/data-loss traps, and Update-from-git failure modes |
 | `fabric-project-access` | Setting up access rights for Fabric projects |
 | `fabric-rename-entity` | Safely rename Fabric items |
 | `medallion-migration-validation` | Validate medallion layer migrations |

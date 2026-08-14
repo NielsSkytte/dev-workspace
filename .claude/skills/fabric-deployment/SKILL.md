@@ -17,9 +17,11 @@ description: >
   on reviewing a change for environment portability before it ships.
   This skill owns deployment MECHANICS and FAILURE MODES. The delivery architecture
   around it - workspace structure, branch model, three-stage strategy, roles, and the
-  git-not-fab-import authoring rule - lives in `pingala-fabric-platform`. Renaming a
-  git-connected item is `fabric-rename-entity`. Post-migration data reconciliation is
-  `medallion-migration-validation`.
+  git-not-fab-import authoring rule - lives in `pingala-fabric-platform`. Getting a
+  warehouse SCHEMA change through git in the first place - "Update from git" failures,
+  `xmla.json`, DacFx rebuilding a table and emptying it - is `fabric-warehouse-git`.
+  Renaming a git-connected item is `fabric-rename-entity`. Post-migration data
+  reconciliation is `medallion-migration-validation`.
 ---
 
 # Deploying Fabric Items Between Environments

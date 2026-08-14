@@ -58,6 +58,7 @@ Custom skills (`.claude/skills/`) — these fire by context, but reach for them 
 | `medallion-migration-validation` | Migration go-lives, QC queries, watermark/tracking patterns, backfills |
 | `timestamp-timezone-pipelines` | Watermarks, date filters to APIs, timezone boundary bugs |
 | `fabric-deployment` | Promoting items DEV -> TEST -> PROD: what a deployment does not carry, the four-step release, and the failure modes |
+| `fabric-warehouse-git` | Any warehouse schema change that travels through git — the three-file column contract, DacFx data-loss traps, Update-from-git failures |
 | `fabric-rename-entity` | Renaming Git-connected Fabric items safely |
 | `fabric-project-access` | Entra ID groups, SPNs, Key Vault, licences, access-request emails |
 

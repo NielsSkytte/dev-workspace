@@ -226,6 +226,13 @@ This churn is **one-time per item**, not recurring. Tell the user to expect it r
 letting it look like a defect, commit from the workspace, then `git pull` locally so the
 repo, the workspace and the working tree all agree.
 
+**A warehouse is the exception to "one-time".** Its `xmla.json` and `.sqlproj` are not just
+files that get CRLF-normalised — they are load-bearing parts of the schema contract, and a
+hand-edited view leaves a stale `-- Auto Generated (Do not modify) <hash>` header that
+forces another normalising commit every time. What a warehouse serialises to, why a column
+change is three files, and how Update from git can silently empty a table:
+`fabric-warehouse-git`.
+
 ### `fab` CLI output breaks on a Windows console
 
 `fab` prints non-cp1252 characters (an arrow in the import progress line) and crashes with
