@@ -201,3 +201,85 @@ Run both models through **2026-08** and compare at month end:
 3. How often does the 15 h flag fire, and is it right when it does?
 4. Where does the derived number disagree with Niels's gut? Record each instance at `/log` -
    that log is the evidence base for whether a scope floor is needed after all.
+
+---
+
+## Amendment 2026-08-14 — the timesheet is the floor, and the open commercial question
+
+### Decided: the timesheet is always the floor
+
+**Whatever the model says, the billed hours are never below the timesheet.** Keyboard time is an
+input to the value model and is never a billing basis on its own.
+
+Worked example that prompted this (Carl Ras, 2026-08-11/12/13):
+
+| measure | hours | role |
+|---|---|---|
+| Keyboard | 6.97 | measured interaction, **never billed** |
+| Timesheet | **19.75** | tracked working time, **the floor and the deliverable** |
+| Weighted | 31.50 | provisional tier model, **not invoiced** |
+
+Two directions this protects:
+
+- **Downward.** A day of low-tier work can derive a weighted figure *below* tracked hours. That
+  never reduces the bill. Time was worked; time is billed.
+- **The keyboard fallacy.** 6.97 h of hands-on-keyboard across three days does not mean seven
+  hours of work. It excludes thinking, reading, waiting on a 1h47m pipeline run, and everything
+  done away from the session. Nobody bills keyboard time and nobody should be able to argue us
+  down to it.
+
+This makes explicit what the original ADR implied ("the timesheet is unchanged", "nothing is
+auto-invoiced") but never stated as a rule.
+
+### Open: how to capture value above the floor (Niels, 2026-08-14)
+
+Niels wants to bill nearer the 31 than the 20, with 20 as the minimum. This is a **Pingala
+question, not a Carl Ras one** — he is simply the first to hit it in practice.
+
+**The hard constraint.** You cannot put 31 in the hours column of a time-and-materials agreement
+that counts hours. It misstates the measure, and it does not even work: if the agreement caps
+hours, inflating hours exhausts the cap sooner and the problem returns. *The number being sought
+is not a better hours figure. It is a price.*
+
+**Three routes, solving different problems:**
+
+1. **Rate, not hours.** Bill the tracked hours at a higher rate. The only one of the three that
+   fits *inside* an existing hours ceiling, because it adds no hours. Frame as capability, not
+   speed — customers accept paying more for seniority and resent paying more for velocity.
+2. **Fixed price on outcome.** Stop selling hours; the agreement holds scope and price, and hours
+   become internal cost accounting. The structural answer, since the ceiling only binds while the
+   unit of sale is the hour.
+3. **Component licensing.** Charge for the asset, not the time to apply it.
+
+**The reuse case breaks the multiplier model, and it is the important one.** Niels's observation:
+sometimes weighted hours are *not enough*, e.g. when an already-built component is reused. Reusing
+a component can deliver in 2 h what would otherwise take 200. No multiplier on 2 h reaches 200 —
+that needs 100x and the tier table tops out an order of magnitude below.
+
+So two problems are wearing the same coat:
+
+- **Acceleration** — hours understate effort. A multiplier is a plausible instrument.
+- **Reuse** — hours are near zero *regardless* of value delivered. A multiplier is structurally
+  incapable of expressing it, because it scales hours and there are almost none.
+
+The current model contemplates only the first. Acceleration is also the weaker long-term position:
+it is a commodity every competitor acquires with the next model generation. Reuse is Pingala's own
+IP and is the one an hours frame can never price.
+
+**What the weighted number is actually for:** evidence at negotiation, not a line on an invoice.
+"Delivered conventionally this was ~31 h" argues for a rate or a fixed price. Caution already on
+record in `eval-2026-08-06-fitted-is-not-validated` — the multipliers are self-derived and untested
+against a customer's own counterfactual, so 4.52x is a sound internal instrument and a thin
+argument to someone who did not build the model. Concrete outcomes are the stronger case: this
+session produced a measured 2.57x on the enriched build and surfaced three tables that had been
+silently inflating their row counts since at least 2026-08-07 with nobody told — customer-legible
+value with no reference to hours at all.
+
+**Needs an owner.** This is a pricing decision above the scope of the time-tracking system. Carry
+into the end-of-August re-evaluation as question 5.
+
+### Evaluation plan — additional question
+
+5. Does the weighted model have anything useful to say about **reuse of existing components**, or
+   does that case need a separate instrument (licensing / fixed price) entirely? The answer
+   determines whether the tier multipliers are the right long-term shape at all.
