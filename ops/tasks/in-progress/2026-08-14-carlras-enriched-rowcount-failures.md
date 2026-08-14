@@ -119,9 +119,23 @@ Ruled out by measurement, all unique on their join keys: `unit`, `inventtable`,
 `inventtablemodule`, `unitconvert` (incl. the generic `''`/`'0'` collision), `crenumvalues`,
 `dlvmode`, `sqldictionary`, `crdimensions`, `dimensions`. `custinvoicetrans.RECID` is unique.
 
-**`SalesLineTransactions` — surplus 45,735, 37,191 attributed (81%).** Same `InventTrans_Purchace`
-join (view line 512-516). **8,544 rows remain unattributed** — not yet diagnosed.
-`InventTrans_EstimatedCostPrice` is a `GROUP BY` subquery and cannot fan out.
+**`SalesLineTransactions` — surplus 45,735, 39,896 attributed (87%).** No `RecId` column varies
+here either. Two causes:
+
+| source | surplus rows |
+|---|---|
+| `InventTrans_Purchace` (view line 512-516) | 37,191 |
+| `inventsumdim` (view line 626-630) | 2,705 |
+| residual, not attributed | 5,819 |
+
+`inventsumdim` is joined on `ITEMID` + `DATAAREAID` + `INVENTLOCATIONID`, which is **not** its key —
+387,866 current rows over 387,417 distinct keys, max 2 per key. It supplies the average cost price
+`PostedValue / PostedQTY` (view line 246-252). The 5,819 residual is likely the same join measured
+with an imperfect proxy: the join uses `inventtrans.ITEMID` while the probe used the output's
+`ItemId` (from `salesline`). Not confirmed.
+
+`crreportinggroups` **is** filtered in this view. `InventTrans_EstimatedCostPrice` and
+`CTE_OrderTransactionStatus` are pre-aggregated / literal and cannot fan out.
 
 **`GeneralLedgerTransactions` (+4)** — not started.
 
@@ -147,5 +161,10 @@ join (view line 512-516). **8,544 rows remain unattributed** — not yet diagnos
 ## Log
 2026-08-14 — created after the DEV deployment of `5ce780f` and the first `RowCheckLog` run.
 2026-08-14 — started (session task)
-2026-08-14 — diagnosed SalesInvoiceTransactions in full and SalesLineTransactions to 81%;
-             measured the downstream impact. Fix not yet authored.
+2026-08-14 — diagnosed SalesInvoiceTransactions in full and SalesLineTransactions to 87%;
+             measured the downstream impact.
+2026-08-14 — SalesInvoiceTransactions FIXED and verified read-only: GEN-002 (SCDcurrent on
+             crreportinggroups) + GEN-003 (InventTrans_Purchace -> OUTER APPLY TOP 1). The view
+             body now returns 12,276,137 = ExpectedRowCount exactly. Uncommitted in Fabric-ETL.
+             Handover doc for Simon created: design/ATOMIC_GENERATOR_CHANGES.md.
+             Remaining: GEN-003b + GEN-004 on SalesLineTransactions, and GeneralLedgerTransactions.
