@@ -119,23 +119,23 @@ Ruled out by measurement, all unique on their join keys: `unit`, `inventtable`,
 `inventtablemodule`, `unitconvert` (incl. the generic `''`/`'0'` collision), `crenumvalues`,
 `dlvmode`, `sqldictionary`, `crdimensions`, `dimensions`. `custinvoicetrans.RECID` is unique.
 
-**`SalesLineTransactions` — surplus 45,735, 39,896 attributed (87%).** No `RecId` column varies
-here either. Two causes:
+**`SalesLineTransactions` — surplus 45,735, attributed in full.** No `RecId` column varies here
+either; the duplicate rows are byte-identical across all 226 columns.
 
 | source | surplus rows |
 |---|---|
 | `InventTrans_Purchace` (view line 512-516) | 37,191 |
-| `inventsumdim` (view line 626-630) | 2,705 |
-| residual, not attributed | 5,819 |
+| `sqldictionary` (view line ~801) | 8,544 |
 
-`inventsumdim` is joined on `ITEMID` + `DATAAREAID` + `INVENTLOCATIONID`, which is **not** its key —
-387,866 current rows over 387,417 distinct keys, max 2 per key. It supplies the average cost price
-`PostedValue / PostedQTY` (view line 246-252). The 5,819 residual is likely the same join measured
-with an imperfect proxy: the join uses `inventtrans.ITEMID` while the probe used the output's
-`ItemId` (from `salesline`). Not confirmed.
+`sqldictionary` holds **two `SCDcurrent` rows for `SALESLINE`** (`TABLEID` 359), so the lookup
+returned two rows and doubled every line with no `inventtrans` match — exactly the 8,544 base rows
+in that state. **Raw-layer defect, not a view defect:** `rawtablekeymap_ax09` keys `SQLDICTIONARY`
+on `RECID` alone. Split out as `2026-08-14-carlras-raw-scd-key-sqldictionary`.
 
-`crreportinggroups` **is** filtered in this view. `InventTrans_EstimatedCostPrice` and
-`CTE_OrderTransactionStatus` are pre-aggregated / literal and cannot fan out.
+**CORRECTION — `inventsumdim` was never a cause.** An earlier revision of this file attributed
+2,705 rows to it and left 5,819 unexplained. Both numbers were wrong: the probe grouped with
+`UPPER()` while the join compares raw under the warehouse's case-sensitive `BIN2` collation.
+Grouped as the join actually compares, `inventsumdim` has zero duplicated keys and cannot fan out.
 
 **`GeneralLedgerTransactions` (+4)** — not started.
 
