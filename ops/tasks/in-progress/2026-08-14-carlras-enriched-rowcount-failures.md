@@ -168,3 +168,24 @@ with an imperfect proxy: the join uses `inventtrans.ITEMID` while the probe used
              body now returns 12,276,137 = ExpectedRowCount exactly. Uncommitted in Fabric-ETL.
              Handover doc for Simon created: design/ATOMIC_GENERATOR_CHANGES.md.
              Remaining: GEN-003b + GEN-004 on SalesLineTransactions, and GeneralLedgerTransactions.
+2026-08-14 — committed (Fabric-ETL 0a7f826, pushed) and VERIFIED IN DEV. Niels ran Update from
+             git; rebuilt that one table with transform.sp_CreateTableAsSelect (224 s) and ran
+             sp_RowCheck. RowCheckLog: Success, difference 0, 12,276,137 rows. Revenue dropped
+             from 6,597,816,949.21 to 6,382,869,846.81 exactly as predicted. Zero duplicate base
+             keys left; the vendor and reporting-group columns are still populated.
+             NOT YET DONE: curated still holds the inflated fact.SalesTransactions - it needs
+             PL_Transform_Curated to pick this up, which rebuilds the whole curated layer.
+2026-08-16 — CLOSED for the two sales tables. Both are green in DEV: SalesInvoiceTransactions
+             12,276,137 and SalesLineTransactions 5,855,702, each equal to ExpectedRowCount.
+             27 of 28 tables pass on the 08-16 08:31 run.
+             Shipped: Fabric-ETL 0a7f826 (GEN-002 + GEN-003), 3a72fca (GEN-003b + GEN-005),
+             4328657 (GEN-005 reshaped to a derived table after admission control rejected the
+             correlated apply). GEN-004 withdrawn - my probe error, not a defect.
+             Incident: enriched.SalesLineTransactions was absent from DEV for 47 minutes because
+             sp_CreateTableAsSelect drops before it creates and the CTAS was rejected. Restored.
+             STILL OPEN, and why this task stays in-progress:
+               - GeneralLedgerTransactions +4 rows: not started.
+               - Part 2 of the task, auditing which of the 28 expectations are independent vs
+                 mirrored, is NOT done. 27 greens are not yet evidence.
+             Split out: 2026-08-14-carlras-raw-scd-key-sqldictionary (raw key map).
+
