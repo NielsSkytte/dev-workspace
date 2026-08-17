@@ -266,6 +266,19 @@ Like memory, it is two-tier: **heartbeats** (raw, append-only) distil into **tim
   to **0.25 h**, then floored to a **0.5 h** minimum (any logged work on a project that day counts as at
   least 0.5 h). Idle hours/days between stretches are discarded.
 - **F&O dimensions** — a Dynamics time line is **Project ID → Activity → Task** (Task fed from Azure DevOps). The project's `CLAUDE.md` `## Identity` `fno_code:` is the **Project ID** (always applies; `Dev` → `INTERNAL-RND`, missing → `UNSET`); a tagged task **adds** its `activity:` and `fno_task:` (the DevOps work-item id) *beneath* the project id — additive, not an override. Some projects register only at activity level, some down to task. Rows group by the finest dimension present; billable = `customers/…`.
+- **Full-day floor (ADR-005, 2026-08-17)** — measured hours are the evidence, not the claim. A **Mon–Fri
+  day with ≥ 0.5 h of active time is claimed as a full day, 7.5 h**; the top-up is split proportionally
+  across that day's **billable** lines (internal lines stay as measured), and the daily file records
+  `measured -> claimed`. Weekends are never floored — they are claimed as measured, on top. The floor is
+  applied **only as a day is finalized**; a finalized day is never rewritten (a past month may be invoiced).
+  The guarantee this buys: **7.5 h × working days per month, less recorded absence.**
+- **Absence register** — `ops/time/absence.md`, hand-maintained. `vacation` / `holiday` / `sick` drop the
+  day from the target; `offline` (worked away from this keyboard) keeps it and is claimed as a full day on
+  a named project. Tracked in git — a decision record, not derived output.
+- **Weekly coverage check** — runs with **every rollup** (and standalone as `/time check [YYYY-Www]`): per ISO
+  week and month-to-date against the guarantee, plus two action lists — **unaccounted workdays** (no keyboard
+  time, no absence row — *the user must be asked*, and the answer written to `absence.md`) and **finalized
+  below the floor** (never changed automatically).
 - **Cadence / review gate** — `/log` finalizes every complete past day that has no timesheet yet
   (**catch-up** for missed days); the user reviews and corrects by editing `ops/time/timesheet/<YYYY-MM>/<date>.md`
   (never the heartbeats). Daily files are the unit of F&O entry (entered per day); there is no weekly aggregate —

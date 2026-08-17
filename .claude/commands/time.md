@@ -2,7 +2,8 @@ Show and roll up tracked working time per project (and tagged task). Time is cap
 
 Usage:
   /time              ← show today's live tally (writes nothing)
-  /time rollup       ← finalize any missed complete days
+  /time rollup       ← finalize any missed complete days (+ runs the coverage check)
+  /time check [YYYY-Www]  ← weekly coverage check vs the full-day rule (default: this + last week)
   /time week [YYYY-Www] [raw]  ← by-date report for one ISO week (default: current week; writes nothing)
   /time month [YYYY-MM] [raw]  ← by-date report for one month (default: current month; writes nothing)
 
@@ -21,8 +22,26 @@ in the F&O code column: that project's `CLAUDE.md` `## Identity` block is missin
 ### `/time rollup` — finalize + catch-up
 
 Run `python C:\Dev\ops\time\rollup.py`. It finalizes every complete past day that has heartbeats but
-no timesheet yet (catch-up for missed days). Report which days it wrote (it prints them). This is also
-run as part of `/log`.
+no timesheet yet (catch-up for missed days), applying the **full-day floor** (README section 8: a
+Mon–Fri day with >= 0.5 h active time is claimed as 7.5 h, the top-up split across the billable
+lines). It then prints the coverage check. Report which days it wrote and act on the check as below.
+This is also run as part of `/log`.
+
+### `/time check [YYYY-Www]` — weekly coverage check
+
+Run `python C:\Dev\ops\time\rollup.py --check [YYYY-Www]` and show the output verbatim. Writes
+nothing. Then **act on the two action sections**:
+
+- **Unaccounted workdays** — a past workday with no keyboard time and no absence entry. **Ask the
+  user, one closed question, listing the dates:** vacation / holiday / sick / offline (which
+  project?). Write the answers into `C:\Dev\ops\time\absence.md` (append rows, keep it date-sorted),
+  then re-run the check. An `offline` row is claimed as a full day at the next rollup.
+- **Finalized below the floor** — days written before the rule (or corrected down by hand). These are
+  **never** changed automatically. Surface them once with the top-up needed; lift one only if the
+  user says so, by editing `ops/time/timesheet/<YYYY-MM>/<date>.md` directly and adding a note line.
+
+The month-to-date line is the guarantee: 7.5 h x elapsed workdays, less recorded absence. If it reads
+short and there are no unaccounted days, the gap sits in the finalized-below-the-floor list.
 
 ### `/time week [YYYY-Www]` / `/time month [YYYY-MM]` — by-date report
 

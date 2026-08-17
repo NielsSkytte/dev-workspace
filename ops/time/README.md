@@ -360,3 +360,57 @@ deliverable (corrected 2026-08-06).
 
 **By hand:** for each turn, note the active minutes (excluding any gap over 5 minutes), classify it
 against the table in 7.2 using what the turn actually did, multiply, and sum per project per day.
+
+## 8. Full-day floor + weekly coverage check (rule 2026-08-17, ADR-005)
+
+Sections 1-6 measure time; section 7 measures value. This section closes the gap between them at the
+only place that matters commercially: **a workday that saw real work is claimed as a full day.**
+
+> Elapsed keyboard time measures how long the work took, not what it was worth. A deliverable that
+> took 90 minutes because the harness is fast is not worth less than the same deliverable at eight
+> hours. The value model (section 7) is the justification on file; this section is the claim.
+
+### 8.1 The rule
+
+| | |
+|---|---|
+| **Worked day** | a Mon-Fri date whose total active time (section 3, all projects merged) is **>= 0.5 h** |
+| **Claim** | a worked day is claimed as **7.5 h** |
+| **Monthly guarantee** | 7.5 h x working days in the month, less recorded absence |
+| **Weekends** | never floored. Weekend hours are claimed as measured, on top of the weekly target. |
+| **Days already over 7.5 h** | untouched |
+| **Days under 0.5 h active** | untouched -- noise is not a working day |
+
+**Where the top-up goes.** The deficit is split **proportionally across the day's billable lines**;
+internal lines (`Dev`, `own/…`, `INTERNAL-RND`) are left exactly as measured, so the floor never
+inflates non-billable hours. A day with no billable line splits it across whatever lines it has.
+Rounding drift lands on the day's largest line so the total is exactly 7.5 h. Every floored daily
+file carries a `> Full-day floor: X h measured -> 7.50 h claimed` line -- raw and claimed are both
+on the record, and `value/<date>.md` is the evidence behind the claim.
+
+**Applied at finalize only.** `rollup.py` floors a day as it writes `timesheet/<date>.md`. It never
+rewrites a day that is already finalized -- a past month may already be invoiced. The check reports
+finalized days below the floor; lifting them is a manual edit and a deliberate decision.
+
+### 8.2 The absence register
+
+`ops/time/absence.md` -- hand-maintained, one row per workday that had no keyboard time. Kinds:
+`vacation`, `holiday`, `sick` remove the day from the week and month target and get no timesheet;
+`offline` (worked, not at this keyboard -- meeting, workshop, travel) **keeps** the day in the target
+and is claimed as a full 7.5 h on the project named in the row, written at the next rollup.
+
+### 8.3 The check
+
+`python ops/time/rollup.py --check [YYYY-Www]` -- **per ISO week**, and it also runs automatically at
+the end of every plain `rollup.py` (so `/log` and `/time rollup` both surface it). Default scope is
+the current week plus the previous one. It writes nothing. It reports:
+
+- each day of the week: status (`final` / `live` / `absent` / `empty`), hours, and whether the floor applied;
+- **week total vs 7.5 h x workdays**, and the shortfall;
+- **month to date vs 7.5 h x elapsed workdays**, less absence -- the monthly guarantee;
+- **Unaccounted workdays** -- a past workday with no keyboard time and no absence row. These must be
+  answered: add a row to `absence.md`. Until then the month target counts them and the month reads short.
+- **Finalized below the floor** -- days written before this rule, or corrected downward by hand.
+
+`absence.md` is tracked in git (unlike the rest of `ops/time/`, which is data); it is a decision
+record, not derived output.

@@ -5,8 +5,11 @@ The algorithm is the source of truth in ops/time/README.md (section 3, the 15+5 
 this script just runs it. Pure stdlib, ASCII-only, deterministic.
 
 Modes:
-  python rollup.py            finalize every complete past day missing a timesheet (catch-up).
+  python rollup.py            finalize every complete past day missing a timesheet (catch-up),
+                              applying the full-day floor, then run the weekly coverage check.
   python rollup.py --preview  print today's live tally; write nothing.
+  python rollup.py --check [YYYY-Www]  weekly coverage check only (default: this week +
+                              last week) + month-to-date vs target; write nothing.
   python rollup.py --week [YYYY-Www]   print a by-date report for one ISO week
                                        (default: current week); write nothing.
   python rollup.py --month [YYYY-MM]   print a by-date report for one month
@@ -41,6 +44,14 @@ TAIL_BUFFER = datetime.timedelta(minutes=5)     # reading/thinking after the las
 ROUND_HOURS = 0.25                              # F&O increment
 MIN_HOURS = 0.5                                  # any work on a project that day -> at least 0.5 h
 DEV_CODE = "INTERNAL-RND"                        # Dev bucket = internal R&D, non-billable
+
+# ---------- full-day floor (rule 2026-08-17, README section 8) ----------
+# A workday that saw real activity is claimed as a FULL day. Elapsed keyboard time measures how
+# long the work took, not what it was worth -- the value model (section 7) is the justification.
+FULL_DAY = 7.5              # h claimed for a worked workday
+ACTIVE_TRIGGER = 0.5        # h of active time on a workday that makes it a worked day
+ABSENCE = os.path.join(ROOT, "absence.md")
+ABSENCE_KINDS = ("vacation", "holiday", "sick", "offline")
 
 
 # ---------- time helpers ----------
@@ -187,6 +198,73 @@ def rows_for(heartbeats):
     return rows
 
 
+# ---------- full-day floor (README section 8) ----------
+
+def load_absence():
+    """ops/time/absence.md -> {date: {'kind','project','note'}}. Missing file = {}."""
+    out = {}
+    try:
+        with open(ABSENCE, encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if not s.startswith("|"):
+                    continue
+                c = [x.strip() for x in s.strip("|").split("|")]
+                if len(c) < 2 or not DATE_RE.match(c[0]):
+                    continue
+                kind = c[1].lower()
+                if kind not in ABSENCE_KINDS:
+                    continue
+                out[c[0]] = {"kind": kind,
+                             "project": c[2] if len(c) > 2 and c[2] != "-" else "",
+                             "note": c[3] if len(c) > 3 and c[3] != "-" else ""}
+    except Exception:
+        pass
+    return out
+
+
+def is_workday(date):
+    return datetime.date.fromisoformat(date).weekday() < 5
+
+
+def day_active_hours(day_hbs):
+    """Total active time across the whole day, all projects merged -- the 'did I work' measure."""
+    return stretch_hours([(hb["start"], hb["end"]) for hb in day_hbs])
+
+
+def apply_floor(rows, date, active_h, absence=None):
+    """Lift a worked workday to FULL_DAY. Returns (rows, raw_total, claimed_total|None).
+
+    The deficit is split PROPORTIONALLY across the day's BILLABLE lines (internal lines are left
+    alone, so the floor never inflates non-billable hours); a day with no billable line splits it
+    across whatever lines it has. Rounding drift lands on the largest line so the day totals exactly
+    FULL_DAY. Weekends, absence days and days already at/over FULL_DAY are returned untouched."""
+    raw = round(sum(r["hours"] for r in rows), 2)
+    if not rows or not is_workday(date) or active_h < ACTIVE_TRIGGER:
+        return rows, raw, None
+    if absence and date in absence and absence[date]["kind"] != "offline":
+        return rows, raw, None
+    deficit = round_quarter(FULL_DAY - raw)
+    if deficit <= 0:
+        return rows, raw, None
+    targets = [r for r in rows if r["billable"]] or rows
+    base = sum(r["hours"] for r in targets)
+    ordered = sorted(targets, key=lambda r: -r["hours"])
+    rest = deficit
+    for r in ordered[1:]:
+        share = min(rest, round_quarter(deficit * r["hours"] / base)) if base else 0.0
+        r["hours"] = round(r["hours"] + share, 2)
+        rest = round(rest - share, 2)
+    ordered[0]["hours"] = round(ordered[0]["hours"] + rest, 2)
+    return rows, raw, round(raw + deficit, 2)
+
+
+def offline_rows(project):
+    """A full day on one project, for an 'offline' absence entry (worked, no keyboard)."""
+    return [{"project": project, "proj_id": project_id(project), "activity": "", "fno_task": "",
+             "hours": FULL_DAY, "billable": project.startswith("customers/")}]
+
+
 def render_table(rows):
     lines = ["| Project | Proj ID | Activity | Task | Hours | Billable |",
              "|---|---|---|---|---|---|"]
@@ -205,14 +283,14 @@ def render_table(rows):
     return "\n".join(lines), bill, intern_
 
 
-def write_daily(date, rows):
+def write_daily(date, rows, note=""):
     os.makedirs(daily_dir(date), exist_ok=True)
     dow = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%a")
     table, _, _ = render_table(rows)
     body = ("# Timesheet - %s (%s)\n\n"
             "Generated by ops/time/rollup.py from heartbeats; reviewed/adjusted at /log.\n"
             "Rounded to 0.25 h, min 0.5 h. Edit this file to correct -- never the heartbeats. "
-            "See ops/time/README.md.\n\n%s\n" % (date, dow, table))
+            "See ops/time/README.md.\n\n%s\n%s" % (date, dow, table, note))
     with open(daily_path(date), "w", encoding="utf-8") as f:
         f.write(body)
 
@@ -377,7 +455,10 @@ def report(hbs, today, kind, period, merge=False):
         rows = parse_daily_file(d)
         live = rows is None
         if live:
-            rows = rows_for(hbs_by_date.get(d, []))
+            day_hbs = hbs_by_date.get(d, [])
+            rows = rows_for(day_hbs)
+            if d < today:   # today is still accruing -- the floor is only meaningful once closed
+                rows, _, _ = apply_floor(rows, d, day_active_hours(day_hbs), load_absence())
         rows = [r for r in rows if r["hours"] > 0]
         if not rows:
             continue
@@ -396,6 +477,114 @@ def report(hbs, today, kind, period, merge=False):
     render_entries(entries)
 
 
+# ---------- weekly coverage check (README section 8) ----------
+
+def week_dates(period):
+    yr, wk = int(period[:4]), int(period[6:])
+    return [str(datetime.date.fromisocalendar(yr, wk, i)) for i in range(1, 8)]
+
+
+def day_state(date, hbs_by_date, absence, today):
+    """-> (status, hours, detail). status in future/absent/final/live/empty/weekend."""
+    if date > today:
+        return "future", 0.0, ""
+    entry = absence.get(date)
+    rows = parse_daily_file(date)
+    day_hbs = hbs_by_date.get(date, [])
+    if entry and entry["kind"] != "offline" and rows is None and not day_hbs:
+        return "absent", 0.0, entry["kind"]
+    if rows is not None:
+        hrs = round(sum(r["hours"] for r in rows), 2)
+        if entry and entry["kind"] != "offline":
+            # tracked work on a day marked absent -- kept, unfloored, and flagged rather than dropped
+            return "final", hrs, "marked %s but time was tracked -- check absence.md" % entry["kind"]
+        return "final", hrs, ""
+    if day_hbs:
+        rows = rows_for(day_hbs)
+        active = day_active_hours(day_hbs)
+        rows, raw, claimed = apply_floor(rows, date, active, absence)
+        return "live", (claimed if claimed is not None else raw), (
+            "floor -> %.2f h" % claimed if claimed is not None else "")
+    if date in absence and absence[date]["kind"] == "offline":
+        return "live", FULL_DAY, "offline, from absence.md"
+    return ("empty" if is_workday(date) else "weekend"), 0.0, ""
+
+
+def check(hbs, today, period=None):
+    """Per-week coverage against the full-day rule. Reports unaccounted workdays and the running
+    month total. Writes nothing -- the floor itself is applied by finalize()."""
+    hbs_by_date = {}
+    for hb in hbs:
+        hbs_by_date.setdefault(hb["date"], []).append(hb)
+    absence = load_absence()
+    cur = week_key(today)
+    if period:
+        periods = [period]
+    else:
+        prev = week_key(str(datetime.date.fromisoformat(today) - datetime.timedelta(days=7)))
+        periods = [prev, cur]
+
+    unaccounted, under = [], []
+    for wk in periods:
+        dates = week_dates(wk)
+        print("# Week %s coverage (%s to %s)\n" % (wk, dates[0], dates[6]))
+        lines = ["| Date | Day | Status | Hours | Note |", "|---|---|---|---|---|"]
+        worked = target = 0.0
+        for d in dates:
+            status, hrs, detail = day_state(d, hbs_by_date, absence, today)
+            if status == "weekend" and hrs == 0.0:
+                continue
+            if status == "future":
+                continue
+            off = d in absence and absence[d]["kind"] != "offline"
+            if is_workday(d) and not off:
+                target += FULL_DAY
+            worked += hrs
+            if status == "empty":
+                unaccounted.append(d)
+                detail = "no keyboard time and no absence entry"
+            if status == "final" and is_workday(d) and not off and 0 < hrs < FULL_DAY:
+                under.append((d, hrs))
+                detail = "finalized below the floor -- edit the daily file to lift it"
+            dow = datetime.date.fromisoformat(d).strftime("%a")
+            lines.append("| %s | %s | %s | %s | %s |" % (
+                d, dow, status, "-" if status in ("empty", "absent") else "%.2f" % hrs,
+                detail or "-"))
+        print("\n".join(lines))
+        print("\n**Week total:** %.2f h of %.2f h target (%.0f%%)"
+              % (worked, target, (100.0 * worked / target) if target else 0.0))
+        if worked + 1e-9 < target:
+            print("**Short by %.2f h.**" % (target - worked))
+        print("")
+
+    # month-to-date against the guarantee: 7.5 h x elapsed workdays, minus absence.
+    # Scoped to the month of the LAST week checked, so `--check <old week>` reports that month.
+    ym = week_dates(periods[-1])[0][:7]
+    d = datetime.date.fromisoformat(ym + "-01")
+    m_target = m_worked = 0.0
+    while str(d)[:7] == ym and str(d) <= today:
+        ds = str(d)
+        status, hrs, _ = day_state(ds, hbs_by_date, absence, today)
+        if is_workday(ds) and not (ds in absence and absence[ds]["kind"] != "offline"):
+            m_target += FULL_DAY
+        m_worked += hrs
+        d += datetime.timedelta(days=1)
+    print("**Month %s to date:** %.2f h of %.2f h target (%.0f%%)"
+          % (ym, m_worked, m_target, (100.0 * m_worked / m_target) if m_target else 0.0))
+
+    if unaccounted:
+        print("\n## Unaccounted workdays -- ANSWER THESE\n")
+        for d in unaccounted:
+            print("  %s (%s)" % (d, datetime.date.fromisoformat(d).strftime("%a")))
+        print("\nAdd a row to ops/time/absence.md for each:")
+        print("  | <date> | vacation \\| holiday \\| sick \\| offline | <project if offline> | <note> |")
+        print("An 'offline' row with a project is claimed as a full day at the next rollup.")
+    if under:
+        print("\n## Finalized below the floor (not changed automatically)\n")
+        for d, h in under:
+            print("  %s  %.2f h  (+%.2f h to reach %.2f)" % (d, h, FULL_DAY - h, FULL_DAY))
+
+
 def flag_value(flag):
     """Return the value after `flag`, '' if the flag is present without a value, or None if absent."""
     if flag in sys.argv:
@@ -409,28 +598,54 @@ def flag_value(flag):
 # ---------- modes ----------
 
 def finalize(hbs, today):
-    """Write a timesheet for every complete past day with heartbeats but no timesheet yet."""
+    """Write a timesheet for every complete past day with heartbeats but no timesheet yet, and for
+    every past 'offline' absence day. The full-day floor (section 8) is applied as it writes."""
     by_date = {}
     for hb in hbs:
         by_date.setdefault(hb["date"], []).append(hb)
+    absence = load_absence()
     written = []
-    for date in sorted(by_date):
+    for date in sorted(set(by_date) | set(absence)):
         if date >= today:
             continue  # today is still accruing -- only previewed
         if os.path.exists(daily_path(date)):
             continue  # already finalized
-        rows = rows_for(by_date[date])
+        day_hbs = by_date.get(date, [])
+        entry = absence.get(date)
+        if entry and entry["kind"] != "offline" and not day_hbs:
+            continue  # vacation/holiday/sick with nothing tracked -- no timesheet at all
+        if entry and entry["kind"] == "offline" and not day_hbs:
+            if not entry["project"]:
+                continue  # offline day with no project named -- cannot attribute; check reports it
+            write_daily(date, offline_rows(entry["project"]),
+                        "\n> Full-day floor: offline day (no keyboard time), claimed %.2f h "
+                        "from ops/time/absence.md.\n" % FULL_DAY)
+            written.append(date)
+            continue
+        rows = rows_for(day_hbs)
         if not rows:
             continue
-        write_daily(date, rows)
+        rows, raw, claimed = apply_floor(rows, date, day_active_hours(day_hbs), absence)
+        note = ""
+        if claimed is not None:
+            note = ("\n> Full-day floor: %.2f h measured -> %.2f h claimed (worked workday). "
+                    "See ops/time/README.md section 8 and ops/time/value/%s.md.\n"
+                    % (raw, claimed, date))
+        write_daily(date, rows, note)
         written.append(date)
     return written
 
 
 def preview(hbs, today):
-    day_rows = rows_for([h for h in hbs if h["date"] == today])
+    day_hbs = [h for h in hbs if h["date"] == today]
+    day_rows = rows_for(day_hbs)
     print("Today (%s) -- live, not finalized:\n" % today)
     print(render_table(day_rows)[0] if day_rows else "  (no time tracked yet today)")
+    if day_rows and is_workday(today):
+        raw = sum(r["hours"] for r in day_rows)
+        if day_active_hours(day_hbs) >= ACTIVE_TRIGGER and raw < FULL_DAY:
+            print("\n(full-day floor at finalize: %.2f h -> %.2f h, +%.2f h onto the billable "
+                  "lines -- see README section 8)" % (raw, FULL_DAY, FULL_DAY - raw))
 
 
 def main():
@@ -448,11 +663,17 @@ def main():
     if mo is not None:
         report(hbs, today, "month", mo or None, merge)
         return
+    ck = flag_value("--check")
+    if ck is not None:
+        check(hbs, today, ck or None)
+        return
     written = finalize(hbs, today)
     if written:
         print("Finalized days: " + ", ".join(written))
     else:
         print("No new days to finalize.")
+    print("")
+    check(hbs, today)   # the weekly coverage check runs with every rollup (README section 8)
 
 
 if __name__ == "__main__":
