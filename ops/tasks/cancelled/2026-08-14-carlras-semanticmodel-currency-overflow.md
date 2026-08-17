@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — semantic model refresh fails on a Currency overflow (PL_MainExecution's last stage)
-status: open
+status: cancelled
 created: 2026-08-14
 project: customers/Carl-Ras/datahub
 owner: semantic
@@ -78,3 +78,5 @@ the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Log
 2026-08-14 — created from the first PL_MainExecution run to reach the semantic model stage.
+
+- 2026-08-17 — MERGED into `2026-08-11-carlras-operation-hardening` and closed as a separate task. Its content was folded into that task verbatim; nothing dropped.

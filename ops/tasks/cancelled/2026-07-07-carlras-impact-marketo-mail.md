@@ -1,6 +1,6 @@
 ---
 title: Mail to Impact (cc Kasper) — continued setup for Marketo API access
-status: in-progress
+status: cancelled
 created: 2026-07-07
 project: customers/Carl-Ras/datahub
 owner: self             # content/writing-voice drafts; email-outlook-ready (.md deliverable)
@@ -26,3 +26,5 @@ project's stated next step (sessions log 2026-07-03, Carl Ras / Marketo entry).
 ## Log
 - 2026-07-07 — created (promoted from TODO 2026-07-06 at the day-start routing pass)
 - 2026-07-31 — started (session task)
+
+- 2026-08-17 — MERGED into `2026-08-12-carlras-marketo-writeback` and closed as a separate task. Its content was folded into that task verbatim; nothing dropped.

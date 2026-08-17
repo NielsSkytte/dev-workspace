@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — raw AX09 keeps two SCDcurrent rows per key on sqldictionary (bad key map), audit the other tables
-status: open
+status: cancelled
 created: 2026-08-14
 project: customers/Carl-Ras/datahub
 owner: fabric-back
@@ -83,3 +83,5 @@ Run it with `tools/wh_query.py` against `Warehouse_Enriched_AX09` (cross-databas
 
 ## Log
 2026-08-14 — created; cause identified and measured, nothing fixed in raw yet.
+
+- 2026-08-17 — MERGED into `2026-08-14-carlras-enriched-rowcount-failures` and closed as a separate task. Its content was folded into that task verbatim; nothing dropped.

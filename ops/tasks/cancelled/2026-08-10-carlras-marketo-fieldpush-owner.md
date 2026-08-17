@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — confirm the Census sync and the source mapping behind the Marketo field push
-status: open
+status: cancelled
 created: 2026-08-10
 project: customers/Carl-Ras/datahub
 owner: fabric-back
@@ -98,3 +98,5 @@ targeting stale numbers. The transformation being in hand removes the largest un
   priority high -> normal, six questions closed and the source-mapping gap opened
 - 2026-08-12 — `silver_*` -> AX09 mapping derived from data alone, no Impact involvement. The
   critical path is closed; the port has a source for every load-bearing column. Goal doc section 9.
+
+- 2026-08-17 — MERGED into `2026-08-12-carlras-marketo-writeback` and closed as a separate task. Its content was folded into that task verbatim; nothing dropped.

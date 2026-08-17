@@ -76,6 +76,68 @@ Full derivation, validation and every source-column decision:
   mapping itself is already recovered from the audit trail.
 - Reproduce or fix the account-grain store-count defect (distinct dates instead of order ids).
 
+## Open with Impact — the questions and the mail that carries them
+
+*(merged 2026-08-17 from `2026-08-10-carlras-marketo-fieldpush-owner` and
+`2026-07-07-carlras-impact-marketo-mail`. Kasper (Impact) is the contact; Simon internally may know
+which side owns the order feed. Deliverable is one `.md` file per `email-outlook-ready`, Danish per
+`writing-voice`.)*
+
+**Answered — do not re-ask.** The chain is established end to end:
+`AX09 → Impact's Databricks silver_* → gold_census_contacts → Census → Marketo (importLead,
+ben+carlras@impact.dk, ~07:10 UTC daily)`.
+
+1. **Which account writes?** `ben+carlras@impact.dk` — Impact's, 99.8% of API-sourced changes.
+2. **How often?** Daily, 2-3 bulk `importLead` batches inside 07:08-07:14 UTC, ~2,948 leads × 25
+   fields each.
+3. **What tool?** Census, now shipping as "Fivetran Activations" (Fivetran acquired Census
+   2025-05-01).
+4. **What is the transformation?** We hold it — four Databricks DLT files in `datahub/data/`,
+   delivered 2026-06-22 with the GTM access and never described. `design/MARKETO_WRITEBACK_GOAL.md`
+   sections 3-4.
+5. **Store vs Online?** Three different rules: `WebOrderId != '0'` at account grain,
+   `len(WebOrderId) > 2` for contact dates, and a 28-value `departmentId` whitelist for contact
+   store counts.
+6. **`Account Segment1` / `Account Discount Group`?** Master data from `silver_customer`:
+   `CUSTTABLE.SEGMENTID` (100.0% agreement) and `CUSTTABLE.LINEDISC` (100.0%).
+7. **`silver_*` → AX09 mapping** — derived from data 2026-08-12, no Impact involvement. Goal doc
+   section 9.
+
+**Still open — this is what the mail must ask.**
+
+1. **Is the June SQL snapshot still current?** Files are from 2026-06-22. Partly self-checking (a
+   ported rule that reproduces June but not August indicates drift, goal doc 4.6), but a direct
+   confirmation is cheaper.
+2. **The Census sync itself** — field-name mapping (`LatestOrderDateAccount` → `Latest Purchase
+   Date Account`), schedule, matching identifier, and **sync behaviour** (Update Only / Update or
+   Create / Mirror). That last one answers full-vs-delta push, which Marketo cannot tell us because
+   it logs no no-ops. Ask for screenshots of the sync's mapping page and schedule — Census is
+   dashboard-configured, there is no config file.
+3. **Mapping residue:** `Status = 'Delivered'` is **not** `SALESSTATUS = 2` (that value covers 0.23%
+   of orders while an unfiltered sum reproduces Marketo exactly) — settle before the port ships;
+   `silver_address` has no ingested source (only feeds the Randers segment zip test); ~1/3 of
+   accounts don't reproduce exactly despite median ratio 1.0000, with a cluster showing matching
+   revenue at ~6× the order count, unexplained (suspect incumbent staleness); **AX09 history
+   coverage** — `SALESTABLE` is effectively 2024+ in our landing zone while the invoice tables reach
+   2016/2021: is upstream AX09 deeper, or is the extract windowed?
+4. **Who writes the custom objects** (`purchase_c`, `orderLine_c`)? Their activities carry no
+   `Modifying User`. Their write pattern spreads across the working day rather than batching, which
+   points at the webshop or middleware rather than Impact's warehouse — **if so it is out of scope
+   for the takeover.**
+5. **Are we replacing the incumbent or running alongside first, and who agrees the cutover date?**
+6. **`lookup_tables.cr_segment` and `inriver_productdata`** are referenced but not supplied. Only
+   `cr_segment` matters (segment flags + `Top20PctRevenue`); `inriver_productdata` feeds brand
+   fields that never reach Marketo.
+7. **Nine defects need a reproduce-or-fix decision** (goal doc section 7). Three are real bugs:
+   store order count counts distinct dates instead of order ids; account-grain counts and dates
+   ignore the `Status = 'Delivered'` filter that the sums apply; email dedupe is nondeterministic.
+   Raising these is also a courtesy — they are live defects in a system Impact still owns.
+8. **Continued setup for Marketo API access** (the original 2026-07-07 mail item, cc Kasper) —
+   fold into the same mail if still outstanding; the ingest side now runs, so verify before asking.
+
+**Why it still matters:** retiring Databricks stops those Marketo fields updating. Nothing errors —
+segmentation just starts targeting stale numbers.
+
 ## Log
 - 2026-08-12 — workstream began (write-back reverse engineering, after the ingest chain was proven)
 - 2026-08-14 — formalised as its own task; session time re-attributed here from
@@ -84,3 +146,8 @@ Full derivation, validation and every source-column decision:
   `-- Auto Generated` header in `SalesLineTransactions.sql` that a workspace commit had corrupted
   (fixed and pushed, `0bc4977`); the Curated run then failed on `EmployeesIntervalSorting`.
   `outbound.Marketo_Lead` has still never been built in DEV.
+- 2026-08-17 — MERGED: `2026-08-10-carlras-marketo-fieldpush-owner` (its eight open items were the
+  same list as this task's Open section) and `2026-07-07-carlras-impact-marketo-mail` (the mail is
+  the delivery vehicle for those questions). Note the 08-14 entry above: the mail task was about
+  API access rather than the build — that item survives as question 8 and should be checked against
+  the now-running ingest before it is asked.

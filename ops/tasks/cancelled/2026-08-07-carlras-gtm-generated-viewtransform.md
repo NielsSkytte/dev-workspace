@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — move GTM's Enriched views to the generated (metadata-driven) pattern
-status: open
+status: cancelled
 created: 2026-08-07
 project: customers/Carl-Ras/datahub
 owner: self
@@ -37,3 +37,5 @@ Do not start this before the Marketo generator has run for real — the DDL path
 
 ## Log
 - 2026-08-07 — created (handoff from the Marketo ingest build)
+
+- 2026-08-17 — MERGED into `2026-07-16-carlras-gtm-inbound-ingest` and closed as a separate task. Its content was folded into that task verbatim; nothing dropped.
