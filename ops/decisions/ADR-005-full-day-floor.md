@@ -93,6 +93,19 @@ manual lift for whatever they leave short. The mechanism moved; the goal did not
   measured is the number, weighted is the evidence, and the gap between them is exactly what a
   top-up closes.
 
+## Amendment 2026-08-19: the per-customer day cap is 12 h, and it spills
+
+A day that is genuinely long for one customer is fine — that is what a long day looks like. What is
+not fine is several days stacking onto one date and producing a number nobody can defend. So:
+
+- **12 h per customer per date** (`DAY_CAP` in `rollup.py`, `CUSTOMER_CAP` in `value.py` — one
+  concept, one number). The grain is the customer, because that is the only view a customer has.
+- **Over it, hours spill to another date** for the same customer inside the same week, largest line
+  first, and every move is printed. Hours are moved, never dropped; period totals are unchanged.
+- If the week has no room, the excess stays where it was measured and is reported. An honest
+  over-cap day beats a fabricated date.
+- The all-customers `FLAG_CAP` (15 h) is unchanged: soft, a review flag, never moves hours.
+
 ## Implementation
 
 `ops/time/rollup.py` (`topup`, `distribute_hours`, `weighted_hours`, `load_absence`, `check`),

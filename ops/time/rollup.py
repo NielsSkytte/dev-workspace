@@ -360,9 +360,9 @@ def known_dates(hbs):
 
 
 MERGE_THRESHOLD = 2.0   # a day-entry at/over this stays put; under it gets merged by week
-DAY_CAP = 9.0           # h per CUSTOMER per date -- the only view a customer has of a day.
-                        # A day that MEASURED more than this is real and is never touched; the cap
-                        # exists so that COMBINING several days can never manufacture one.
+DAY_CAP = 12.0          # h per CUSTOMER per date -- the only view a customer has of a day.
+                        # Over it, hours SPILL to another day for the same customer; they are never
+                        # dropped and never stacked past the cap (decided 2026-08-19).
 
 
 def customer_of(project):
@@ -437,7 +437,73 @@ def consolidate_week(entries, period_dates, threshold=None):
         for cust, wk, total in unmerged:
             print("(not merged: %s %s, %.2f h -- every day is already at the %.1f h cap; "
                   "left on the days it was worked)" % (cust, wk, total, DAY_CAP))
-    return fixed + placed
+    return spill_over_cap(fixed + placed, period_dates)
+
+
+def spill_over_cap(entries, period_dates):
+    """No customer ever shows more than DAY_CAP on one date: the excess moves to another date.
+
+    Entries at or over MERGE_THRESHOLD are placed by measurement, not by merging, so this is the
+    only thing standing between a genuinely enormous day and a line nobody can defend. Hours are
+    MOVED, never dropped -- the week total is identical afterwards -- and every move is printed.
+    If the whole week is full the excess stays where it was measured and is reported; inventing a
+    date outside the period would be worse than an honest over-cap day."""
+    cust_day = {}
+    for e in entries:
+        k = (customer_of(e["project"]), e["date"])
+        cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
+    moves = []
+    for (cust, date), total in sorted(cust_day.items()):
+        excess = round_quarter(total - DAY_CAP)
+        if excess <= 0:
+            continue
+        wk = week_key(date)
+        targets = [d for d in sorted(period_dates)
+                   if d != date and week_key(d) == wk
+                   and cust_day.get((cust, d), 0.0) < DAY_CAP - 1e-9]
+        # biggest line first: moving one 6 h line beats slicing four small ones
+        lines = sorted((e for e in entries
+                        if customer_of(e["project"]) == cust and e["date"] == date),
+                       key=lambda e: -e["hours"])
+        left = excess
+        for tgt in targets:
+            if left <= 0:
+                break
+            room = round_quarter(DAY_CAP - cust_day.get((cust, tgt), 0.0))
+            while room > 0 and left > 0 and lines:
+                src = lines[0]
+                take = min(room, left, src["hours"])
+                if take <= 0:
+                    lines.pop(0)
+                    continue
+                src["hours"] = round(src["hours"] - take, 2)
+                entries.append(dict(src, date=tgt, hours=take))
+                cust_day[(cust, date)] = round(cust_day[(cust, date)] - take, 2)
+                cust_day[(cust, tgt)] = round(cust_day.get((cust, tgt), 0.0) + take, 2)
+                room = round(room - take, 2)
+                left = round(left - take, 2)
+                moves.append((cust, date, tgt, take))
+                if src["hours"] <= 0:
+                    lines.pop(0)
+        if left > 0:
+            print("(%s on %s is %.2f h over the %.1f h cap and the week has no room -- left as "
+                  "measured)" % (cust, date, left, DAY_CAP))
+    for cust, src, tgt, hrs in moves:
+        print("(spilled %.2f h for %s from %s to %s -- over the %.1f h/day cap)"
+              % (hrs, cust, src, tgt, DAY_CAP))
+    # A spill can land on a date that already has the same F&O line. Two identical lines is two
+    # things to type into F&O for one fact, so fold them.
+    folded = {}
+    for e in entries:
+        if e["hours"] <= 0:
+            continue
+        k = (e["date"], e["project"], e["proj_id"], e["activity"], e["fno_task"], e["billable"])
+        if k in folded:
+            folded[k]["hours"] = round(folded[k]["hours"] + e["hours"], 2)
+            folded[k]["live"] = folded[k]["live"] or e["live"]
+        else:
+            folded[k] = dict(e)
+    return list(folded.values())
 
 
 def render_entries(entries):

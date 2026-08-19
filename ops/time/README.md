@@ -221,17 +221,19 @@ where it is. For every F&O line (project id + activity + task), its **< 2 h** da
 week are **summed and placed on a single day of that week**, preferring a day that line was actually
 worked.
 
-Merging is the one operation that moves hours *between dates*, so it is the one that could invent a
-day nobody worked. The rule that stops it: **no customer's total for a date may exceed 9 h through
-merging.** That grain is deliberate — "you billed me 18 hours in one day" is a statement about a
-customer, not about a folder, and 9 h across two different customers is unremarkable because neither
-can see the other. A group that will not fit under the cap is **left unmerged on the days it was
-actually worked**, and reported.
+**The cap: 12 h per customer per date** (decided 2026-08-19). That grain is the point — "you billed
+me 18 hours in one day" is a statement about a *customer*, not about a folder, and 12 h across two
+different customers is unremarkable because neither can see the other. A single long day for one
+customer is normal and stays; what the cap prevents is several days stacking into one.
 
-A day that **measured** more than 9 h is real, stays exactly as measured, and is never used as a
-merge target or redistributed — a long day for one customer is a long day. Weekly and monthly totals
-are unchanged either way; only the spread across dates moves. `/time` runs the reports with `--merge`
-on by default; pass `raw` to see every entry.
+**Over the cap, hours spill to another date** for the same customer, largest line first, within the
+same week. Hours are moved, never dropped: the weekly and monthly totals are identical afterwards,
+and every move is printed (`spilled 4.00 h for customers/X from 2026-09-07 to 2026-09-08`). Two
+identical F&O lines landing on the same date are folded into one, so a spill never adds a line to
+type. If the whole week is already at the cap the excess stays where it was measured and says so —
+inventing a date outside the period would be worse than one honest over-cap day.
+
+`/time` runs the reports with `--merge` on by default; pass `raw` to see every entry.
 
 **By hand:** for each unfinalized day, run the model in section 3 per group, write the table to
 `timesheet/<YYYY-MM>/<date>.md`, eyeball it, adjust if a number is obviously off.
@@ -331,7 +333,7 @@ a path not seen before is `new`; >=150 weighted lines on a seen path is a `rebui
 
 | Level | Threshold | Type |
 |---|---|---|
-| per **customer** per day | 9 h | hard -- spills to another day, same customer, same month |
+| per **customer** per day | 12 h | hard -- spills to another day, same customer, same month |
 | all customers per day | 15 h | soft -- review flag only, never moves hours |
 | all customers per day | 24 h | hard -- assertion |
 
