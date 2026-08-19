@@ -6,7 +6,7 @@ this script just runs it. Pure stdlib, ASCII-only, deterministic.
 
 Modes:
   python rollup.py            finalize every complete past day missing a timesheet (catch-up),
-                              applying the full-day floor, then run the weekly coverage check.
+                              as MEASURED time, then run the weekly coverage check.
   python rollup.py --preview  print today's live tally; write nothing.
   python rollup.py --check [YYYY-Www]  weekly coverage check only (default: this week +
                               last week) + month-to-date vs target; write nothing.
@@ -45,10 +45,13 @@ ROUND_HOURS = 0.25                              # F&O increment
 MIN_HOURS = 0.5                                  # any work on a project that day -> at least 0.5 h
 DEV_CODE = "INTERNAL-RND"                        # Dev bucket = internal R&D, non-billable
 
-# ---------- full-day floor (rule 2026-08-17, README section 8) ----------
-# A workday that saw real activity is claimed as a FULL day. Elapsed keyboard time measures how
-# long the work took, not what it was worth -- the value model (section 7) is the justification.
-FULL_DAY = 7.5              # h claimed for a worked workday
+# ---------- full-day target and the deliberate top-up (rule 2026-08-19, README section 8) ----------
+# A normal working day should end up billed in full. The value model (section 7) is what justifies
+# that, and it usually gets there on its own. So the timesheet records MEASURED time by default,
+# and closing the remaining gap to 100% is an explicit act -- `--topup <week|month> --apply` --
+# never something a rollup does behind you. Superseded the automatic per-day floor (ADR-005 v1),
+# which never wrote a day.
+FULL_DAY = 7.5              # h a full working day is worth
 ACTIVE_TRIGGER = 0.5        # h of active time on a workday that makes it a worked day
 ABSENCE = os.path.join(ROOT, "absence.md")
 ABSENCE_KINDS = ("vacation", "holiday", "sick", "offline")
@@ -232,31 +235,45 @@ def day_active_hours(day_hbs):
     return stretch_hours([(hb["start"], hb["end"]) for hb in day_hbs])
 
 
-def apply_floor(rows, date, active_h, absence=None):
-    """Lift a worked workday to FULL_DAY. Returns (rows, raw_total, claimed_total|None).
+def distribute_hours(rows, extra):
+    """Add `extra` hours to a day's rows, PROPORTIONALLY across its BILLABLE lines.
 
-    The deficit is split PROPORTIONALLY across the day's BILLABLE lines (internal lines are left
-    alone, so the floor never inflates non-billable hours); a day with no billable line splits it
-    across whatever lines it has. Rounding drift lands on the largest line so the day totals exactly
-    FULL_DAY. Weekends, absence days and days already at/over FULL_DAY are returned untouched."""
-    raw = round(sum(r["hours"] for r in rows), 2)
-    if not rows or not is_workday(date) or active_h < ACTIVE_TRIGGER:
-        return rows, raw, None
-    if absence and date in absence and absence[date]["kind"] != "offline":
-        return rows, raw, None
-    deficit = round_quarter(FULL_DAY - raw)
-    if deficit <= 0:
-        return rows, raw, None
+    Internal lines are never inflated -- a top-up is a billing act, and internal work is not
+    billed; a day with no billable line at all spreads it across whatever lines it has, so the
+    hours stay attributed to something real. Rounding drift lands on the largest line so the day
+    totals exactly what was asked for."""
+    if not rows or extra <= 0:
+        return rows
     targets = [r for r in rows if r["billable"]] or rows
     base = sum(r["hours"] for r in targets)
     ordered = sorted(targets, key=lambda r: -r["hours"])
-    rest = deficit
+    rest = extra
     for r in ordered[1:]:
-        share = min(rest, round_quarter(deficit * r["hours"] / base)) if base else 0.0
+        share = min(rest, round_quarter(extra * r["hours"] / base)) if base else 0.0
         r["hours"] = round(r["hours"] + share, 2)
         rest = round(rest - share, 2)
     ordered[0]["hours"] = round(ordered[0]["hours"] + rest, 2)
-    return rows, raw, round(raw + deficit, 2)
+    return rows
+
+
+def weighted_hours(date):
+    """(billable, internal) weighted hours from ops/time/value/<date>.md, or (None, None).
+
+    This is the evidence behind a top-up: the multipliers are what justify billing a full day,
+    so a lift that runs past them is a lift with nothing behind it."""
+    path = os.path.join(ROOT, "value", date + ".md")
+    if not os.path.exists(path):
+        return None, None
+    bill = intern_ = None
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r"\*\*(Billable|Internal):\*\*.*?->\s*([\d.]+)\s*h", line.strip())
+            if m:
+                if m.group(1) == "Billable":
+                    bill = float(m.group(2))
+                else:
+                    intern_ = float(m.group(2))
+    return bill, intern_
 
 
 def offline_rows(project):
@@ -457,8 +474,6 @@ def report(hbs, today, kind, period, merge=False):
         if live:
             day_hbs = hbs_by_date.get(d, [])
             rows = rows_for(day_hbs)
-            if d < today:   # today is still accruing -- the floor is only meaningful once closed
-                rows, _, _ = apply_floor(rows, d, day_active_hours(day_hbs), load_absence())
         rows = [r for r in rows if r["hours"] > 0]
         if not rows:
             continue
@@ -496,15 +511,12 @@ def day_state(date, hbs_by_date, absence, today):
     if rows is not None:
         hrs = round(sum(r["hours"] for r in rows), 2)
         if entry and entry["kind"] != "offline":
-            # tracked work on a day marked absent -- kept, unfloored, and flagged rather than dropped
+            # tracked work on a day marked absent -- kept and flagged rather than dropped
             return "final", hrs, "marked %s but time was tracked -- check absence.md" % entry["kind"]
         return "final", hrs, ""
     if day_hbs:
         rows = rows_for(day_hbs)
-        active = day_active_hours(day_hbs)
-        rows, raw, claimed = apply_floor(rows, date, active, absence)
-        return "live", (claimed if claimed is not None else raw), (
-            "floor -> %.2f h" % claimed if claimed is not None else "")
+        return "live", round(sum(r["hours"] for r in rows), 2), ""
     if date in absence and absence[date]["kind"] == "offline":
         return "live", FULL_DAY, "offline, from absence.md"
     return ("empty" if is_workday(date) else "weekend"), 0.0, ""
@@ -545,7 +557,9 @@ def check(hbs, today, period=None):
                 detail = "no keyboard time and no absence entry"
             if status == "final" and is_workday(d) and not off and 0 < hrs < FULL_DAY:
                 under.append((d, hrs))
-                detail = "finalized below the floor -- edit the daily file to lift it"
+                wb, _ = weighted_hours(d)
+                detail = ("under a full day; value model supports %.2f h" % wb
+                          if wb is not None else "under a full day; no value record")
             dow = datetime.date.fromisoformat(d).strftime("%a")
             lines.append("| %s | %s | %s | %s | %s |" % (
                 d, dow, status, "-" if status in ("empty", "absent") else "%.2f" % hrs,
@@ -580,9 +594,141 @@ def check(hbs, today, period=None):
         print("  | <date> | vacation \\| holiday \\| sick \\| offline | <project if offline> | <note> |")
         print("An 'offline' row with a project is claimed as a full day at the next rollup.")
     if under:
-        print("\n## Finalized below the floor (not changed automatically)\n")
+        print("\n## Days under a full day (nothing is changed automatically)\n")
         for d, h in under:
-            print("  %s  %.2f h  (+%.2f h to reach %.2f)" % (d, h, FULL_DAY - h, FULL_DAY))
+            wb, _ = weighted_hours(d)
+            print("  %s  %.2f h  (+%.2f h to reach %.2f)%s"
+                  % (d, h, FULL_DAY - h, FULL_DAY,
+                     "   evidence: %.2f h weighted" % wb if wb is not None else ""))
+        print("\nTo close a period to 100%: python ops/time/rollup.py --topup <week|month>")
+        print("Nothing is written without --apply.")
+
+
+# ---------- the deliberate top-up (README section 8) ----------
+
+def period_dates(period, today):
+    """A week key (2026-W33) or a month (2026-08) -> the dates in it, up to today."""
+    if re.match(r"^\d{4}-\d{2}$", period):
+        d = datetime.date.fromisoformat(period + "-01")
+        out = []
+        while str(d)[:7] == period:
+            out.append(str(d))
+            d += datetime.timedelta(days=1)
+    elif re.match(r"^\d{4}-W\d{2}$", period):
+        out = week_dates(period)
+    else:
+        raise ValueError("period must look like 2026-W33 or 2026-08, got %r" % period)
+    return [d for d in out if d <= today]
+
+
+def topup(hbs, today, period, apply_it):
+    """Lift a WEEK or MONTH to 100% of its working days, as an explicit decision.
+
+    The timesheet records measured time. When a period comes out short, this closes the gap and
+    says so in every file it touches. It only ever raises a day to FULL_DAY, never past it, and
+    only days that were actually worked -- an empty day is an absence question, not a rounding one.
+    The value record for each day is printed beside the lift, because the multipliers are what
+    justify billing a full day; a lift that runs past them is a lift with nothing behind it.
+    """
+    hbs_by_date = {}
+    for hb in hbs:
+        hbs_by_date.setdefault(hb["date"], []).append(hb)
+    absence = load_absence()
+    dates = period_dates(period, today)
+    if not dates:
+        print("No dates in %s up to %s." % (period, today))
+        return
+
+    target = worked = 0.0
+    plan, skipped = [], []
+    for d in dates:
+        off = d in absence and absence[d]["kind"] != "offline"
+        if is_workday(d) and not off:
+            target += FULL_DAY
+        rows = parse_daily_file(d)
+        if rows is None:
+            if d < today and hbs_by_date.get(d):
+                skipped.append((d, "not finalized -- run the rollup first"))
+            elif is_workday(d) and not off and d < today:
+                skipped.append((d, "no time and no absence entry"))
+            continue
+        hrs = round(sum(r["hours"] for r in rows), 2)
+        worked += hrs
+        if not is_workday(d) or off or hrs <= 0:
+            continue
+        headroom = round_quarter(FULL_DAY - hrs)
+        if headroom > 0:
+            wb, _ = weighted_hours(d)
+            plan.append({"date": d, "hours": hrs, "headroom": headroom, "weighted": wb,
+                         "rows": rows})
+
+    gap = round_quarter(target - worked)
+    print("# Top-up %s\n" % period)
+    print("Measured %.2f h of %.2f h target (%.0f%%)."
+          % (worked, target, (100.0 * worked / target) if target else 0.0))
+    if gap <= 0:
+        print("\nAlready at 100%. Nothing to do.")
+        return
+    room = sum(p["headroom"] for p in plan)
+    print("Short by %.2f h; %.2f h of headroom across %d worked day(s)."
+          % (gap, room, len(plan)))
+
+    # Fill the shortest days first: a 5 h day is likelier to be under-measured than a 7 h one.
+    remaining = min(gap, room)
+    for p in sorted(plan, key=lambda x: x["hours"]):
+        p["lift"] = min(p["headroom"], round_quarter(remaining))
+        remaining = round(remaining - p["lift"], 2)
+    plan = [p for p in plan if p["lift"] > 0]
+
+    if not plan:
+        print("\nNo worked day in this period has room left.")
+        for d, why in skipped:
+            print("  skipped %s: %s" % (d, why))
+        if remaining > 0:
+            print("\n**%.2f h unplaced.** Either days are missing from the period -- finalize "
+                  "them, or answer them in absence.md -- or the period genuinely was not full."
+                  % remaining)
+        return
+    print("\n| Date | Day | Measured | Lift | Claimed | Weighted (evidence) |")
+    print("|---|---|---|---|---|---|")
+    unbacked = []
+    for p in sorted(plan, key=lambda x: x["date"]):
+        claimed = round(p["hours"] + p["lift"], 2)
+        wb = p["weighted"]
+        ev = "%.2f h" % wb if wb is not None else "no value record"
+        if wb is not None and wb + 1e-9 < claimed:
+            ev += "  << under the claim"
+            unbacked.append(p["date"])
+        elif wb is None:
+            unbacked.append(p["date"])
+        print("| %s | %s | %.2f | +%.2f | %.2f | %s |"
+              % (p["date"], datetime.date.fromisoformat(p["date"]).strftime("%a"),
+                 p["hours"], p["lift"], claimed, ev))
+    if remaining > 0:
+        print("\n**%.2f h could not be placed** -- every worked day is already at %.2f h. "
+              "That is an absence question, not a rounding one." % (remaining, FULL_DAY))
+    if unbacked:
+        print("\n**Evidence check:** %s -- the value model does not cover the claim on these days. "
+              "Lift them only if you can say why." % ", ".join(unbacked))
+    for d, why in skipped:
+        print("  skipped %s: %s" % (d, why))
+
+    if not apply_it:
+        print("\nDry run. Add --apply to write it.")
+        return
+
+    stamp = datetime.date.today().isoformat()
+    for p in plan:
+        rows = distribute_hours(p["rows"], p["lift"])
+        wb = p["weighted"]
+        note = ("\n> Top-up %s: %.2f h measured -> %.2f h claimed, to close %s to a full working "
+                "week/month. Evidence: %s. Decided at /log, not applied automatically.\n"
+                % (stamp, p["hours"], round(p["hours"] + p["lift"], 2), period,
+                   "%.2f h weighted in ops/time/value/%s.md" % (wb, p["date"])
+                   if wb is not None else "no value record for this day"))
+        write_daily(p["date"], rows, note)
+    print("\nWrote %d day(s). Each file names its measured figure and why it was lifted."
+          % len(plan))
 
 
 def flag_value(flag):
@@ -618,20 +764,14 @@ def finalize(hbs, today):
             if not entry["project"]:
                 continue  # offline day with no project named -- cannot attribute; check reports it
             write_daily(date, offline_rows(entry["project"]),
-                        "\n> Full-day floor: offline day (no keyboard time), claimed %.2f h "
-                        "from ops/time/absence.md.\n" % FULL_DAY)
+                        "\n> Offline day: worked away from this keyboard, so there is nothing to "
+                        "measure; claimed %.2f h from ops/time/absence.md.\n" % FULL_DAY)
             written.append(date)
             continue
         rows = rows_for(day_hbs)
         if not rows:
             continue
-        rows, raw, claimed = apply_floor(rows, date, day_active_hours(day_hbs), absence)
-        note = ""
-        if claimed is not None:
-            note = ("\n> Full-day floor: %.2f h measured -> %.2f h claimed (worked workday). "
-                    "See ops/time/README.md section 8 and ops/time/value/%s.md.\n"
-                    % (raw, claimed, date))
-        write_daily(date, rows, note)
+        write_daily(date, rows)
         written.append(date)
     return written
 
@@ -644,8 +784,8 @@ def preview(hbs, today):
     if day_rows and is_workday(today):
         raw = sum(r["hours"] for r in day_rows)
         if day_active_hours(day_hbs) >= ACTIVE_TRIGGER and raw < FULL_DAY:
-            print("\n(full-day floor at finalize: %.2f h -> %.2f h, +%.2f h onto the billable "
-                  "lines -- see README section 8)" % (raw, FULL_DAY, FULL_DAY - raw))
+            print("\n(%.2f h measured, %.2f h short of a full day -- it finalizes as measured; "
+                  "close the week with --topup if it needs it)" % (raw, FULL_DAY - raw))
 
 
 def main():
@@ -666,6 +806,13 @@ def main():
     ck = flag_value("--check")
     if ck is not None:
         check(hbs, today, ck or None)
+        return
+    tu = flag_value("--topup")
+    if tu is not None:
+        if not tu:
+            print("--topup needs a period: 2026-W33 or 2026-08")
+            return
+        topup(hbs, today, tu, "--apply" in sys.argv)
         return
     written = finalize(hbs, today)
     if written:

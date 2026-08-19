@@ -361,36 +361,45 @@ deliverable (corrected 2026-08-06).
 **By hand:** for each turn, note the active minutes (excluding any gap over 5 minutes), classify it
 against the table in 7.2 using what the turn actually did, multiply, and sum per project per day.
 
-## 8. Full-day floor + weekly coverage check (rule 2026-08-17, ADR-005)
+## 8. Full working periods + the deliberate top-up (rule 2026-08-19, ADR-005 v2)
 
-Sections 1-6 measure time; section 7 measures value. This section closes the gap between them at the
-only place that matters commercially: **a workday that saw real work is claimed as a full day.**
+Sections 1-6 measure time; section 7 measures value. This section is about the number that gets
+billed, and it rests on one intent:
 
-> Elapsed keyboard time measures how long the work took, not what it was worth. A deliverable that
-> took 90 minutes because the harness is fast is not worth less than the same deliverable at eight
-> hours. The value model (section 7) is the justification on file; this section is the claim.
+> **A normal working week should end up billed in full.** Elapsed keyboard time measures how long
+> the work took, not what it was worth, and the value model (section 7) usually justifies the full
+> day on its own. So the timesheet stays **measured** and closing the last gap is a decision
+> somebody makes, not a number the tooling invents.
 
 ### 8.1 The rule
 
 | | |
 |---|---|
-| **Worked day** | a Mon-Fri date whose total active time (section 3, all projects merged) is **>= 0.5 h** |
-| **Claim** | a worked day is claimed as **7.5 h** |
-| **Monthly guarantee** | 7.5 h x working days in the month, less recorded absence |
-| **Weekends** | never floored. Weekend hours are claimed as measured, on top of the weekly target. |
-| **Days already over 7.5 h** | untouched |
-| **Days under 0.5 h active** | untouched -- noise is not a working day |
+| **Default** | every finalized day carries its **measured** hours. Nothing is topped up automatically. |
+| **Target** | 7.5 h x working days in the period, less recorded absence |
+| **Scope of a top-up** | a **week** or a **month** -- never a day in isolation. A 3 h Tuesday next to an 11 h Wednesday is a full week; only the period total is meaningful. |
+| **Ceiling** | no day is ever lifted above 7.5 h, and weekend days are never lifted -- weekend hours are claimed as measured, on top of the target. |
+| **Evidence** | `value/<date>.md` weighted hours are printed beside every proposed lift. A lift past the weighted figure is a lift with nothing behind it, and is flagged. |
+| **Explicitness** | `--topup` is a dry run. Only `--apply` writes, and every file it touches records `measured -> claimed` and why. |
 
-**Where the top-up goes.** The deficit is split **proportionally across the day's billable lines**;
-internal lines (`Dev`, `own/…`, `INTERNAL-RND`) are left exactly as measured, so the floor never
-inflates non-billable hours. A day with no billable line splits it across whatever lines it has.
-Rounding drift lands on the day's largest line so the total is exactly 7.5 h. Every floored daily
-file carries a `> Full-day floor: X h measured -> 7.50 h claimed` line -- raw and claimed are both
-on the record, and `value/<date>.md` is the evidence behind the claim.
+```
+python ops/time/rollup.py --topup 2026-W33          # what would change
+python ops/time/rollup.py --topup 2026-08 --apply   # write it
+```
 
-**Applied at finalize only.** `rollup.py` floors a day as it writes `timesheet/<date>.md`. It never
-rewrites a day that is already finalized -- a past month may already be invoiced. The check reports
-finalized days below the floor; lifting them is a manual edit and a deliberate decision.
+**Where the top-up goes.** Across days first — shortest day first, since a 3 h day is likelier to be
+under-measured than a 7 h one — then within a day **proportionally across its billable lines**.
+Internal lines (`Dev`, `own/…`, `INTERNAL-RND`) are never inflated: a top-up is a billing act and
+internal work is not billed. A day with no billable line spreads it across whatever lines it has.
+
+**What it will not do.** It will not invent a day. If a period is short because a workday has no
+time and no absence row, the hours stay unplaced and the report says so — that is a question for
+`absence.md`, not a rounding problem. It will not touch a day that is already at 7.5 h, so a
+finalized month cannot drift upward on a re-run.
+
+*Superseded: ADR-005 v1 (2026-08-17) floored each worked day to 7.5 h automatically at finalize.
+It wrote no day before being replaced — the period, not the day, is the unit that matters, and the
+lift is a judgement.*
 
 ### 8.2 The absence register
 
@@ -405,12 +414,12 @@ and is claimed as a full 7.5 h on the project named in the row, written at the n
 the end of every plain `rollup.py` (so `/log` and `/time rollup` both surface it). Default scope is
 the current week plus the previous one. It writes nothing. It reports:
 
-- each day of the week: status (`final` / `live` / `absent` / `empty`), hours, and whether the floor applied;
+- each day of the week: status (`final` / `live` / `absent` / `empty`), measured hours, and for a day under 7.5 h what the value model supports;
 - **week total vs 7.5 h x workdays**, and the shortfall;
 - **month to date vs 7.5 h x elapsed workdays**, less absence -- the monthly guarantee;
 - **Unaccounted workdays** -- a past workday with no keyboard time and no absence row. These must be
   answered: add a row to `absence.md`. Until then the month target counts them and the month reads short.
-- **Finalized below the floor** -- days written before this rule, or corrected downward by hand.
+- **Days under a full day** -- with the weighted figure beside each, and the `--topup` command to close the period. Nothing is changed.
 
 `absence.md` is tracked in git (unlike the rest of `ops/time/`, which is data); it is a decision
 record, not derived output.

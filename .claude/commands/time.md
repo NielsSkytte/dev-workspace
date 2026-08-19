@@ -22,10 +22,9 @@ in the F&O code column: that project's `CLAUDE.md` `## Identity` block is missin
 ### `/time rollup` — finalize + catch-up
 
 Run `python C:\Dev\ops\time\rollup.py`. It finalizes every complete past day that has heartbeats but
-no timesheet yet (catch-up for missed days), applying the **full-day floor** (README section 8: a
-Mon–Fri day with >= 0.5 h active time is claimed as 7.5 h, the top-up split across the billable
-lines). It then prints the coverage check. Report which days it wrote and act on the check as below.
-This is also run as part of `/log`.
+no timesheet yet (catch-up for missed days), as **measured** time — nothing is topped up
+automatically (README section 8). It then prints the coverage check. Report which days it wrote and
+act on the check as below. This is also run as part of `/log`.
 
 ### `/time check [YYYY-Www]` — weekly coverage check
 
@@ -36,12 +35,22 @@ nothing. Then **act on the two action sections**:
   user, one closed question, listing the dates:** vacation / holiday / sick / offline (which
   project?). Write the answers into `C:\Dev\ops\time\absence.md` (append rows, keep it date-sorted),
   then re-run the check. An `offline` row is claimed as a full day at the next rollup.
-- **Finalized below the floor** — days written before the rule (or corrected down by hand). These are
-  **never** changed automatically. Surface them once with the top-up needed; lift one only if the
-  user says so, by editing `ops/time/timesheet/<YYYY-MM>/<date>.md` directly and adding a note line.
+- **Days under a full day** — listed with the weighted hours the value model supports. These are
+  **never** changed automatically, and a single short day is not by itself a problem: the unit that
+  matters is the week or the month.
 
-The month-to-date line is the guarantee: 7.5 h x elapsed workdays, less recorded absence. If it reads
-short and there are no unaccounted days, the gap sits in the finalized-below-the-floor list.
+The month-to-date line is the goal: 7.5 h x elapsed workdays, less recorded absence. If a period
+reads short and there are no unaccounted days, close it deliberately — see below.
+
+### `/time topup <YYYY-Www|YYYY-MM>` — close a period to 100%
+
+Run `python C:\Dev\ops	imeollup.py --topup <period>` and show the output. It is a **dry run**:
+it prints the shortfall, the proposed lift per day, and the weighted hours behind each one. Days
+whose value record does not cover the claim are flagged.
+
+Only add `--apply` when the user says so, quoting the flagged days first if there are any. Every
+file it writes records `measured -> claimed` and the period being closed. No day is ever lifted
+above 7.5 h and weekends are never lifted.
 
 ### `/time week [YYYY-Www]` / `/time month [YYYY-MM]` — by-date report
 

@@ -1,9 +1,9 @@
-# ADR-005: Full-Day Floor + Weekly Coverage Check
+# ADR-005: Full Working Periods + Weekly Coverage Check
 
 | Field       | Value                        |
 |-------------|------------------------------|
-| Status      | Accepted                     |
-| Date        | 2026-08-17                   |
+| Status      | Accepted (v2, amended 2026-08-19 before v1 had written a day) |
+| Date        | 2026-08-17, amended 2026-08-19 |
 | Author      | Niels                        |
 | Reviewers   | -                            |
 
@@ -28,17 +28,30 @@ That left the timesheet still driven by elapsed time, with two consequences:
 - A day with **no** keyboard time is indistinguishable from a day that never got asked about.
   Vacation, a public holiday, a customer workshop and a forgotten day all look identical: absent.
 
-## Decision
+## Decision (v2, 2026-08-19)
 
-**1. A workday that saw real work is claimed as a full day (7.5 h).**
-"Real work" = total active time (the 15+5 model, all projects merged) of at least 0.5 h on a
-Mon–Fri date. The deficit to 7.5 h is split proportionally across the day's **billable** lines;
-internal lines stay exactly as measured. Weekends are never floored — weekend hours are claimed
-as measured, on top of the target.
+**1. The goal is a full *period*, not a full day.** A normal working week should end up billed in
+full. Days vary — 3 h next to 11 h is one full week — so the day is the wrong unit and the period
+(week or month) is the right one.
 
-**2. The floor is applied at finalize, never retroactively.**
-`rollup.py` floors a day as it writes `timesheet/<date>.md`, and stamps the raw and claimed
-totals into the file. A finalized day is never rewritten — a past month may already be invoiced.
+**2. The timesheet records MEASURED time. Nothing is topped up automatically.** The value model
+(ADR-004) is what justifies billing a full day, and it usually gets there on its own. When a period
+still comes out short, closing it is an explicit act:
+
+```
+python ops/time/rollup.py --topup 2026-W33          # dry run
+python ops/time/rollup.py --topup 2026-08 --apply   # write it
+```
+
+**2b. A top-up is bounded and evidenced.** No day is lifted above 7.5 h; weekends are never lifted;
+the shortest days fill first; within a day the lift goes proportionally onto the **billable** lines
+only. The weighted hours from `value/<date>.md` print beside every proposed lift and any lift that
+exceeds them is flagged — a claim past its evidence is a decision and has to look like one. Every
+file written records `measured -> claimed` and the period it was closing.
+
+**2c. A short period is not automatically a rounding problem.** If the shortfall cannot be placed
+because a workday has no time at all, it stays unplaced and is reported. That is a question for
+`absence.md`.
 
 **3. Empty workdays must be answered.**
 `ops/time/absence.md` records why: `vacation` / `holiday` / `sick` (removed from the target, no
@@ -47,25 +60,40 @@ day on a named project).
 
 **4. A coverage check runs per ISO week, with every rollup.**
 `rollup.py --check` reports the week against 7.5 h x workdays, the month to date against the same
-guarantee, every unaccounted workday, and every finalized day sitting below the floor.
+guarantee, every unaccounted workday, and every day under a full day with the weighted
+hours beside it.
+
+### What v1 said, and why it changed
+
+v1 (2026-08-17) floored **every worked day** to 7.5 h automatically at finalize. It was replaced two
+days later having written no day: an automatic per-day lift makes the timesheet claim something the
+tooling decided, and the intent was always that the *multipliers* justify the full week, with a
+manual lift for whatever they leave short. The mechanism moved; the goal did not.
 
 ## Consequences
 
-- The timesheet is now a **claim**, not a measurement. `value/<date>.md` (ADR-004) is the evidence
-  on file behind it, and every floored daily file names the raw figure it was lifted from. Nothing
-  is hidden; both numbers survive.
-- Backfilling is a manual decision. Days finalized before 2026-08-17 keep their measured hours;
-  the check lists them with the top-up needed.
-- The floor is conservative against the value model. On 2026-08-13 the timesheet read 5.00 h and
-  the value record justified 9.00 h weighted; the floor would have claimed 7.50 h.
-- Risk accepted: a workday with 35 minutes of genuine activity and no other work is claimed at
-  7.5 h. This is the intended behaviour — the day was worked, and the 0.5 h trigger only excludes
-  noise. It is visible in the daily file's floor line, so an over-claim is reviewable, not silent.
-- ADR-004's re-evaluation at the end of 2026-08 should now also ask whether the floor or the
-  weighted hours is the better basis for the timesheet. They are currently redundant: the floor is
-  the claim, weighted hours the justification.
+- The timesheet is a **measurement** again, and becomes a **claim** only where someone lifted it —
+  in which case the file says so. Both numbers survive either way.
+- **The check is the workflow.** Every rollup prints, per week and per month, measured vs target,
+  and for each day under 7.5 h what the value model supports. Acting on it is a `/log` decision.
+- **Weeks are often already full.** 2026-W33 measured 39.75 h against a 37.50 h target (106%) with
+  three individual days under 7.5 h. Under v1 those three would each have been lifted, taking a week
+  that was already over target to roughly 46 h. That is the concrete reason the day is the wrong
+  unit.
+- **The evidence check earns its place immediately.** A dry run over 2026-W31 proposes lifts on two
+  days whose weighted hours sit *below* the claim (3.25 h weighted against a 7.25 h claim). Under v1
+  both would have been written silently.
+- Backfilling stays a manual decision. Days finalized before this rule keep their measured hours;
+  `--topup <period>` is how they get closed, and only if someone runs it.
+- Risk moved rather than removed: a thin day no longer inflates itself, but a thin *period* can
+  still be lifted to full. The difference is that someone chooses it, with the weighted hours in
+  front of them, and the file records the choice.
+- ADR-004's re-evaluation at the end of 2026-08 should ask whether weighted hours should *become*
+  the timesheet basis rather than only its justification. Under v2 they are no longer redundant —
+  measured is the number, weighted is the evidence, and the gap between them is exactly what a
+  top-up closes.
 
 ## Implementation
 
-`ops/time/rollup.py` (`apply_floor`, `load_absence`, `check`), `ops/time/absence.md`,
-`ops/time/README.md` section 8, `/time check`, `/log` step 4.
+`ops/time/rollup.py` (`topup`, `distribute_hours`, `weighted_hours`, `load_absence`, `check`),
+`ops/time/absence.md`, `ops/time/README.md` section 8, `/time check`, `/log` step 4.
