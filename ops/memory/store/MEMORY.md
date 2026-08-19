@@ -63,3 +63,4 @@ and the record shape live in [`../README.md`](../README.md).
 - `fabric-warehouse-deploy-rebuild-scope` — a warehouse deploy rebuilds and empties a table on any column-list difference, drops included (31 tables emptied on one hop); and `sys.partitions.rows` is not populated in a Fabric Warehouse
 - `eval-2026-08-18-predicted-one-emptied-table` — predicted 1 emptied table, 31 were; read a skill's trigger list as exhaustive instead of asking what the triggers have in common (7th consecutive session with Fabric skills not auto-firing)
 - `eval-2026-08-18-memory-summarizer-fidelity` — the local summarizer inverted a 2-vs-27 count and promoted a hedge to a prediction in the same session's records
+- `timesheet-period-not-day` — the billable unit is the WEEK: measured by default, a short period closed by a deliberate --topup with weighted hours as the evidence, and 12 h per customer per date as a hard cap that spills rather than stacks
