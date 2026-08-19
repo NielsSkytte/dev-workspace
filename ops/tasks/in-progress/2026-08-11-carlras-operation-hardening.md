@@ -5,7 +5,7 @@ created: 2026-08-11
 project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
-blocked_by: semantic model developer must be consulted on the Currency overflow (model data type vs Curated)
+blocked_by:
 activity:
 fno_task:
 source: direct
@@ -98,3 +98,12 @@ classes will keep recurring until they are closed deliberately.
 - 2026-08-17 — MERGED: `2026-08-14-carlras-semanticmodel-currency-overflow` folded in as the
   current blocker — it is the last stage of this same chain and was created stating so.
   `blocked_by` now carries the semantic-model-developer consult.
+- 2026-08-19 — UNBLOCKED: the Currency overflow is closed. Cause was one AX09 row
+  (`crcampaignforecast.RecId` 5638443880, `ForecastQuantity` 2222222222222222, entered by `SOUR`
+  2026-08-18 09:03), not a model or Curated defect. `Campaign Forecasts[Forecast Quantity]` retyped
+  Fixed Decimal Number -> Decimal Number; TEST refresh green at 08:11 (14 min, five adaptive
+  batches after one memory-ceiling probe at 5090/5084 MB). Fix is in `Semantic-Model` `503b5d4`
+  and live in Semantic-Model-DEV, so a DEV->TEST deployment no longer reverts it. AX09 record
+  correction initiated by Niels. Data-quality gate spun out as
+  `2026-08-19-carlras-atomic-dataquality-gate`. Still open in this chain: the Marketo failure from
+  the same run.
