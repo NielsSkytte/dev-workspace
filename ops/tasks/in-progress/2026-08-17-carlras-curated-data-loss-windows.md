@@ -91,3 +91,8 @@ SELECT YEAR(TransDate) y, COUNT(*) FROM enriched.GeneralLedgerTransactions GROUP
 ## Log
 - 2026-08-17 — created from Niels's observation; measured both layers in DEV and located the
   window in `viewfacttransform.GeneralLedgerTransactions`. Nothing changed yet.
+- 2026-08-19 — **time attribution note.** Session `b436423e` carried this task's tag from 08-17 to
+  08-19, but only the 08-17 work (measuring every enriched table, every curated window, and locating
+  the GL fact's current-month filter) belongs here. From the Direct Lake assessment onward the work is
+  `2026-08-18-carlras-directlake-conversion`; the tag was switched there on 08-19 17:25Z. Reassign the
+  08-18 and 08-19 hours at the review gate.

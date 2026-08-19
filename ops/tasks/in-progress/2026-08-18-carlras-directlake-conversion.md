@@ -116,3 +116,8 @@ dims. Deploying the model first would fail on framing.
   missing until it was fixed), and the warehouse's BIN2 collation versus DAX's case-insensitive
   comparison made `Linje` 1,320 distinct in SQL but 1,316 in the model until it was partitioned by
   `UPPER(Txt)`. Parked before the TEST deployment — see *Next session*.
+- 2026-08-19 — **time attribution split.** Session `b436423e` ran 08-17 → 08-19 and was tagged
+  `2026-08-17-carlras-curated-data-loss-windows` throughout, because that is what it started on. Only
+  the first stretch on 08-17 (measuring the curated windows and the GL fact) belongs there; everything
+  from the Direct Lake assessment onward belongs to this task. The session tag was switched here on
+  08-19 17:25Z, so the earlier hours need reassigning at the review gate.
