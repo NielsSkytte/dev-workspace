@@ -68,3 +68,7 @@ and the record shape live in [`../README.md`](../README.md).
 - `eval-2026-08-19-recent-change-bias` — asked "did we touch currency?", I reached first for the most recent currency-adjacent commit; wrong, and enumerating all 66 candidate columns settled it in one query
 - `eval-2026-08-19-no-skill-owns-model-refresh` — eighth consecutive silent session, but the first where no skill *should* have fired: semantic-model refresh diagnosis lives in an agent a standing instruction blocks, not in any skill
 - `concurrent-session-commit-bundling` — two sessions share a working tree; one session's `git commit` swept up the other's uncommitted fix and pushed it under an unrelated message
+- `carlras-directlake-conversion` - Carl Ras's model went Import -> pure Direct Lake on OneLake: 22 s framing against an Import model that can no longer refresh, no calculated columns allowed, and Direct Lake models do not autobind on deployment
+- `directlake-drop-create-window` - Atomic's curated drop-create deletes the parquet files Direct Lake reads: ~25 s per table where non-resident columns error, self-healing via automatic framing, so leave automatic updates ON
+- `warehouse-bin2-vs-dax-case` - moving DAX into a Fabric Warehouse: BIN2 is case-sensitive where DAX is not, and a CTAS rejects nvarchar; SQL agreeing with itself is not evidence the model agrees
+- `eval-2026-08-19-stale-clone-and-add-all` - inventoried a model from a twelve-day-stale clone and used `git add -A` in a shared tree; fetch before reading, stage by path
