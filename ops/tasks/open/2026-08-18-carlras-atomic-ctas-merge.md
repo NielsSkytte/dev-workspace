@@ -6,7 +6,7 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by: only worth doing once the Direct Lake conversion is committed to
-activity:
+activity: SemanticModel
 fno_task:
 source: session
 ---

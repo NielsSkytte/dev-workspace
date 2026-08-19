@@ -6,7 +6,7 @@ project: customers/Carl-Ras/datahub
 owner: semantic
 priority: high
 blocked_by:
-activity:
+activity: SemanticModel
 fno_task:
 source: session
 ---
