@@ -15,7 +15,8 @@ Modes:
   python rollup.py --month [YYYY-MM]   print a by-date report for one month
                                        (default: current month); write nothing.
   ... add --merge to either report   consolidate each project's sub-2 h daily entries
-                                       within a week onto one day (<= 9 h/day); still by date.
+                                       within a week onto one day (<= 9 h per customer per
+                                       date); still by date.
 
 The --week/--month reports are by DATE (one row per date/project/task) because time is
 entered into F&O per date. They read the finalized timesheet/<date>.md files (so manual
@@ -359,32 +360,48 @@ def known_dates(hbs):
 
 
 MERGE_THRESHOLD = 2.0   # a day-entry at/over this stays put; under it gets merged by week
-DAY_CAP = 9.0           # a merged entry is never placed where it pushes a day over this
+DAY_CAP = 9.0           # h per CUSTOMER per date -- the only view a customer has of a day.
+                        # A day that MEASURED more than this is real and is never touched; the cap
+                        # exists so that COMBINING several days can never manufacture one.
+
+
+def customer_of(project):
+    """The billing entity a project rolls up to -- customers/<X> for a customer, else the project.
+    A cap only means something at this grain: 'you billed me 18 hours in one day' is a statement
+    about a customer, not about a folder."""
+    parts = project.split("/")
+    return "/".join(parts[:2]) if project.startswith("customers/") and len(parts) > 1 else project
 
 
 def consolidate_week(entries, period_dates, threshold=None):
     """Reduce small scattered entries. Any day-entry >= MERGE_THRESHOLD stays untouched. For each
     project, its sub-threshold day-entries within an ISO week are summed and placed on ONE day of
-    that week, chosen so the day's total stays <= DAY_CAP. (Days already over the cap from untouched
-    entries are not used as placement targets and are not redistributed.)
+    that week, chosen so that CUSTOMER's total for the day stays <= DAY_CAP.
+
+    Merging moves hours between dates, so it is the one place that could invent a day nobody
+    worked. It will not: a group that cannot fit under the cap is left UNMERGED on the days it was
+    actually worked, and reported. Days already over the cap from real measured work are neither
+    used as targets nor redistributed.
 
     `threshold` overrides MERGE_THRESHOLD for one call -- the F&O entry page passes a higher one to
     get the fewest possible lines to type. Callers that omit it (the /time reports) are unchanged."""
     thr = MERGE_THRESHOLD if threshold is None else threshold
     fixed = [e for e in entries if e["hours"] >= thr]
     small = [e for e in entries if e["hours"] < thr]
-    day_total = {}
+    cust_day = {}
     for e in fixed:
-        day_total[e["date"]] = day_total.get(e["date"], 0.0) + e["hours"]
+        k = (customer_of(e["project"]), e["date"])
+        cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
     groups = {}
     for e in small:
         key = (week_key(e["date"]), e["project"], e["proj_id"], e["activity"],
                e["fno_task"], e["billable"])
         groups.setdefault(key, []).append(e)
-    placed = []
+    placed, unmerged = [], []
     for key in sorted(groups):
         wk, project, pid, activity, fno_task, billable = key
         es = groups[key]
+        cust = customer_of(project)
         total = round_quarter(sum(x["hours"] for x in es))
         own_days = sorted(set(x["date"] for x in es))               # days actually worked
         week_days = sorted(d for d in period_dates if week_key(d) == wk)
@@ -393,24 +410,33 @@ def consolidate_week(entries, period_dates, threshold=None):
         row = lambda d, hrs: {"date": d, "project": project, "proj_id": pid, "activity": activity,
                               "fno_task": fno_task, "hours": hrs, "billable": billable,
                               "live": live}
-        # Fill the FEWEST days that can hold the group, each up to DAY_CAP, preferring days the
-        # line was actually worked. A group larger than the cap used to land whole on one day --
-        # at MERGE_THRESHOLD 2.0 that was rare, but a caller passing a higher threshold sweeps in
-        # bigger entries and could produce a 15 h day, which is not enterable.
-        left = total
+        # Fill the FEWEST days that can hold the group, each up to DAY_CAP for that customer,
+        # preferring days the line was actually worked.
+        left, take_plan = total, []
         for d in order:
             if left <= 0:
                 break
-            room = round_quarter(DAY_CAP - day_total.get(d, 0.0))
+            room = round_quarter(DAY_CAP - cust_day.get((cust, d), 0.0))
             if room <= 0:
                 continue
             take = min(left, room)
-            day_total[d] = day_total.get(d, 0.0) + take
-            placed.append(row(d, take))
+            take_plan.append((d, take))
             left = round(left - take, 2)
-        if left > 0:                      # every day in the week is at the cap -- keep the hours
-            day_total[own_days[0]] = day_total.get(own_days[0], 0.0) + left
-            placed.append(row(own_days[0], left))
+        if left > 0:
+            # No room anywhere in the week. Leave the group exactly where it was measured rather
+            # than piling a week onto one date -- that is the number a customer would query.
+            unmerged.append((cust, wk, total))
+            for e in es:
+                cust_day[(cust, e["date"])] = cust_day.get((cust, e["date"]), 0.0) + e["hours"]
+                placed.append(row(e["date"], e["hours"]))
+            continue
+        for d, take in take_plan:
+            cust_day[(cust, d)] = cust_day.get((cust, d), 0.0) + take
+            placed.append(row(d, take))
+    if unmerged:
+        for cust, wk, total in unmerged:
+            print("(not merged: %s %s, %.2f h -- every day is already at the %.1f h cap; "
+                  "left on the days it was worked)" % (cust, wk, total, DAY_CAP))
     return fixed + placed
 
 
@@ -437,10 +463,17 @@ def render_entries(entries):
     print("\n**Billable total:** %.2f h" % bill)
     print("**Internal total:** %.2f h" % intern_)
     print("**Period total:** %.2f h" % (bill + intern_))
-    over = sorted(d for d, h in day_total.items() if h > DAY_CAP + 1e-9)
+    # The cap that matters is per CUSTOMER per date -- that is the number a customer could query.
+    # A day that measured more than it is real and stays; merging can never create one.
+    cust_day = {}
+    for e in entries:
+        k = (customer_of(e["project"]), e["date"])
+        cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
+    over = sorted(k for k, h in cust_day.items() if h > DAY_CAP + 1e-9)
     if over:
-        print("\n(over 9 h/day from untouched >=2 h entries -- left as-is: %s)"
-              % ", ".join("%s = %.2f h" % (d, day_total[d]) for d in over))
+        print("\n(over %.1f h for one customer on one date -- measured, left as-is: %s)"
+              % (DAY_CAP, ", ".join("%s on %s = %.2f h" % (c, d, cust_day[(c, d)])
+                                    for c, d in over)))
     if live_dates:
         print("\n(live = not yet finalized; run /time rollup to lock in: %s)"
               % ", ".join(sorted(live_dates)))

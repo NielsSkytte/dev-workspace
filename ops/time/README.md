@@ -218,11 +218,20 @@ corrections are honoured -- and fall back to live heartbeats for a date not yet 
 
 **Consolidation (`--merge`)** avoids a scatter of tiny entries. Any day-entry **>= 2 h** stays exactly
 where it is. For every F&O line (project id + activity + task), its **< 2 h** day-entries within an ISO
-week are **summed and placed on a single day of that week**, chosen so that day's total never exceeds
-**9 h**. The merged entry prefers a day that line was actually worked. Days already over 9 h purely from
-untouched >= 2 h entries are flagged, not redistributed. Monthly/weekly totals are unchanged -- only the
-spread across days changes. `/time` runs the reports with `--merge` on by default; pass `raw` to see
-every entry.
+week are **summed and placed on a single day of that week**, preferring a day that line was actually
+worked.
+
+Merging is the one operation that moves hours *between dates*, so it is the one that could invent a
+day nobody worked. The rule that stops it: **no customer's total for a date may exceed 9 h through
+merging.** That grain is deliberate — "you billed me 18 hours in one day" is a statement about a
+customer, not about a folder, and 9 h across two different customers is unremarkable because neither
+can see the other. A group that will not fit under the cap is **left unmerged on the days it was
+actually worked**, and reported.
+
+A day that **measured** more than 9 h is real, stays exactly as measured, and is never used as a
+merge target or redistributed — a long day for one customer is a long day. Weekly and monthly totals
+are unchanged either way; only the spread across dates moves. `/time` runs the reports with `--merge`
+on by default; pass `raw` to see every entry.
 
 **By hand:** for each unfinalized day, run the model in section 3 per group, write the table to
 `timesheet/<YYYY-MM>/<date>.md`, eyeball it, adjust if a number is obviously off.
