@@ -72,3 +72,4 @@ and the record shape live in [`../README.md`](../README.md).
 - `directlake-drop-create-window` - Atomic's curated drop-create deletes the parquet files Direct Lake reads: ~25 s per table where non-resident columns error, self-healing via automatic framing, so leave automatic updates ON
 - `warehouse-bin2-vs-dax-case` - moving DAX into a Fabric Warehouse: BIN2 is case-sensitive where DAX is not, and a CTAS rejects nvarchar; SQL agreeing with itself is not evidence the model agrees
 - `eval-2026-08-19-stale-clone-and-add-all` - inventoried a model from a twelve-day-stale clone and used `git add -A` in a shared tree; fetch before reading, stage by path
+- `feedback-define-tasks-up-front` - single out the task being worked on and define it up front; a session's time tag must follow the work, and once a day is finalized the per-task detail cannot be split back out
