@@ -432,6 +432,7 @@ def _audit_week(wk, hbs_by_date, absence, today):
                 "keyboard": round(a["keyboard"], 2), "weighted": round(a["weighted"], 2),
                 "turns": a["turns"], "stretches": a["stretches"], "t5": a["t5"],
                 "tiers": a["tiers"], "files": len(a["files"]),
+                "topFiles": [os.path.basename(p) for p in sorted(a["files"])[:4]],
                 "live": sheet is None,
             })
 
@@ -465,12 +466,28 @@ def _audit_week(wk, hbs_by_date, absence, today):
     }
 
 
+def _command_openers():
+    """First-40-chars of every slash command's description, lowercased.
+
+    The turn hook records a slash command's expanded BODY as the User line (recurring defect,
+    memory `capture-turn-records-expanded-help`), so `/switch-task` shows up as "Switch (or set)
+    the time-tracking task for...". That is the command's help text, not what the session was
+    about, and it crowds out the real turns. Matching against the command files themselves keeps
+    the filter exact -- no guessing at what documentation prose looks like."""
+    out = set()
+    for path in glob.glob(os.path.join(ROOT, ".claude", "commands", "*.md")):
+        head = plain((read(path) or "").strip().split("\n", 1)[0])
+        if len(head) >= 20:
+            out.add(head[:40].lower())
+    return out
+
+
 def memory_index():
     """{session8: [(yyyymmdd, first-user-line), ...]} from ops/memory/daily/.
 
     The turn-hook writes `id: <utc-ts>Z-<session8>` above each record, which is the only join
     between a heartbeat and what was actually being said in it."""
-    idx = {}
+    idx, openers = {}, _command_openers()
     pat = re.compile(
         r"id: (\d{8})T\d{6}Z-([0-9a-f]{6,12})\n.*?\n---\n\n\*\*User:\*\* (.*?)\n", re.S)
     for path in sorted(glob.glob(os.path.join(ROOT, "ops", "memory", "daily", "*.md"))):
@@ -479,10 +496,71 @@ def memory_index():
             # Skip harness noise (~10% of turns): a skill's injected preamble, a background-task
             # notification, raw tool output echoed back. None of it says what the work WAS.
             if (not txt or txt.startswith("Base directory for this skill")
-                    or txt.startswith("<") or "task-notification" in txt[:40]):
+                    or txt.startswith("<") or "task-notification" in txt[:40]
+                    or txt[:40].lower() in openers):
                 continue
             idx.setdefault(sess, []).append((day, txt[:220]))
     return idx
+
+
+# ---------- what a line was about (hover evidence) ----------
+# A timesheet line says "Carl-Ras / - / -" and nothing more: the rollup deliberately does not
+# group by session (that would fragment stretches and add a buffer + floor per session), and the
+# finalized file carries no session id at all. So the line cannot answer "what was this?" --
+# which is worst exactly where it matters, on a line with no activity and no task.
+# This rebuilds the join from the heartbeats, which DO carry the session, and pairs it with the
+# turn text the memory hook wrote for that session. Derive-only; never a billing number.
+
+SESSION_WEEKS = 10       # how far back line evidence is carried in the payload
+MIN_TURN_CHARS = 15      # "yes", "push", "do that" -- a turn this short describes nothing
+TIP_LINES = 3            # turns shown per session in a hover
+TIP_BLOCKS = 4           # sessions shown before the hover says "+N more"
+
+
+def _says_something(text):
+    """A turn worth showing in a hover: long enough, and actually words.
+
+    A markdown rule ("---------") or a row of dashes clears a length test but says nothing."""
+    return (len(text) >= MIN_TURN_CHARS
+            and sum(c.isalnum() for c in text) >= 8)
+
+
+def collect_line_sessions(today):
+    """{'<date>|<project>|<activity>|<task>': [{session, turns, hours, task, lines[]}]} (lowercased key)."""
+    cutoff = str(datetime.date.fromisoformat(today) - datetime.timedelta(weeks=SESSION_WEEKS))
+    mem = memory_index()
+    by = {}
+    for hb in rollup.load_heartbeats():
+        if hb["date"] < cutoff:
+            continue
+        activity, fno_task = rollup.task_dims(hb.get("task"))
+        key = ("%s|%s|%s|%s" % (hb["date"], hb["project"], activity, fno_task)).lower()
+        by.setdefault(key, {}).setdefault(hb.get("session") or "", []).append(hb)
+
+    out = {}
+    for key, sess_map in by.items():
+        date = key.split("|", 1)[0]
+        blocks = []
+        for sess, group in sess_map.items():
+            turns = mem.get(sess, [])
+            # Prefer what was said on THIS date; a session spanning days would otherwise
+            # describe the line with another day's work.
+            same = [t for d, t in turns if d == date.replace("-", "")]
+            picked = [t for t in (same or [t for _, t in turns]) if _says_something(t)]
+            lines = list(dict.fromkeys(picked))[:TIP_LINES]
+            slugs = sorted({hb["task"] for hb in group if hb.get("task")})
+            blocks.append({
+                "session": sess or "(no session id)",
+                "turns": len(group),
+                "hours": round(sum(r["hours"] for r in rollup.rows_for(group)), 2),
+                "task": slugs[0] if len(slugs) == 1 else ("; ".join(slugs) if slugs else ""),
+                "lines": lines,
+            })
+        blocks.sort(key=lambda b: -b["hours"])
+        # The hover is a summary, not a transcript: keep the biggest sessions and count the rest.
+        out[key] = {"blocks": blocks[:TIP_BLOCKS], "total": len(blocks),
+                    "more": max(0, len(blocks) - TIP_BLOCKS)}
+    return out
 
 
 def collect_internal(canon):
@@ -902,6 +980,7 @@ def collect():
                     for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
         "entry": collect_entry(entries, customers, today),
         "audit": collect_audit(today),
+        "lineSessions": collect_line_sessions(today),
         "active_sessions": active_sessions(),
         "todos": todos,
         "hygiene": {

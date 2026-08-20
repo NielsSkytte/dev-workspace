@@ -163,6 +163,14 @@ tr.clickable:hover td{background:var(--surface-2)}
   border-radius:8px;padding:7px 10px;font-size:12px;box-shadow:var(--shadow);z-index:60;display:none;
   white-space:nowrap;color:var(--ink)}
 .tip b{font-variant-numeric:tabular-nums}
+.tip.wide{white-space:normal;max-width:min(560px,60vw);line-height:1.45}
+.tip .tsess{margin-top:7px;padding-top:7px;border-top:1px solid var(--ring)}
+.tip .tsess:first-of-type{margin-top:4px}
+.tip .tturn{color:var(--ink-2);margin:2px 0 0 10px;text-indent:-10px}
+.tip .tturn::before{content:'– ';color:var(--muted)}
+.tip .tnone{color:var(--muted);font-style:italic}
+tr[data-sess]{cursor:help}
+tr[data-sess]:hover td{background:var(--surface-2)}
 .datatable{display:none;margin-top:12px;max-height:220px;overflow:auto}
 .drawer{position:fixed;top:0;right:0;height:100%;width:min(620px,100%);background:var(--surface);
   border-left:1px solid var(--ring);box-shadow:-12px 0 40px rgba(0,0,0,.16);z-index:70;
@@ -952,6 +960,7 @@ function showRoute(){
   });
   document.querySelectorAll('header .navlinks a').forEach(a =>
     a.classList.toggle('on', a.getAttribute('href') === location.hash));
+  hideTip(); tip.classList.remove('wide');   // a hovered row can be destroyed by the route change
   if(ROUTE && D) (ROUTE === 'audit' ? renderAudit : renderTimesheet)();
   window.scrollTo(0,0);
 }
@@ -1095,7 +1104,8 @@ function renderTimesheet(){
           <th style="padding:3px 8px">Project</th><th style="padding:3px 8px">Proj ID</th>
           <th style="padding:3px 8px">Activity</th><th style="padding:3px 8px">Task</th>
           <th style="padding:3px 0 3px 8px;text-align:right">Hours</th></tr>
-        ${rs.map(r => `<tr style="border-top:1px solid var(--ring)">
+        ${rs.map(r => `<tr style="border-top:1px solid var(--ring)"${
+          TSMERGE ? '' : ` data-sess="${esc(sessKey(r.date, r.project, r.activity, r.fno_task))}"`}>
           <td style="padding:3px 8px 3px 0;white-space:nowrap">${esc(r.date)}</td>
           <td style="padding:3px 8px">${esc(r.customer || '-')}</td>
           <td style="padding:3px 8px">${esc(r.project.replace(/^customers\//,''))}</td>
@@ -1119,6 +1129,7 @@ function renderTimesheet(){
       + flags.map(f => `<div>${f}</div>`).join('') + `</div></div>` : '')
     + firmas.map((f,i) => block(f,i)).join('');
   bind();
+  bindLineTips($('#tsBody'));      // raw rows only -- see the data-sess guard above
 
   $('#tsBody').querySelectorAll('[data-copyfirma]').forEach(b => b.onclick = async () => {
     const rs = rows.filter(r => r.firma === b.dataset.copyfirma);
@@ -1592,7 +1603,9 @@ function renderAudit(){
 
   /* --- 3. the F&O lines, with their evidence beside them --- */
   const lineRows = w.lines.map(l =>
-    `<tr>
+    `<tr data-sess="${esc(sessKey(l.date, l.project, l.activity, l.fno_task))}"${
+      l.topFiles && l.topFiles.length
+        ? ` data-tipextra="${esc(l.topFiles.join(', '))}"` : ''}>
       <td>${esc(auDay(l.date))}</td>
       <td>${esc(l.project)}${l.live ? ' <span class="pill warn">live</span>' : ''}</td>
       <td class="muted">${esc(l.proj_id)}</td>
@@ -1665,6 +1678,71 @@ function renderAudit(){
   $('#tsBody').innerHTML = chips + tiles + sec1 + sec2 + sec3 + sec4 + sec5;
   $('#tsBody').querySelectorAll('[data-auwk]').forEach(b =>
     b.onclick = () => { AUDITWK = b.dataset.auwk; renderAudit(); });
+  bindLineTips($('#tsBody'));
+}
+
+/* ---------- "what was this line about" hover ----------
+   A timesheet line reads "Carl-Ras / - / -" and says nothing, which is worst exactly where it
+   matters: a line with no activity and no task. The rollup does not group by session on purpose
+   (that fragments stretches and adds a buffer + floor to each), and the finalized file carries no
+   session id at all -- so the collector rebuilds the join from the heartbeats, which do, and
+   pairs it with what the memory hook recorded being said in that session. */
+const sessKey = (date, project, activity, task) =>
+  `${date}|${project}|${activity || ''}|${task || ''}`.toLowerCase();
+
+/* An entry-page line can carry an activity that came from tidsreginfo.xlsx rather than from the
+   task tag, in which case the exact key misses -- the heartbeat never had that activity. Fall
+   back to every session on that date and project, merged, and say so. */
+function sessFallback(key){
+  const all = (D && D.lineSessions) || {};
+  const prefix = key.split('|').slice(0, 2).join('|') + '|';
+  const merged = {};
+  for(const k in all){
+    if(!k.startsWith(prefix)) continue;
+    for(const b of (all[k].blocks || [])){
+      const m = merged[b.session] || (merged[b.session] =
+        {session: b.session, turns: 0, hours: 0, task: b.task, lines: []});
+      m.turns += b.turns; m.hours = Math.round((m.hours + b.hours) * 100) / 100;
+      if(b.task && !m.task) m.task = b.task;
+      for(const t of b.lines) if(!m.lines.includes(t)) m.lines.push(t);
+    }
+  }
+  return Object.values(merged).sort((x, y) => y.hours - x.hours)
+    .slice(0, 4).map(b => ({...b, lines: b.lines.slice(0, 3)}));
+}
+
+function lineTip(key, extra){
+  const all = (D && D.lineSessions) || {};
+  const rec = all[key];
+  let blocks = (rec && rec.blocks) || [], more = (rec && rec.more) || 0, wide = false;
+  if(!blocks.length){ blocks = sessFallback(key); more = 0; wide = blocks.length > 0; }
+  if(!blocks.length && !extra)
+    return '<span class="tnone">No session evidence for this line.</span>';
+  const n = (rec && rec.total) || blocks.length;
+  const head = (n === 1 ? '1 session' : n ? `${n} sessions` : '')
+    + (wide ? ' <span class="muted">— all sessions on this date and project</span>' : '');
+  return (head ? `<b>${head}</b>` : '')
+    + (extra ? `<div class="sub">${extra}</div>` : '')
+    + blocks.map(b => `<div class="tsess"><b>${h(b.hours)} h</b> · ${b.turns} turn${
+        b.turns === 1 ? '' : 's'} · <span class="muted">${esc(b.session)}</span>`
+      + (b.task ? ` · <span class="muted">${esc(b.task)}</span>`
+                : ' · <span class="muted">no task tagged</span>') + '</div>'
+      + (b.lines.length
+          ? b.lines.map(t => `<div class="tturn">${esc(t)}</div>`).join('')
+          : '<div class="tturn tnone">no memory records for this session</div>')).join('')
+    + (more ? `<div class="tsess tnone">+${more} smaller session${
+        more === 1 ? '' : 's'} not shown</div>` : '');
+}
+
+/* Bind every row that carries data-sess. Called after each render of a page that has them. */
+function bindLineTips(root){
+  (root || document).querySelectorAll('tr[data-sess]').forEach(tr => {
+    tr.onmousemove = e => {
+      tip.classList.add('wide');
+      showTip(e, lineTip(tr.dataset.sess, tr.dataset.tipextra || ''));
+    };
+    tr.onmouseleave = () => { hideTip(); tip.classList.remove('wide'); };
+  });
 }
 
 /* ---------- boot + auto-refresh ---------- */
