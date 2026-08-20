@@ -290,6 +290,181 @@ def collect_time(today):
     return entries, unfinalized
 
 
+# ---------- week audit (the timesheet page: every category, one week at a time) ----------
+# The entry page (collect_entry) answers "what do I type into F&O". This answers "is the week
+# whole, and what is behind each number" -- measured vs target vs the weighted hours from the
+# value model, per ADR-005 v2. Derive-only: rollup owns the hours, ops/time/value/ the evidence.
+
+AUDIT_WEEKS = 8          # how many ISO weeks back the page can page through
+VALUE = os.path.join(ROOT, "ops", "time", "value")
+TIER_NAME = {"1": "T1", "2": "T2", "3": "T3", "4": "T4", "5": "T5"}
+
+
+def _value_lines(date):
+    """Per F&O line evidence from ops/time/value/<date>.jsonl -- [] if the day was never derived."""
+    path = os.path.join(VALUE, date + ".jsonl")
+    out = []
+    if not os.path.exists(path):
+        return out
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    out.append(json.loads(line))
+    except Exception:
+        return []
+    return out
+
+
+def _dimkey(project, activity, fno_task):
+    return "%s|%s|%s" % (project, activity or "", fno_task or "")
+
+
+def _blank_agg():
+    return {"keyboard": 0.0, "weighted": 0.0, "turns": 0, "stretches": 0,
+            "t5": 0, "tiers": {}, "files": set()}
+
+
+def _fold(a, v):
+    """Fold one value/<date>.jsonl record into an aggregate."""
+    a["keyboard"] += v.get("keyboard_h") or 0.0
+    a["weighted"] += v.get("weighted_h") or 0.0
+    a["turns"] += v.get("turns") or 0
+    a["stretches"] += v.get("stretches") or 0
+    a["t5"] += v.get("t5_events") or 0
+    for t, tv in (v.get("tiers") or {}).items():
+        n = TIER_NAME.get(t, t)
+        a["tiers"][n] = round(a["tiers"].get(n, 0.0) + (tv.get("minutes") or 0.0), 1)
+    for dv in (v.get("deliverables") or []):
+        a["files"].add(dv["path"])
+    return a
+
+
+def collect_audit(today):
+    """-> {weeks: [...], byWeek: {wk: {...}}} -- one fully-categorised block per ISO week."""
+    hbs = rollup.load_heartbeats()
+    hbs_by_date = {}
+    for hb in hbs:
+        hbs_by_date.setdefault(hb["date"], []).append(hb)
+    absence = rollup.load_absence()
+
+    cur = datetime.date.fromisoformat(today)
+    monday = cur - datetime.timedelta(days=cur.weekday())
+    weeks, by_week = [], {}
+    for back in range(AUDIT_WEEKS):
+        m = monday - datetime.timedelta(days=7 * back)
+        iso = m.isocalendar()
+        wk = "%04d-W%02d" % (iso[0], iso[1])
+        weeks.append(wk)
+        by_week[wk] = _audit_week(wk, hbs_by_date, absence, today)
+    return {"weeks": weeks, "byWeek": by_week,
+            "fullDay": rollup.FULL_DAY, "dayCap": rollup.DAY_CAP}
+
+
+def _audit_week(wk, hbs_by_date, absence, today):
+    dates = rollup.week_dates(wk)
+    days, lines, spill = [], [], []
+    target = 0.0
+    for d in dates:
+        if d > today:
+            continue
+        dh = hbs_by_date.get(d, [])
+        entry = absence.get(d)
+        off = bool(entry) and entry["kind"] != "offline"
+        status, claimed, detail = rollup.day_state(d, hbs_by_date, absence, today)
+        if status == "future":
+            continue
+        if d == today and status in ("empty", "weekend"):
+            status = "today"      # still running -- not an unanswered day
+        measured = round(sum(r["hours"] for r in rollup.rows_for(dh)), 2)
+        wb, wi = rollup.weighted_hours(d)
+        vals = _value_lines(d)
+
+        day_agg = _blank_agg()
+        for v in vals:
+            _fold(day_agg, v)
+            if v.get("spilled_from"):
+                spill.append({"date": d, "project": v["project"],
+                              "activity": v.get("activity") or "",
+                              "hours": v.get("weighted_h") or 0.0, "from": v["spilled_from"]})
+        workday = rollup.is_workday(d)
+        # A day still running cannot be judged short, so it is not in the target yet. It joins
+        # tomorrow, which is also when its heartbeats are complete enough to mean anything.
+        day_target = 0.0 if (d == today or not workday or off) else rollup.FULL_DAY
+        target += day_target
+        days.append({
+            "date": d, "dow": datetime.date.fromisoformat(d).strftime("%a"),
+            "status": status, "detail": detail, "workday": workday,
+            "absence": entry["kind"] if entry else None,
+            "measured": measured, "claimed": claimed,
+            "topup": round(claimed - measured, 2),
+            "keyboard": round(day_agg["keyboard"], 2),
+            "weighted": round((wb or 0.0) + (wi or 0.0), 2),
+            "weightedBillable": wb, "weightedInternal": wi,
+            "turns": day_agg["turns"], "stretches": day_agg["stretches"],
+            "t5": day_agg["t5"], "tiers": day_agg["tiers"], "files": len(day_agg["files"]),
+            "target": day_target,
+            "short": round(max(0.0, day_target - claimed), 2),
+        })
+
+        # per F&O line: the timesheet row is the claim, the value record is the evidence beside it
+        sheet = rollup.parse_daily_file(d)
+        claim_by, meas_by = {}, {}
+        for r in (sheet if sheet is not None else rollup.rows_for(dh)):
+            claim_by[_dimkey(r["project"], r["activity"], r["fno_task"])] = r
+        for r in rollup.rows_for(dh):
+            meas_by[_dimkey(r["project"], r["activity"], r["fno_task"])] = r["hours"]
+        agg = {}
+        for v in vals:
+            _fold(agg.setdefault(_dimkey(v["project"], v.get("activity"), v.get("fno_task")),
+                                 _blank_agg()), v)
+        for k in sorted(set(claim_by) | set(agg)):
+            r = claim_by.get(k)
+            a = agg.get(k) or _blank_agg()
+            project, activity, fno_task = k.split("|", 2)
+            lines.append({
+                "date": d, "project": project, "activity": activity, "fno_task": fno_task,
+                "proj_id": r["proj_id"] if r else rollup.project_id(project),
+                "billable": r["billable"] if r else project.startswith("customers/"),
+                "claimed": r["hours"] if r else 0.0,
+                "measured": meas_by.get(k, 0.0),
+                "keyboard": round(a["keyboard"], 2), "weighted": round(a["weighted"], 2),
+                "turns": a["turns"], "stretches": a["stretches"], "t5": a["t5"],
+                "tiers": a["tiers"], "files": len(a["files"]),
+                "live": sheet is None,
+            })
+
+    tot = lambda f: round(sum(x[f] for x in days), 2)
+    claimed = tot("claimed")
+    return {
+        "week": wk, "start": dates[0], "end": dates[6],
+        "running": any(x["date"] == today for x in days),
+        "days": days, "lines": lines, "spill": spill,
+        "target": round(target, 2),
+        "totals": {
+            "keyboard": tot("keyboard"), "measured": tot("measured"), "claimed": claimed,
+            "weighted": tot("weighted"),
+            "turns": sum(x["turns"] for x in days),
+            "stretches": sum(x["stretches"] for x in days),
+            "t5": sum(x["t5"] for x in days),
+            "billable": round(sum(l["claimed"] for l in lines if l["billable"]), 2),
+            "internal": round(sum(l["claimed"] for l in lines if not l["billable"]), 2),
+            "coverage": round(100.0 * claimed / target, 1) if target else None,
+            "short": round(max(0.0, target - claimed), 2),
+        },
+        "exceptions": {
+            "under": [{"date": x["date"], "claimed": x["claimed"], "short": x["short"],
+                       "weighted": x["weightedBillable"]}
+                      for x in days if x["target"] and 0 < x["claimed"] < x["target"]],
+            "unaccounted": [x["date"] for x in days if x["status"] == "empty"],
+            "unfinalized": [x["date"] for x in days
+                            if x["status"] == "live" and x["date"] < today],
+            "overCap": [x["date"] for x in days if x["claimed"] > rollup.DAY_CAP],
+        },
+    }
+
+
 def memory_index():
     """{session8: [(yyyymmdd, first-user-line), ...]} from ops/memory/daily/.
 
@@ -726,6 +901,7 @@ def collect():
                      "state": t["state"], "activity": t["activity"], "fno_task": t["fno_task"]}
                     for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
         "entry": collect_entry(entries, customers, today),
+        "audit": collect_audit(today),
         "active_sessions": active_sessions(),
         "todos": todos,
         "hygiene": {

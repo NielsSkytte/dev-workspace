@@ -222,6 +222,39 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
 .titem{display:flex;gap:10px;align-items:flex-start;padding:10px 8px;margin:0 -8px;
   border-bottom:1px solid var(--grid);cursor:pointer;border-radius:8px;transition:background .15s}
 .titem:last-child{border-bottom:0}
+/* --- Week audit page (route #timesheet/audit) --- */
+.autiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  margin:14px 0 0}
+.autile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 14px}
+.autile.strong{border-color:var(--axis)}
+.autile.ok{border-color:var(--s1)}
+.autile.warn{border-color:var(--accent)}
+.autile-l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  font-weight:600}
+.autile-v{font-size:22px;font-weight:600;margin:2px 0 1px}
+.autile-s{font-size:11.5px;color:var(--muted)}
+.ausec{margin-top:14px}
+.ausec h3{font-size:15px;margin:0 0 4px}
+.ausec > .sub{margin:0 0 12px;max-width:76ch}
+.ausec code{background:var(--surface-2);border-radius:4px;padding:1px 5px;font-size:11.5px}
+table.autable{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap}
+table.autable th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:0 10px 6px 0;border-bottom:1px solid var(--axis)}
+table.autable td{padding:5px 10px 5px 0;border-bottom:1px solid var(--ring)}
+table.autable th+th,table.autable td+td{padding-left:12px}
+table.autable th.r,table.autable td.r{text-align:right;padding-right:0}
+table.autable th:last-child,table.autable td:last-child{padding-right:0}
+table.autable tr.wk td{background:var(--band)}
+table.autable td.sub{white-space:normal;min-width:14ch}
+.warnink{color:var(--accent)}
+.okink{color:var(--s1)}
+.accentink{color:var(--accent)}
+.pill.warn{border-color:var(--accent);color:var(--accent)}
+.pill.bad{background:var(--accent);border-color:transparent;color:#fff}
+.tierbar{display:flex;height:9px;border-radius:999px;overflow:hidden;background:var(--surface-2);
+  min-width:120px}
+.tierbar i{display:block;height:100%}
+
 .titem:hover{background:var(--surface-2)}
 .titem > div:first-of-type{flex:1}
 </style>
@@ -232,6 +265,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
     <header>
       <h1>DEV — Workspace Dashboard</h1>
       <nav class="navlinks">
+        <a href="#timesheet/audit">Week audit</a>
         <a href="#timesheet/month">Month timesheet</a>
         <a href="#timesheet/week1">Last week timesheet</a>
         <a href="#timesheet/week2">Previous week</a>
@@ -910,7 +944,7 @@ function tsRange(which){
 }
 
 function showRoute(){
-  const m = (location.hash || '').match(/^#timesheet\/(month|week1|week2)$/);
+  const m = (location.hash || '').match(/^#timesheet\/(month|week1|week2|audit)$/);
   ROUTE = m ? m[1] : '';
   $('#timesheetPage').classList.toggle('hidden', !ROUTE);
   ['.top .tiles','#alerts','.panes'].forEach(sel => {
@@ -918,7 +952,7 @@ function showRoute(){
   });
   document.querySelectorAll('header .navlinks a').forEach(a =>
     a.classList.toggle('on', a.getAttribute('href') === location.hash));
-  if(ROUTE && D) renderTimesheet();
+  if(ROUTE && D) (ROUTE === 'audit' ? renderAudit : renderTimesheet)();
   window.scrollTo(0,0);
 }
 
@@ -1406,12 +1440,240 @@ const matchC = c => !Q || (c.name + ' ' + c.about + ' ' + c.focus).toLowerCase()
   || c.projects.some(k => { const p = D.projects.find(x => x.key === k); return p && match(p); });
 const matchT = t => !Q || (t.title + ' ' + t.slug + ' ' + t.project + ' ' + t.what).toLowerCase().includes(Q);
 
+/* ---------- Week audit page ----------
+   The entry page answers "what do I type into F&O". This one answers "is the week whole, and
+   what is behind each number" -- the four measures side by side (keyboard, measured, claimed,
+   weighted) against the 7.5 h x workdays target, per ADR-005 v2. Read-only: every number comes
+   from ops/time/ via the collector, and closing a short period is still `/time topup`. */
+let AUDITWK = '';                       // selected ISO week on the audit route
+
+const AU = () => (D && D.audit) || {weeks: [], byWeek: {}};
+const auWeek = () => { const A = AU();
+  if(!A.weeks.length) return null;
+  if(!AUDITWK || !A.byWeek[AUDITWK]) AUDITWK = A.weeks[0];
+  return A.byWeek[AUDITWK]; };
+
+/* '2026-08-10' -> '10 Aug'; a week label collapses a shared month. */
+const auDay = ds => `${+ds.slice(8,10)} ${MONTHS[+ds.slice(5,7)-1].slice(0,3)}`;
+const auRange = w => w.start.slice(5,7) === w.end.slice(5,7)
+  ? `${+w.start.slice(8,10)}–${auDay(w.end)}` : `${auDay(w.start)} – ${auDay(w.end)}`;
+
+/* A number that is only meaningful when non-zero reads as a dash, not as 0.00. */
+const auN = (v, unit) => (v === null || v === undefined || v === 0)
+  ? '<span class="muted">–</span>' : h(v) + (unit || '');
+const auX = (a, b) => b ? (Math.round(10 * a / b) / 10) + '×' : '–';
+
+const TIERS = ['T1','T2','T3','T4','T5'];
+/* Tier colour runs cool -> warm with the tier: the warm end is where the multiplier is largest
+   and least tested (ADR-004), so it should be the part of the bar that catches the eye. */
+const tierColor = t => ({
+  T1: 'color-mix(in srgb, var(--cta) 35%, var(--surface-2))',
+  T2: 'color-mix(in srgb, var(--cta) 65%, var(--surface-2))',
+  T3: 'var(--cta)',
+  T4: 'color-mix(in srgb, var(--accent) 70%, var(--surface-2))',
+  T5: 'var(--accent)',
+}[t]);
+
+function auTable(head, rows, opts){
+  const o = opts || {};
+  return `<div style="overflow-x:auto"><table class="autable">
+    <thead><tr>${head.map((c,i) =>
+      `<th${(o.right||[]).includes(i)?' class="r"':''}>${c}</th>`).join('')}</tr></thead>
+    <tbody>${rows.join('')}</tbody></table></div>`;
+}
+
+/* stacked tier bar -- minutes, not hours: a tier mix is about where the effort sat, not duration */
+function tierBar(tiers){
+  const tot = TIERS.reduce((s,t) => s + (tiers[t]||0), 0);
+  if(!tot) return '<span class="muted">–</span>';
+  return `<span class="tierbar" title="${TIERS.filter(t=>tiers[t])
+      .map(t => `${t} ${Math.round(tiers[t])}m`).join(' · ')}">`
+    + TIERS.filter(t => tiers[t]).map(t =>
+      `<i style="width:${(100*tiers[t]/tot).toFixed(1)}%;background:${tierColor(t)}"></i>`).join('')
+    + `</span>`;
+}
+
+function renderAudit(){
+  const A = AU(), w = auWeek();
+  if(!w){ $('#tsHead').textContent = 'Week audit';
+    $('#tsBody').innerHTML = '<div class="card"><p class="sub" style="margin:0">'
+      + 'No time data collected.</p></div>'; return; }
+  const T = w.totals, full = A.fullDay;
+
+  $('#tsHead').innerHTML = `Week audit <span class="sub" style="font-weight:400">— `
+    + `${esc(w.week)} · ${esc(auRange(w))}</span>`;
+
+  /* --- week picker: coverage is on the chip, so a thin week is visible before you open it --- */
+  const chips = `<div class="stickybar"><div class="filterbar">
+    <span class="flabel">Week</span>
+    ${A.weeks.map(k => { const b = A.byWeek[k], c = b.totals.coverage;
+      return `<button class="chip${k===AUDITWK?' on':''}" data-auwk="${esc(k)}"
+        title="${esc(auRange(b))} · ${h(b.totals.claimed)} h of ${h(b.target)} h">`
+        + `${esc(k.slice(5))}${c===null?'':` · ${Math.round(c)}%`}</button>`;
+    }).join('')}
+    <span style="margin-left:auto" class="sub">Target ${h(w.target)} h
+      · 7.5 h × workdays, less absence${w.running ? ' — today joins tomorrow' : ''}</span>
+    </div></div>`;
+
+  /* --- the four measures, left to right in the order they are derived --- */
+  const cover = T.coverage === null ? '–' : Math.round(T.coverage) + '%';
+  const coverRole = T.coverage === null ? '' : T.coverage >= 100 ? 'ok' : 'warn';
+  const tile = (lab, val, sub, role) =>
+    `<div class="autile${role ? ' ' + role : ''}"><div class="autile-l">${lab}</div>
+      <div class="autile-v">${val}</div><div class="autile-s">${sub}</div></div>`;
+  const tiles = `<div class="autiles">
+    ${tile('Keyboard', h(T.keyboard) + ' h', 'measured production time')}
+    ${tile('Measured', h(T.measured) + ' h', 'the 15+5 model')}
+    ${tile('Claimed', h(T.claimed) + ' h', 'what the timesheet says', 'strong')}
+    ${tile('Weighted', h(T.weighted) + ' h', 'what the value model supports')}
+    ${tile('Coverage', cover, `of ${h(w.target)} h target`, coverRole)}
+  </div>
+  <p class="sub" style="margin:8px 2px 16px">
+    Claimed / keyboard <b>${auX(T.claimed, T.keyboard)}</b> ·
+    weighted / keyboard <b>${auX(T.weighted, T.keyboard)}</b> ·
+    billable <b>${h(T.billable)} h</b> · internal <b>${h(T.internal)} h</b> ·
+    ${T.turns} turns in ${T.stretches} stretches${T.t5 ? ` · <b>${T.t5} T5 event${
+      T.t5===1?'':'s'}</b>` : ''}</p>`;
+
+  /* --- 1. coverage: the ADR-005 check, per day --- */
+  const stat = d => {
+    if(d.absence) return `<span class="pill">${esc(d.absence)}</span>`;
+    if(d.status === 'empty') return '<span class="pill bad">unaccounted</span>';
+    if(d.status === 'today') return '<span class="pill">today</span>';
+    if(d.status === 'live') return '<span class="pill warn">live</span>';
+    if(d.status === 'weekend') return '<span class="muted">weekend</span>';
+    return '<span class="muted">final</span>';
+  };
+  const covRows = w.days.map(d => {
+    const shortish = d.target && d.claimed < d.target
+      && d.status !== 'empty' && d.status !== 'today';
+    return `<tr${d.workday ? '' : ' class="wk"'}>
+      <td>${esc(auDay(d.date))}</td><td class="muted">${esc(d.dow)}</td>
+      <td>${stat(d)}</td>
+      <td class="r">${auN(d.claimed)}</td>
+      <td class="r muted">${d.target ? h(d.target) : '–'}</td>
+      <td class="r${shortish ? ' warnink' : ''}">${shortish ? '−' + h(d.short) : auN(0)}</td>
+      <td class="r muted">${auN(d.weightedBillable)}</td>
+      <td class="sub">${esc(d.detail || (d.status === 'empty'
+        ? 'no keyboard time and no absence entry'
+        : d.status === 'today' ? 'still running'
+        : shortish ? 'under a full day — the week is the unit, not the day' : ''))}</td>
+    </tr>`;
+  }).join('');
+  const sec1 = `<div class="card ausec"><h3>1 · Coverage</h3>
+    <p class="sub">Measured time against 7.5 h a workday. Nothing here is topped up automatically
+      (ADR-005 v2) — a short <i>week</i> is closed deliberately with
+      <code>/time topup ${esc(w.week)}</code>.</p>
+    ${auTable(['Date','Day','Status','Claimed','Target','Short','Weighted','Note'],
+              [covRows], {right:[3,4,5,6]})}
+    <p class="sub" style="margin:10px 0 0"><b>${h(T.claimed)} h</b> of
+      <b>${h(w.target)} h</b>${T.short ? ` — <b class="warnink">${h(T.short)} h short</b>`
+        : ' — <b class="okink">whole</b>'}</p></div>`;
+
+  /* --- 2. the funnel: how one day's typing becomes one day's claim --- */
+  const funRows = w.days.filter(d => d.keyboard || d.measured || d.claimed
+                                  || d.status === 'today').map(d =>
+    `<tr${d.workday ? '' : ' class="wk"'}>
+      <td>${esc(auDay(d.date))} <span class="muted">${esc(d.dow)}</span></td>
+      <td class="r">${auN(d.keyboard)}</td>
+      <td class="r">${auN(d.weighted)}</td>
+      <td class="r muted">${auX(d.weighted, d.keyboard)}</td>
+      <td class="r">${auN(d.measured)}</td>
+      <td class="r"><b>${auN(d.claimed)}</b></td>
+      <td class="r">${d.topup ? '<span class="okink">+' + h(d.topup) + '</span>' : auN(0)}</td>
+      <td class="r muted">${auX(d.claimed, d.keyboard)}</td>
+    </tr>`).join('');
+  const sec2 = `<div class="card ausec"><h3>2 · The funnel, per day</h3>
+    <p class="sub">Keyboard time is what was typed; weighted is what the tiers say it was worth;
+      measured is the 15+5 model; claimed is the timesheet. Top-up is non-zero only where someone
+      ran <code>--topup</code>.</p>
+    ${auTable(['Date','Keyboard','Weighted','Eff.','Measured','Claimed','Top-up','Claim/kb'],
+              [funRows], {right:[1,2,3,4,5,6,7]})}</div>`;
+
+  /* --- 3. the F&O lines, with their evidence beside them --- */
+  const lineRows = w.lines.map(l =>
+    `<tr>
+      <td>${esc(auDay(l.date))}</td>
+      <td>${esc(l.project)}${l.live ? ' <span class="pill warn">live</span>' : ''}</td>
+      <td class="muted">${esc(l.proj_id)}</td>
+      <td>${esc(l.activity) || '<span class="muted">–</span>'}</td>
+      <td>${esc(l.fno_task) || '<span class="muted">–</span>'}</td>
+      <td class="r"><b>${auN(l.claimed)}</b></td>
+      <td class="r muted">${auN(l.measured)}</td>
+      <td class="r">${auN(l.keyboard)}</td>
+      <td class="r">${auN(l.weighted)}</td>
+      <td class="r muted">${l.turns}/${l.stretches}</td>
+      <td class="r muted">${l.files || '–'}</td>
+      <td class="r">${l.t5 ? '<b class="accentink">' + l.t5 + '</b>' : '–'}</td>
+      <td>${l.billable ? '<i class="swatch" style="background:var(--s1)"></i>'
+                       : '<i class="swatch" style="background:var(--s2)"></i>'}</td>
+    </tr>`).join('');
+  const sec3 = `<div class="card ausec"><h3>3 · F&amp;O lines</h3>
+    <p class="sub">One row per date and F&amp;O dimension (Project ID → Activity → Task),
+      each with the evidence behind it. To type these into F&amp;O company by company, use the
+      <a href="#timesheet/week1">week timesheet</a> instead — this view is for checking them.</p>
+    ${auTable(['Date','Project','Proj ID','Activity','Task','Claimed','Measured','Keyboard',
+               'Weighted','Turns/str','Files','T5',''], [lineRows], {right:[5,6,7,8,9,10,11]})}</div>`;
+
+  /* --- 4. where the effort sat --- */
+  const effRows = w.days.filter(d => d.turns).map(d =>
+    `<tr><td>${esc(auDay(d.date))} <span class="muted">${esc(d.dow)}</span></td>
+      <td style="min-width:180px">${tierBar(d.tiers)}</td>
+      ${TIERS.map(t => `<td class="r muted">${d.tiers[t]
+        ? Math.round(d.tiers[t]) + 'm' : '–'}</td>`).join('')}
+      <td class="r muted">${d.turns}/${d.stretches}</td>
+      <td class="r">${d.t5 ? '<b class="accentink">' + d.t5 + '</b>' : '–'}</td>
+      <td class="r muted">${d.files || '–'}</td></tr>`).join('');
+  const sec4 = `<div class="card ausec"><h3>4 · Effort profile</h3>
+    <p class="sub">Keyboard minutes by tier (ADR-004, provisional). T4 and T5 are where the
+      multiplier is largest and least tested — a week that leans on them is a week whose
+      claim rests on the weakest part of the model.</p>
+    ${auTable(['Date','Mix','T1','T2','T3','T4','T5','Turns/str','T5 ev.','Files'],
+              [effRows], {right:[2,3,4,5,6,7,8,9]})}</div>`;
+
+  /* --- 5. everything that needs an answer --- */
+  const ex = w.exceptions, blocks = [];
+  if(ex.unaccounted.length) blocks.push(`<div class="block"><h4>Unaccounted workdays</h4>
+    <p class="ink2" style="margin:4px 0">${ex.unaccounted.map(esc).join(', ')}
+      — no keyboard time and no absence entry. Answer them in
+      <code>ops/time/absence.md</code>: vacation, holiday, sick, or offline.</p></div>`);
+  if(ex.under.length) blocks.push(`<div class="block"><h4>Days under a full day</h4>
+    ${auTable(['Date','Claimed','Short','Weighted supports'], [ex.under.map(u =>
+      `<tr><td>${esc(auDay(u.date))}</td><td class="r">${h(u.claimed)}</td>
+        <td class="r warnink">−${h(u.short)}</td>
+        <td class="r">${u.weighted === null ? '<span class="muted">not derived</span>'
+          : (u.weighted < u.claimed ? '<b class="accentink">' + h(u.weighted) + ' h</b>'
+             : h(u.weighted) + ' h')}</td></tr>`).join('')], {right:[1,2,3]})}
+    <p class="sub" style="margin:6px 0 0">A single short day is not a problem — the week is
+      the unit. Red means the value model supports <i>less</i> than what is already claimed.</p>
+    </div>`);
+  if(ex.unfinalized.length) blocks.push(`<div class="block"><h4>Not finalized</h4>
+    <p class="ink2" style="margin:4px 0">${ex.unfinalized.map(esc).join(', ')}
+      — run <code>/log</code> or <code>/time rollup</code>.</p></div>`);
+  if(ex.overCap.length) blocks.push(`<div class="block"><h4>Over the ${h(A.dayCap)} h day cap</h4>
+    <p class="ink2" style="margin:4px 0">${ex.overCap.map(esc).join(', ')}
+      — more than ${h(A.dayCap)} h claimed for one customer on one date.</p></div>`);
+  if(w.spill.length) blocks.push(`<div class="block"><h4>Weighted-hour spill</h4>
+    <p class="ink2" style="margin:4px 0">${w.spill.map(s =>
+      `${esc(auDay(s.date))} ← ${esc(auDay(s.from))} (${esc(s.project)}${
+        s.activity ? ' / ' + esc(s.activity) : ''}, ${h(s.hours)} h)`).join('<br>')}</p>
+    <p class="sub" style="margin:2px 0 0">Value-model hours moved off a capped date. Hours are
+      moved, never dropped; period totals are unchanged.</p></div>`);
+  const sec5 = `<div class="card ausec"><h3>5 · Exceptions</h3>${
+    blocks.join('') || '<p class="sub" style="margin:0">Nothing outstanding for this week.</p>'}</div>`;
+
+  $('#tsBody').innerHTML = chips + tiles + sec1 + sec2 + sec3 + sec4 + sec5;
+  $('#tsBody').querySelectorAll('[data-auwk]').forEach(b =>
+    b.onclick = () => { AUDITWK = b.dataset.auwk; renderAudit(); });
+}
+
 /* ---------- boot + auto-refresh ---------- */
 function render(){
   const L = $('#paneLeft').scrollTop, R = $('#paneRight').scrollTop;   // survive a re-render
   alerts(); tiles(); triage(); internalPanel(); dailyChart(); projChart(); inflight(); idle();
   customers(); tasks(); hygiene();
-  if(ROUTE) renderTimesheet();          // keep the open timesheet fresh on auto-refresh
+  // keep whichever timesheet route is open fresh on auto-refresh
+  if(ROUTE) (ROUTE === 'audit' ? renderAudit : renderTimesheet)();
   $('#paneLeft').scrollTop = L; $('#paneRight').scrollTop = R;
   stamp();
 }
