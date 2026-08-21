@@ -36,3 +36,23 @@ When the user asks to have something explained **plainly** / "in plain speak" / 
 **Why:** Caught 2026-07-31 (Carl Ras / Marketo). Asked "explain to me plainly why you need to check `updatedAt`", the reply came back with bold section headers, a doc citation and field-name jargon. The user's response: *"is that plain speak for you? then we need to adjust your behaviour."* Structured formatting reads as a report, not an answer — it is the same overwhelm problem as verbosity, in a different dimension.
 
 **How to apply:** Treat "plainly" as a format instruction, not just a length one. Say the thing in the words you would use out loud. Keep the precise field/file names only where getting them wrong would mislead. Structure is for documents; conversation gets sentences. See [[feedback-fact-only-language]] — plain wording must still not overstate the evidence.
+
+## 2026-08-20 — reinforced, mid-session
+
+"We don't need these long explanations, we need focus on **why and what**. The deeper explanation
+I'll ask for when required." Said after several replies that led with mechanism and evidence.
+
+The failure mode to avoid: a correct finding padded with how it was measured, what was ruled out,
+and what it implies three steps downstream. State the why and the what; stop. Evidence and
+derivation are available on request (`full`, "walk me through it"), not by default — even when the
+finding is genuinely interesting and the evidence was expensive to get.
+
+**Clarified minutes later — do not overcorrect into terseness.** Asked whether the stripped-down
+reply would have worked as an *opening* answer: no. It was fine as a mid-thread "next steps"
+because the context was already shared, but a cold first reply that is just a list of actions
+leaves the reader with no idea what state things are in or why those are the actions.
+
+The rule is **cut derivation, keep context** — not "be short". Drop how it was measured, what was
+ruled out, and the downstream implications. Keep what changed, what it means for him, and what is
+needed from him. A first reply in a thread carries more context than a follow-up; right-size to
+what the reader already holds, rather than to a word count.

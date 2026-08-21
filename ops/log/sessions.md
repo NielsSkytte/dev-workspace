@@ -532,3 +532,60 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Memory:** `sentinel` not dispatched (standing no-subagents-unless-asked instruction); today's records hand-vetted. `ops/memory/daily/2026-08-20.md` again contains a **slash-command / skill body captured as a User line** with a fabricated Assistant summary ("recorded a GIF", "built and committed a tool for browser automation") — recurring, `capture-turn-records-expanded-help`. Distilled: `time-target-counts-today` (semantic), `eval-2026-08-20-visual-identity-not-invoked` (evaluative).
 - **Evaluation:** **Ninth consecutive session with the domain skills silent, and this one was a real miss.** Built a page with a palette, tables and a stacked bar without loading `pingala-visual-identity` or `dataviz`, against a standing mandate from 2026-08-10. The output complied only because `dashboard.html` already encodes the Pingala palette in its CSS variables — **compliance by accident, not by rule**. `claude-in-chrome` fired and earned its place.
 - **Also:** the Bash tool rejected heredocs containing apostrophes this session; large edits went through a written-out Python patch script instead, which also made each patch re-runnable and self-asserting on its anchors.
+
+## 2026-08-21
+- **Did (Carl Ras / datahub — session spanned 08-19 evening → 08-21):**
+  - **Fixed the CapacityManager refresh 403.** `NB_CapacityManager_Bootstrap` took its Power BI
+    token from `notebookutils.credentials.getToken("pbi")`; a pipeline-triggered notebook gets
+    Fabric's internal token and `/v1.0/myorg/*` refuses it with 403 and an empty body — the same
+    2026-08-11 finding, never applied to that notebook. `PL_ScaleProcess_SP`'s refresh step now runs
+    `NB_Refresh_SemanticModel_Full`, which mints its own token.
+  - **Added `max_rung`** (default 2 = unchanged); the scale run uses `start_at_rung=1, max_rung=1`,
+    so a memory failure stops at rung 1 instead of escalating to rung 2, which clears the model.
+  - **Built refresh telemetry, then found the service returns none.** `executionMetrics` comes back
+    as `[]` from both the execution-detail and refresh-history endpoints, on every refresh,
+    successful and failed. No documented precondition and no other REST route carries rows, CPU or
+    memory. Substituted a measurement: `Step='modelsize'` rows Before/After from the storage DMVs
+    (`ModelSizeMb`, per-table rows), reachable only over `executeDaxQueries` — `executeQueries`
+    answers 400 for every `INFO.STORAGE*` and takes a different body shape. Also derived
+    `ServiceDurationSec` from `startTime`/`endTime`, and confirmed `objects[]` IS published
+    mid-flight (41 objects), settling a contradiction between two Microsoft doc pages.
+  - **Proved the model has outgrown F16 and instrumented the SKU.** A refresh 180s after a scale to
+    F32 still failed at F16's ceiling (`limit 1637 + resident 3482 = 5119`). New
+    `CapacitySku`/`CapacityState` read from ARM via the *scale* SP — the refresh SP has no ARM role,
+    and the Fabric/Power BI capacity endpoints list only capacities the caller holds a role on.
+  - **Moved the scale into `PL_MainExecution`**, Raw → Enriched → Scale Up (F32) → Curated →
+    Semantic Model → Scale Down (F16), with a new `VL_Capacity` variable library. Curated measured
+    at 6–7 min, so the engine's 3–5 min allocation window is absorbed by work instead of a wait.
+  - **DEV ran green end to end** — 101m21s, first full success since before 08-07. Refresh completed
+    on rung 1 in 273s (against 575s previously), `CapacitySku=F32` on every logged row.
+  - **Compared DEV vs TEST item by item:** 56 items each, and all 41 code items identical once GUIDs
+    and JSON key ordering are normalised. Found `VL_Capacity` missing in PROD and PROD's
+    `VL_ModelId` on "Default value set" — PROD would resolve the semantic model to the DEV one.
+  - **Cleaned the schedules.** Schedules live in git (`.schedules`) and are recreated by every sync,
+    owned by whoever ran it — which is why a portal deletion kept reappearing. Reduced to one 06:30
+    Mon-Fri object: disabled in git and DEV, enabled and SPN-owned in TEST.
+  - Wrote `tools/refresh_log_queries.sql` (five read-only queries over `SemanticModelRefreshLog`).
+- **Decided:**
+  - **Scale-up placement is Enriched → Scale Up → Curated**, not a fixed wait before the refresh —
+    the curated build is the allocation window, and a fixed wait had already been wrong once.
+  - **`max_rung=1` for the scheduled refresh:** fail with the previous data intact rather than end a
+    scale window with an empty model (Niels).
+  - **One schedule object per pipeline, defined in git and disabled there, enabled in the stage that
+    runs it** — any asymmetry is flagged forever by the stage comparison, so make it one flag.
+  - **Measure the model either side of the refresh** rather than wait for Microsoft's telemetry.
+- **Tasks:** time billed to `2026-07-07-carlras-fabric-scaleup` (in-progress). None moved.
+- **Next:** `dim.Date` and `dim.AlternativeChartOfAccount` rebuild **EMPTY** in DEV from views that
+  return 5,114 and 1,320 rows — the 08-20 green run did not fix them, so the suspect is
+  `sp_CreateDimTableAsSelect`, not the drop-create window. Then TEST's 06:30 run on the new graph;
+  decide whether `PL_ScaleProcess_SP` keeps its refresh step; and before PROD, deploy `VL_Capacity`
+  and select the `Prod` value set on `VL_ModelId`.
+- **Memory:** `sentinel` not dispatched (standing no-subagents-unless-asked instruction); records
+  hand-vetted.
+- **Evaluation:** `fabric-deployment` and `fabric-warehouse-git` never fired despite a session spent
+  entirely on deployment mechanics, variable libraries, value sets and DEV→TEST drift — their
+  trigger lists name almost every phrase used. The `microsoft-docs` MCP was used heavily and earned
+  it: the `executeDaxQueries` body shape and the INFO-function limitation came straight from the
+  reference pages and nothing else would have found them. Two self-inflicted bugs shipped and were
+  caught by the instrumentation added in the same session: `_i` is an IPython reserved name, and
+  `executeQueries` omits BLANK columns from row JSON.
