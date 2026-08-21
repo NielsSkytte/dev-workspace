@@ -72,12 +72,19 @@ lineage work hit (`2026-08-03-metaatomic-consolidation`) and solved by querying 
 
 ## To do
 
-1. **Commit the workspace state** — `PL_Ingest_AX09` (Modified) and `PL_Ingest_AX09_Metadata` (Added)
-   from `Landingzone-Code-DEV`, and `PL_ScaleProcess_SP` from `Fabric-ETL-DEV`. Customer repos: needs
-   Niels's approval before pushing. **Until then, do not run Update from git on either DEV workspace.**
-2. **Deploy DEV→TEST→PROD afterwards** so the 4-table DEV lead lands, or revert it if unintended.
-3. **Sweep the remaining git-connected workspaces** for uncommitted changes — `Semantic-Model-DEV`,
+1. ~~Get git and DEV onto the running 88-table list.~~ **Done 2026-08-20** — see Log.
+2. **Awaiting Niels: Update from git on `Landingzone-Code-DEV`, taking the incoming side.** The
+   workspace still holds the 1-table debug version. Until that runs, DEV and git disagree again —
+   this time with git correct.
+3. **Commit `PL_ScaleProcess_SP` from `Fabric-ETL-DEV`** — still Modified/uncommitted, same class.
+4. **Sweep the remaining git-connected workspaces** for uncommitted changes — `Semantic-Model-DEV`,
    `Sales-DEV`, `Fabric-TEST` were not checked.
+5. **Decide on the five orphan landing-zone tables** — `LEDGERTABLEINTERVAL`,
+   `LEDGERTABLEALTERNATIVE`, `LEDGERTABLEALTERNATIVETRANS` (last written 2026-06-29),
+   `WMSBILLOFLADING` (2026-06-25), `DIRORGANIZATIONDETAIL` (2026-05-07). They are in no active list,
+   nothing refreshes them, and Raw ingests them nightly anyway because they carry a `RECID` — so
+   Raw serves May/June data as current. Either add them to the list or remove them from the landing
+   zone.
 4. **Make it observable.** `workspaces/{id}/git/status` returns this in one call. A scheduled check, or
    a gate in `tools/fabric_release.py` that refuses to release while a source workspace has
    uncommitted changes, closes the hole. Cheap and worth doing.
@@ -94,3 +101,14 @@ to restore the rule — Update from git — is what would destroy the running co
   pipeline's 18-operation history and both DEV workspaces' git status. First pass mis-stated the
   direction (repo compared against TEST/PROD and labelled "DEV"); corrected after exporting the DEV
   workspace itself. Nothing changed in Fabric or in the customer repos.
+- 2026-08-20 — Niels ran Commit from workspace on `Landingzone-Code-DEV`, which pushed the debug
+  state to git (`80981e2`: 1 active table, `LEDGERTABLEINTERVAL`); it also brought
+  `PL_Ingest_AX09_Metadata` into git for the first time. Corrected in `074ea1c` (approved, pushed):
+  the `sqlReaderQuery` replaced with PROD's running definition verbatim, 1 → 88 active tables, one
+  line changed, CRLF and the `logicalId` notebook reference preserved. Git is now the truth.
+  Remaining: Update from git into `Landingzone-Code-DEV`, taking the incoming side.
+- 2026-08-20 — noted for the record: a separate metadata-driven ingest solution for Atomic is being
+  built by someone else. If it lands, the hardcoded list in this pipeline is superseded. The
+  observation still holds that `TableMetaData_AX09` is `OverwriteSchema`-refreshed and therefore
+  cannot host a load/skip flag — declared intent needs its own table, seeded from git, the way
+  `Lakehouse_Util.rawtablekeymap_<source>` already is.

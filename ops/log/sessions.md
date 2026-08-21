@@ -589,3 +589,58 @@ Chronological record of workspace sessions — what was done, decided, and what'
   reference pages and nothing else would have found them. Two self-inflicted bugs shipped and were
   caught by the instrumentation added in the same session: `_i` is an IPython reserved name, and
   `executeQueries` omits BLANK columns from row JSON.
+
+### 2026-08-21 — second session (Carl Ras / datahub — Marketo inbound; spanned 08-16 → 08-21)
+- **Did:**
+  - **Marketo inbound is green end to end in DEV and TEST for the first time since 2026-08-10.**
+    `raw.leads` 33,315 rows / 33,315 distinct ids / **0 duplicates** in both, currency 2026-08-20
+    06:00 matching the landing zone exactly; `raw.activities` 8,032,575 with no duplicate GUIDs;
+    `enriched.Leads` and `enriched.Activities` rebuilt to match.
+  - **Diagnosed the merge failure.** `PL_Ingest_Lakehouse_Raw_Marketo` died on
+    `DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE`: the extract re-reads the open calendar
+    month by design, and the landing zone also holds a stale `createdAt` regime from before leads
+    switched to `updatedAt`, so one lead arrives as three snapshots. It had never failed before
+    because 2026-08-10 was the table's **first** load, and a first load creates rather than merges —
+    which is also where raw's 551 doubled leads came from.
+  - **Four fixes, all pushed.** `Landingzone-ETL` `d706f41`: `""` defaults on the three ingest
+    parameters (a null pipeline parameter overrides the notebook default, so a scheduled trigger
+    killed the run on `.strip()`), plus the Marketo credentials inline. `Fabric-ETL` `a106aec`:
+    optional `prep_dedupeByKeyOrderBy` on `NB_Ingest_IngestChangedRecords`, `_lz_ingested_at_utc`
+    for Marketo, default off so AX09/CVR are untouched. Delete-and-regenerate of `raw.leads` in
+    both environments. `Fabric-ETL` `045d7e3`: the missing Test value-set override.
+  - **Found TEST writing to DEV.** `PL_Transform_Enriched_Marketo` in TEST resolved
+    `VL_ConnectionId.CON-SQLFabric-ETL_Warehouse_Enriched_Marketo` to the library **default**, which
+    is DEV's connection — no Test override existed, though the TEST connection did. AX09 and CVR
+    both have theirs. It surfaced as a hard `SqlFailedToConnect` today, but the same resolution
+    applied to the run that **succeeded** in TEST on 2026-08-14; what that run wrote is not
+    established.
+  - **Earlier in the same session:** [GEN-006]/[GEN-007] cleared the curated cascade;
+    `outbound.Marketo_Lead` re-sourced from enriched all-time (`2ea82a8`) removing 10,824 factual
+    zeros; contact grain scored against the write audit; `tools/wh_drift.py` added.
+- **Decided:**
+  - **Claude does not run Update from git — Niels syncs the service.** The boundary is the
+    all-or-nothing sync, not DEV: fixing DEV directly is fine when it is what lets a commit land,
+    and DEV data may be deleted where our own code regenerates it. In `datahub/CLAUDE.md`.
+  - **`purchase_c` / `orderline_c` stay ingested through the transition** — they are AX09 data
+    round-tripped into Marketo, so they are the record of what Impact is writing. Off after cutover.
+  - **Marketo credentials hardcoded** in `NB_Ingest_Marketo`, temporary, **to be cycled** at the end
+    of development — they are in repo history now, so deleting the line is not the remediation.
+  - **Deploy selectively, not by stage.** `tools/fabric_release.py` promotes all 51 items; two were
+    wanted, so the deploy went through the API with an explicit item list.
+- **Tasks:** `2026-08-12-carlras-marketo-writeback` (in-progress) — reconciled across the two
+  parallel sessions into one Next queue covering inbound and outbound; two resolved Open items
+  retired.
+- **Next:** check tomorrow's 04:30 TEST run clears the Marketo stage; then schedule the daily
+  Marketo ingest, which is what turns raw into the write-back **baseline**; then the push
+  (`PL_Outbound_Marketo` on `importLead`) and `outbound.Marketo_Lead_Delta`; the Impact mail is
+  blocked by nothing and has the longest turnaround.
+- **Memory:** `sentinel` not dispatched (standing no-subagents-unless-asked instruction); records
+  hand-vetted.
+- **Evaluation:** `fabric-deployment` never fired across a session spent on deployment pipelines,
+  variable libraries, value-set overrides and DEV→TEST drift — the same observation the other
+  session logged today, from independent work, which makes it a trigger problem rather than a
+  one-off. `medallion-migration-validation` also stayed silent through a duplicate-row and
+  row-count reconciliation, which its description names. Two self-inflicted detours: pushing item
+  definitions with `updateDefinition` broke the DEV pipeline because that API skips the
+  logicalId/workspaceId translation the git import performs, and a push carried an unrelated
+  unpushed commit with it.

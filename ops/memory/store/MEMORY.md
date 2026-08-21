@@ -80,3 +80,5 @@ and the record shape live in [`../README.md`](../README.md).
 - `fabric-notebook-two-silent-traps` — IPython rebinds a helper named `_i` to a string between cells, and `executeQueries` omits a column from the row JSON when its value is BLANK; both fail far from their cause
 - `fabric-schedules-live-in-git` — item schedules are part of the definition (`.schedules`), so a portal deletion does not stick, and every sync stamps whoever ran it as the schedule owner
 - `eval-2026-08-21-fabric-skills-silent` — tenth session with `fabric-deployment`/`fabric-warehouse-git` silent on their own subject matter; knowledge duplicated into a project's CLAUDE.md stops the skill being reached for
+- `fabric-scd2-merge-needs-one-row-per-key` — a Delta MERGE takes one source row per key, but a first load CREATES and swallows duplicates silently, so a windowed extract poisons the table on load one and only fails on load two
+- `fabric-updatedefinition-skips-id-translation` — the git import rewrites logicalIds and the zeroed workspaceId; `updateDefinition` does not, so a direct push breaks every reference — and it returns 400 while applying the write anyway

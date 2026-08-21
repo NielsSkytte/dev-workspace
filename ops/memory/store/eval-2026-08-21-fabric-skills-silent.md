@@ -43,3 +43,7 @@ I told Niels the Curated rebuild would repopulate two empty dimensions. It did n
 completed and both stayed at 0 rows while their transform views return 5,114 and 1,320. The claim
 was inference from a known drop-create failure mode, stated as expectation rather than labelled as
 inference. Verify after the run before saying a defect is resolved by it.
+
+## Corroboration — a second, independent session the same day
+
+A parallel session on the same project spent 2026-08-16 to 08-21 on deployment pipelines, variable libraries, value-set overrides, DEV-vs-TEST drift and warehouse DDL reconciliation, and `fabric-deployment` and `fabric-warehouse-git` never fired there either. It hit three of their named triggers verbatim - a value-set differing between stages, `Invalid object name` on a warehouse deploy, and "is this item portable" - and reached for the project's `CLAUDE.md` each time instead. Two sessions arriving at the same finding from unrelated work makes this a trigger problem, not a sampling artefact.

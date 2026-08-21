@@ -58,22 +58,90 @@ all 21 would double-count everything.
    Update from git on `Landingzone-Code-DEV` until that is committed**, or the source for this fact
    stops being ingested.
 
+## Built 2026-08-20 — `Fabric-ETL` `995f187` (pushed, not yet in the service)
+
+Five new files, nothing existing modified:
+
+| File | What |
+|---|---|
+| `…Enriched_AX09/viewtransform/Views/BudgetLedger.sql` | 60 cols, all 21 models, joins to ledgertable / budgetmodel / currency / companyinfo / dimensions / LEDGERACCOUNTTYPE enum / sqldictionary |
+| `…Enriched_AX09/rowcheck/Views/BudgetLedger.sql` | expectation = count of current `ledgerbudget` rows |
+| `…Enriched_AX09/enriched/Tables/BudgetLedger.sql` | DDL, script-derived from the view's CONVERT types |
+| `…Curated/viewfacttransform/Views/BudgetLedger.sql` | 34 cols, surrogate keys to ChartOfAccount / LegalEntity / SalesChannel, `ModelNum = '2010'` |
+| `…Curated/fact/Tables/BudgetLedger.sql` | DDL, script-derived |
+
+Verified read-only against DEV before commit: enriched builds **1,596,773** rows = rowcheck exactly
+(no fan-out); curated builds **842,590** rows, 1 model, 0 orphans on ChartOfAccount and LegalEntity,
+6,933 (0.8%) on SalesChannel — `fact.GeneralLedgerTransactions` runs 31% on that same join.
+
+**Model filter settled on evidence, not a guess:** `budgetmodel` names `2010` "Budget master"; it is
+the only model still written (2010 → 2026, every other stops 2025 or earlier); `BLOCKED = 0` on all
+29 models so it is no use as a rule. One sentence of confirmation from Finance still wanted.
+
+**No date window, deliberately** — sibling facts disagree (3/3/5 years, four with none) and GL holds
+one month (`2026-08-17-carlras-curated-data-loss-windows`). A budget fact shorter than the actuals it
+is compared against would silently drop variance rows. Apply GL's window here when GL's is fixed.
+
+## Live in DEV 2026-08-21
+
+| Object | Rows | Check |
+|---|---|---|
+| `enriched.BudgetLedger` | 1,596,773 | `rowcheck` **Success**, difference 0 (`transform.RowCheckLog`, 08:16:34Z) |
+| `fact.BudgetLedger` | 842,590 | 1 model, 0 orphans on ChartOfAccount + LegalEntity, 6,933 (0.8%) on SalesChannel, 2010-01-04 → 2026-12-31 |
+
+Every figure matches what was measured read-only before the commit. Built by calling
+`transform.sp_CreateTableAsSelect` and `sp_RowCheck`, then `facttransform.sp_CreateFactTableAsSelect`,
+scoped to this table — neither transform pipeline takes a table parameter, so running them whole
+would have rebuilt all 31 enriched tables for nothing.
+
+**Cross-warehouse ordering cost one failed sync.** `995f187` carried both warehouses in one commit and
+Update from git failed with `DmsImportDatabaseException … Invalid object name
+'Warehouse_Enriched_AX09.enriched.BudgetLedger'` — Fabric imports warehouse items independently and
+does not order them, and the import rolls back whole (verified: neither warehouse gained an object).
+This is `fabric-warehouse-git` skill failure 4, and the cure is two commits, producer first: `7d393a0`
+held the curated half back, `3c98cde` returned it once enriched existed. Two syncs is the minimum for
+a new cross-warehouse entity — worth saying up front next time.
+
+Both normalising commits from the workspace have landed (`cf9da70`, `0575f41`). Note for anyone
+regenerating these files: re-running the emitter rewrites the `Auto Generated` hash on the enriched
+views and would revert Fabric's normalisation — that hash comes from Fabric's parsed model and cannot
+be recomputed locally.
+
+## Semantic model — Direct Lake, pushed 2026-08-21 (`Semantic-Model` `c14e9d3`)
+
+`Model_OneLake.SemanticModel` only; `Model.SemanticModel` (Import, 36 import partitions) untouched.
+
+- `tables/Budget Ledger.tmdl` — new, 34 columns, `mode: directLake` over `fact.BudgetLedger` via
+  `DatabaseQuery`. Columns generated from the warehouse DDL so the model cannot drift from the table.
+  Folders/hidden flags/`summarizeBy` follow `General Ledger Transactions`. `lineageTag`s are uuid5 of
+  the object name, so regenerating is idempotent rather than churning GUIDs.
+- `relationships.tmdl` — +5: Chart of Account, Legal Entity, Sales Channel via the surrogate keys;
+  `Start Date` → `Date.Date` active, `End Date` → `Date.Date` inactive (mirrors GL's
+  Trans Date / Document Date).
+- `model.tmdl` — +1 `ref table 'Budget Ledger'`.
+
+**Line-ending trap in this repo:** `relationships.tmdl` and `model.tmdl` are CRLF, the table `.tmdl`
+files are LF. Writing everything LF silently no-op'd the `model.tmdl` edit — the anchor string never
+matched. The emitter now preserves each file's own convention.
+
+**Noted, not acted on:** `Model_OneLake` is not pure Direct Lake — 7 partitions are still `mode:
+import` (the `CG | …` / `FP | …` / `PM | …` helper and measure tables). Belongs to
+`2026-08-18-carlras-directlake-conversion`.
+
 ## To do
 
-1. Settle the live `MODELNUM` (or the rule that picks it) with Finance — see open point 1.
-2. Confirm the SCD2 key handling for `ledgerbudget` in `Lakehouse_Util.rawtablekeymap_ax09` /
-   `NB_Table_PrimaryKeyMap_AX09` (`RECID` + `SCDcurrent`).
-3. `viewtransform.BudgetLedger` in `Warehouse_Enriched_AX09` + a `rowcheck` view, same pattern as the
-   rest (cf. `2026-08-14-carlras-enriched-rowcount-failures`).
-4. `viewfacttransform.BudgetLedger` + `fact.BudgetLedger` in `Warehouse_Curated`, registered in the
-   execute chain (`PL_Transform_Curated_Fact` enumerates `INFORMATION_SCHEMA.VIEWS`).
-   **Set the date window deliberately** — the existing facts disagree (3/3/5 years, four with no
-   filter at all), see `2026-08-17-carlras-curated-data-loss-windows`.
-5. Into the semantic model — relationships to Date / ChartOfAccount / Dimensions, and the Direct Lake
-   constraint from `2026-08-18-carlras-directlake-conversion` (drop-create on curated deletes the
-   files Direct Lake reads — `2026-08-18-carlras-atomic-ctas-merge`).
-6. The files carry the `-- Auto Generated (Do not modify)` header: log new/changed views as GEN-xxx in
-   `design/ATOMIC_GENERATOR_CHANGES.md` and keep the header line byte-intact.
+1. **Niels: Update from git on `Semantic-Model-DEV`**, then a framing refresh so `Budget Ledger`
+   binds to the Delta files and answers a query.
+3. Into the semantic model — relationships to Date / ChartOfAccount / LegalEntity / SalesChannel, and
+   the Direct Lake constraint (`2026-08-18-carlras-directlake-conversion`,
+   `2026-08-18-carlras-atomic-ctas-merge`).
+4. Log the two views in `design/ATOMIC_GENERATOR_CHANGES.md` as GEN-xxx.
+5. Confirm the SCD2 key handling for `ledgerbudget` in `Lakehouse_Util.rawtablekeymap_ax09` /
+   `NB_Table_PrimaryKeyMap_AX09` — raw already carries `SCDcurrent`/`SCDeffectiveDate`, so this is a
+   check, not expected work.
+
+No registration step is needed: `PL_Transform_Enriched_AX09` and `PL_Transform_Curated_Fact`
+enumerate `INFORMATION_SCHEMA.VIEWS`, so both views join the chain as soon as they exist.
 
 ## Why
 
@@ -86,3 +154,17 @@ for us yet.
   pointed out `ledgerbudget` in raw. Measured in DEV: the table is present with 1.6M rows across 21
   budget models, only model `2010` current. Ingest is done — the gap is enriched → curated → model.
   Nothing changed.
+- 2026-08-20 — built and pushed (`Fabric-ETL` `995f187`, approved): five new files, no existing file
+  modified. Both views validated read-only against DEV first — row counts and orphan rates in the
+  section above. Awaiting Niels's Update from git on `Fabric-ETL-DEV`, then the transform runs.
+- 2026-08-21 — **BudgetLedger is in the curated layer in DEV.** One failed sync from the
+  cross-warehouse ordering rule, resolved by splitting producer-first (`7d393a0`, `3c98cde`). Built
+  and verified: 1,596,773 enriched / 842,590 curated, every number matching the pre-commit
+  measurement. Remaining: Finance confirmation of the model, the semantic model, the GEN log entry,
+  and promotion to TEST/PROD.
+- 2026-08-21 — model `2010` confirmed by Niels; GEN-011 logged (`datahub` `2fde2cf`, which also
+  added the missing GEN-010 index row); Direct Lake model updated and pushed (`Semantic-Model`
+  `c14e9d3`). Deployment question answered: the deployment pipeline works, but as two deployments in
+  dependency order — `Warehouse_Enriched_AX09` first, then `Warehouse_Curated` — for the same reason
+  the git sync needed two commits. Both in one selection reproduces the failure, and a failed
+  warehouse import leaves an orphan that makes the retry fail with "already exists".
