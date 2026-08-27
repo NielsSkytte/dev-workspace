@@ -17,3 +17,5 @@ and ignored for the others. Keep the table sorted by date.
 
 | Date | Kind | Project | Note |
 |---|---|---|---|
+| 2026-08-26 | vacation | | |
+| 2026-08-27 | vacation | | |
