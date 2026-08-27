@@ -644,3 +644,70 @@ Chronological record of workspace sessions — what was done, decided, and what'
   definitions with `updateDefinition` broke the DEV pipeline because that API skips the
   logicalId/workspaceId translation the git import performs, and a push carried an unrelated
   unpushed commit with it.
+
+## 2026-08-27
+> Session ran 2026-08-19 → 08-27; the substantive work is dated inline. Time is already
+> captured under 08-19 (8.00 h), 08-20 (12.25 h) and 08-21 (7.25 h, 3.75 h of it `AX09Import`).
+
+- **Did:**
+  - **BudgetLedger, AX09's general ledger budget, end to end — the project's first entity we
+    authored ourselves.** Raw already held `ledgerbudget` (1,596,773 rows); the gap was upward.
+    Five new files, no existing file modified: `viewtransform` + `rowcheck` + `enriched/Tables`
+    in `Warehouse_Enriched_AX09`, `viewfacttransform` + `fact/Tables` in `Warehouse_Curated`.
+    **Live in DEV and TEST**, identical in both: enriched **1,596,773** (row check Success,
+    difference 0), fact **842,590**, one model, 0/0 orphans on ChartOfAccount and LegalEntity,
+    6,933 (0.8%) on SalesChannel where the GL fact runs 31%. Added to the Direct Lake model
+    (`Semantic-Model` `c14e9d3`) — `Budget Ledger`, 34 columns, five relationships, generated
+    from the warehouse DDL so the model cannot drift. GEN-011.
+  - **Model `2010` confirmed by the customer.** A Carl Ras employee's own reporting query filters
+    `MODELNUM = N'2010'`; our fact reproduces it exactly (account `01021`, 2026: 10,542 rows,
+    −1,146,443,286.98, 40 departments).
+  - **Found the landing-zone ingest list was four months stale in git.** `PL_Ingest_AX09` ran 88
+    tables in every workspace while the repo held 40 from 2026-04-29, and the DEV workspace itself
+    was in a debug state — everything commented out except `LEDGERTABLEINTERVAL`. Restored from the
+    running definition (`074ea1c`); git, DEV, TEST and PROD now agree.
+  - **Gave the three windowed curated facts a 13-month rolling window in DEV only**, direct in the
+    service: GL 347,959 → 8,681,082, Sales 6,876,445 → 2,397,699, Inventory 17,066,130 → 5,717,832.
+  - **Established why the scaled refresh keeps failing.** After a scale to F32 the capacity reports
+    SKU F32 / state Active before the memory is allocated: 16:18 `MemoryLimitMb 2474` against a
+    2,645 MB model, failed in 77 s; 16:41 the same model on the same SKU refreshed in 501 s. Added
+    retries to both refresh paths (`cd71032`, `0d10a6c`).
+  - Published a private summary artifact of the new data (row counts, coverage, budget vs actual).
+- **Decided:**
+  - **Fabric owns line 1 of a serialised `.sql`; never write the `-- Auto Generated` header
+    ourselves.** It prepends its own and eats the leading `-` of ours, leaving `- Auto Generated …`,
+    which is not a comment. Update from git accepts it; the deployment then fails.
+  - **Serialised `.sql` must be pure ASCII.** An em dash does not survive the round trip —
+    `OBJECT_DEFINITION` returns it as an invalid character. Harmless in a `/* */` block, fatal in a
+    `--` line comment. Both rules are now in `datahub/CLAUDE.md`; both surface as the *same*
+    `Incorrect syntax near '-'`.
+  - **A new cross-warehouse entity takes two commits and two syncs, producer first** — Fabric
+    imports warehouse items independently and does not order them. The same ordering applies to
+    deployments: enriched, then curated, never both in one selection.
+  - **No date window on `fact.BudgetLedger`**, deliberately: a budget fact shorter than the actuals
+    it is compared against would silently drop variance rows.
+  - **The nightly refresh may still clear the model; the interactive one may not.**
+    `PL_Update_SemanticModel` keeps `max_rung 2` (favour eventual success), retry 2;
+    `PL_ScaleProcess_SP` stays pinned to rung 1, retry 12 × 30 s.
+- **Tasks:** `2026-08-19-carlras-ax09-budgetledger-curated` created and worked (in-progress; DEV +
+  TEST done, PROD and the Direct Lake model in TEST open). `2026-08-19-carlras-landingzone-dev-drift`
+  created (open; the ingest list is fixed, the two dims that empty on every curated sync are not).
+- **Next:** PROD for BudgetLedger (two deployments, then the three statements). Chase
+  `dim.Date` + `dim.AlternativeChartOfAccount`, which go to zero rows on **every** Update from git
+  touching `Warehouse_Curated` — silent, and the other fifteen dims survive it. Read the retry log
+  after the next cold scale-up to pin the real warm-up and set `Wait1` to it. Take the budget-
+  coverage finding to Finance: in 2025, 111 operating accounts carry a budget against 230 with
+  actuals — 122 post real amounts and were never budgeted, which is what the whole budget-vs-actual
+  gap is made of.
+- **Memory:** `sentinel` not dispatched (standing no-subagents-unless-asked instruction); records
+  hand-vetted. No `daily/` entry for 2026-08-26 or 2026-08-27 and no heartbeats either — the
+  capture and time hooks did not fire on those days.
+- **Evaluation:** `fabric-warehouse-git` fired on the cross-warehouse import failure and its
+  failure 4 was exactly right — that one earned its place. `fabric-deployment` fired usefully on
+  the promotion question. Against that, **two self-inflicted defects the skills did not prevent**:
+  I hand-wrote the `Auto Generated` header on new files, and I put em dashes in SQL comments —
+  neither is covered by any skill, both cost a failed deploy and a failed sync, and both are now
+  rules in `datahub/CLAUDE.md`. Also mis-stated a `dim.Date` rebuild as broken when the error came
+  from `tools/wh_query.py` probing `nextset()` after DDL that had already applied (now fixed), and
+  proposed a pre-flight memory gate that cannot exist because the limit is only ever reported
+  inside a failure message.

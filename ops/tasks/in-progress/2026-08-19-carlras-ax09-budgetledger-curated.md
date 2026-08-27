@@ -74,9 +74,14 @@ Verified read-only against DEV before commit: enriched builds **1,596,773** rows
 (no fan-out); curated builds **842,590** rows, 1 model, 0 orphans on ChartOfAccount and LegalEntity,
 6,933 (0.8%) on SalesChannel — `fact.GeneralLedgerTransactions` runs 31% on that same join.
 
-**Model filter settled on evidence, not a guess:** `budgetmodel` names `2010` "Budget master"; it is
-the only model still written (2010 → 2026, every other stops 2025 or earlier); `BLOCKED = 0` on all
-29 models so it is no use as a rule. One sentence of confirmation from Finance still wanted.
+**Model filter confirmed by the customer 2026-08-21** — a Carl Ras employee's own reporting query
+filters `MODELNUM = N'2010'` and `DATAAREAID = N'CR'`, and our fact reproduces it exactly (account
+`01021` Varesalg, 2026: 10,542 rows, −1,146,443,286.98, 40 departments). Supporting evidence:
+`MODIFIEDDATETIME` shows `2010` written every year for seventeen years, each year touching that year
+and the next, last write 2026-03-26 — the most recent of all 21 models by seven weeks.
+`REVISIONDATE` is `1900-01-01` everywhere and `BLOCKED` is `0` on all 29, so neither discriminates.
+**Do not derive the model from recency** — "most recently modified" would have picked `0-PKT` (335
+rows, last period 2012) for six weeks earlier this year.
 
 **No date window, deliberately** — sibling facts disagree (3/3/5 years, four with none) and GL holds
 one month (`2026-08-17-carlras-curated-data-loss-windows`). A budget fact shorter than the actuals it
@@ -128,14 +133,38 @@ matched. The emitter now preserves each file's own convention.
 import` (the `CG | …` / `FP | …` / `PM | …` helper and measure tables). Belongs to
 `2026-08-18-carlras-directlake-conversion`.
 
+## Live in TEST 2026-08-21
+
+Deployed `Warehouse_Enriched_AX09` then `Warehouse_Curated` — separate deployments, dependency
+order — then built with the same three statements used in DEV. Every figure matches DEV exactly:
+enriched **1,596,773** (row check Success, difference 0), fact **842,590**, 1 model, orphans
+0 / 0 / 6,933, span 2010-01-04 → 2026-12-31, ΣAmountMst −517,770,124.91. Both environments read the
+same shared landing zone, so an exact match is expected and a difference would have meant a build
+fault. No ingest or chain rebuild was needed: TEST's raw already held `ledgerbudget` in full.
+
+Two authoring defects were found and fixed on the way, both surfacing as the same
+`Incorrect syntax near '-'` — now rules in `datahub/CLAUDE.md` > Conventions: never write the
+`-- Auto Generated` header on a new file (Fabric owns line 1, and it eats the first character of
+yours), and serialised `.sql` must be pure ASCII (an em dash does not survive the round trip).
+Also fixed `tools/wh_query.py`, which reported error 15816 from its `nextset()` probe after DDL
+that had already applied — that cost a misdiagnosis.
+
+**Recurring, not yet solved:** every Update from git touching `Warehouse_Curated` empties
+`dim.Date` and `dim.AlternativeChartOfAccount` (DacFx rebuild). Rebuilt twice this session. The
+other fifteen dims survive, which points at something specific to these two — likely the
+GEN-008/009 column additions not matching the table DDL in git. It is silent: the schema looks
+right and the table is simply empty.
+
 ## To do
 
 1. **Niels: Update from git on `Semantic-Model-DEV`**, then a framing refresh so `Budget Ledger`
    binds to the Delta files and answers a query.
-3. Into the semantic model — relationships to Date / ChartOfAccount / LegalEntity / SalesChannel, and
-   the Direct Lake constraint (`2026-08-18-carlras-directlake-conversion`,
-   `2026-08-18-carlras-atomic-ctas-merge`).
-4. Log the two views in `design/ATOMIC_GENERATOR_CHANGES.md` as GEN-xxx.
+2. **PROD** — same two-deployment order, then the same three statements.
+3. **Direct Lake model in TEST is a separate piece of work.** `Model_OneLake` has never been paired
+   to TEST (`targetItemId: null`); TEST carries a TEST-only `Model_Optimized` instead, and only the
+   Import `Model` is paired through. `Model_OneLake`'s `DatabaseQuery` also hardcodes the DEV
+   workspace and curated warehouse GUIDs. Belongs to `2026-08-18-carlras-directlake-conversion`.
+4. Chase the two dims that empty on every curated sync (see above).
 5. Confirm the SCD2 key handling for `ledgerbudget` in `Lakehouse_Util.rawtablekeymap_ax09` /
    `NB_Table_PrimaryKeyMap_AX09` — raw already carries `SCDcurrent`/`SCDeffectiveDate`, so this is a
    check, not expected work.
