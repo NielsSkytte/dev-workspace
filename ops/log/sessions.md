@@ -711,3 +711,53 @@ Chronological record of workspace sessions — what was done, decided, and what'
   from `tools/wh_query.py` probing `nextset()` after DDL that had already applied (now fixed), and
   proposed a pre-flight memory gate that cannot exist because the limit is only ever reported
   inside a failure message.
+
+## 2026-08-30
+### Carl Ras — Marketo write-back: the write path measured on the live instance, then the push built (session ran 08-20 → 08-30)
+
+- **Did:**
+  - **Proved we can write to Marketo**, on two synthetic leads on a reserved `.invalid` domain
+    (`9578783`, `9579655`). Harness: `tools/marketo_write_test.py` (plan/describe/create/read/update/
+    policy/activity/delete, dry by default, one hardcoded address, allowlist-not-denylist) plus
+    `out/marketo_calls/` recording every request and response, because a `syncLead` response is not
+    retrievable afterwards.
+  - **Four things measured that documentation does not give you.** A `null` — and `""` — on a
+    Marketo integer/float/boolean coerces to `0`/`false`, so "emit NULL, never a coalesced 0" is
+    unimplementable and only omitting the key says nothing. A bare date into a `datetime` field
+    lands a day early (instance renders UTC−5), which reproduces the incumbent's 18:00/19:00
+    artifact exactly. Float fields keep six significant digits — our largest account lost 31.78 DKK.
+    And `requestId`, though not queryable, is stamped on every resulting Change Data Value activity,
+    which makes it the reconciliation key. Memory `marketo-write-precision-and-offset`.
+  - **Campaigns do fire.** Creating a lead triggered `DM-Raptor ID update.01-Request REAID`, an
+    outbound webhook to Raptor, five seconds later. The 20-field update fired nothing.
+  - **[GEN-010] `viewoutboundtransform.Marketo_Lead` rewritten to three states** — value / factual
+    `0` / unknown — pushed as `f66e52f`, synced, and the CTAS re-run: 218,631 rows, account
+    135,559 / 83,071 / 1, contact 42,024 / 154,040 / 22,567. The contact gate needed an
+    `AccountWindow` CTE because only 68.05% of invoice lines in the window carry a
+    `ContactPersonId`, so a flat zero would have been an over-claim.
+  - **Built `NB_Outbound_Marketo` + `PL_Outbound_Marketo`** (`01 - Curated`, uncommitted). Filters
+    on email / account / segment / raw predicate / cap, `dry_run` default true, Key Vault
+    credentials, every response logged to `Lakehouse_Util.MarketoOutboundLog`.
+  - **Three bugs caught before shipping**, all by running the notebook's own code over real curated
+    rows: AX09 stores absent text as `''` not NULL, so `title` would have been blanked on every
+    lead; pandas turns a SQL NULL in a numeric column into `NaN`, which the omission policy would
+    have missed; and 155 leads carry non-ASCII emails, which Marketo's ASCII-only email field
+    rejects.
+- **Decided:**
+  - **`syncLead updateOnly`, not Bulk Import.** Bulk is documented as insert-or-update and returns
+    no per-record result, so it can neither guarantee we never create a lead nor tell us whether we
+    did. 218k rows is ~730 calls, 1.5% of the daily quota — the volume argument does not apply.
+  - **Omit unknowns, clear what we master, omit `title`.** Account attributes and the derived dates
+    are ours once AX09 is taken over; `title` is a person attribute the website also fills (Census
+    wrote it 206 times in 69 days against `accountName`'s 48,512).
+  - **Consent fields are excluded structurally**, not by a check — they are absent from `POLICY`.
+  - **Own LaunchPoint service before any production write.** We currently authenticate as
+    `ben+carlras@impact.dk`, so stopping our integration would stop Impact's.
+  - Production safety without a Marketo test environment (their sandbox starts empty and caps
+    campaigns at 25 leads): snapshot-before-write, shadow diff, three modes via variable library,
+    and running alongside Census so the incumbent corrects our mistakes during overlap.
+- **Tasks:** `2026-08-12-carlras-marketo-writeback` unblocked (the `EmployeesIntervalSorting`
+  blocker had already been cleared and the task file was stale) and still in-progress.
+- **Next:** commit/push the two new items and Update from git; create the Key Vault secrets; a
+  filtered dry run, then a filtered real run against the test leads; the Impact mail — the date
+  offset is now question 3 on it.
