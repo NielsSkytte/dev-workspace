@@ -167,8 +167,23 @@ group:
    **floored to a 0.5 h minimum**: any logged work on an F&O line that day (a decision, a file created or
    edited, anything) counts as at least 0.5 h.
 
-Constants: idle timeout **15 min**, tail buffer **5 min**, rounding **0.25 h**, minimum **0.5 h**.
-Bucketing is by **local time** (the machine's timezone), while heartbeats are stored in UTC.
+Constants: idle timeout **15 min**, tail buffer **5 min**, **single-heartbeat bound 60 min**,
+rounding **0.25 h**, minimum **0.5 h**. Bucketing is by **local time** (the machine's timezone),
+while heartbeats are stored in UTC.
+
+**Two corrections applied on the way in (2026-08-30), both derive-side** -- the JSONL stays the
+immutable record and past days heal on any re-read:
+
+- **One heartbeat is bounded at 60 minutes.** One heartbeat is one turn, and the `Stop` hook does not
+  always fire at the end of one (memory `time-capture-defects`), so an unbounded span measures how
+  long a window stayed open rather than work. Measured over 1,422 heartbeats: median span 1.9 min,
+  p99 48.4 min, and 8 spans over 60 min -- among them a 22 h 13 m span from a session left open
+  overnight and a 5 h 25 m span on a day whose value record measured 22 minutes of keyboard time
+  across 10 turns. Work that really did run past the bound emits further heartbeats, which the 15 min
+  merge rule rejoins into the same stretch.
+- **An interval is split at local midnight.** The rollup buckets by date, so a span crossing midnight
+  is attributed to each date it covers. Before this it landed wholly on its `ts_start` date --
+  2026-08-27 finalized at 22.75 h while 2026-08-28 read as empty.
 
 Known edge: bouncing between two projects inside 15 min can let one project's stretch span the other's
 detour (slight overcount); and a stretch crossing local midnight is split into two (two buffers). Both
@@ -225,6 +240,10 @@ worked.
 me 18 hours in one day" is a statement about a *customer*, not about a folder, and 12 h across two
 different customers is unremarkable because neither can see the other. A single long day for one
 customer is normal and stays; what the cap prevents is several days stacking into one.
+
+The cap is enforced where hours are **moved** (`--merge`). Measured hours are never moved behind you,
+so at finalize a day over the cap for one customer is **flagged in its own timesheet file** instead --
+2026-08-27 finalized at 22.75 h silently and was caught days later.
 
 **Over the cap, hours spill to another date** for the same customer, largest line first, within the
 same week. Hours are moved, never dropped: the weekly and monthly totals are identical afterwards,

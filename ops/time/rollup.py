@@ -42,6 +42,7 @@ def daily_path(date):
 
 IDLE_TIMEOUT = datetime.timedelta(minutes=15)   # gap that splits an active stretch
 TAIL_BUFFER = datetime.timedelta(minutes=5)     # reading/thinking after the last reply
+MAX_SPAN = datetime.timedelta(minutes=60)       # bound on ONE heartbeat (see load_heartbeats)
 ROUND_HOURS = 0.25                              # F&O increment
 MIN_HOURS = 0.5                                  # any work on a project that day -> at least 0.5 h
 DEV_CODE = "INTERNAL-RND"                        # Dev bucket = internal R&D, non-billable
@@ -76,8 +77,41 @@ def round_quarter(hours):
 
 # ---------- load ----------
 
+def split_local_days(start, end):
+    """One interval -> one segment per LOCAL date it covers.
+
+    The rollup buckets by date, so an interval must not be attributed to the date it
+    started on alone: a span from 22:54 on one day to 00:30 on the next belongs to both.
+    Before 2026-08-30 the whole span landed on the start date and the following day read
+    as empty (2026-08-27 measured 22.75 h while 2026-08-28 measured nothing)."""
+    segs, cur = [], start
+    while True:
+        midnight = (to_local(cur).replace(hour=0, minute=0, second=0, microsecond=0)
+                    + datetime.timedelta(days=1)).astimezone(datetime.timezone.utc)
+        if end <= midnight:
+            segs.append((cur, end))
+            return segs
+        if midnight > cur:
+            segs.append((cur, midnight))
+        cur = midnight
+
+
 def load_heartbeats():
-    """All heartbeats, each enriched with local-date and iso-week keys (bucketed by ts_start)."""
+    """All heartbeats, each enriched with local-date and iso-week keys.
+
+    Two corrections applied on the way in (2026-08-30), both derive-side so the raw
+    JSONL stays the immutable record and past days heal on any re-read:
+
+      1. A single heartbeat is bounded at MAX_SPAN. One heartbeat is one turn, and the
+         Stop hook does not always fire at the end of it (memory `time-capture-defects`),
+         so an unbounded span measures how long a window stayed open, not work: median
+         span is 1.9 min, p99 48.4 min, and the eight spans over 60 min include a 22 h 13 m
+         one from a session left open overnight and a 5 h 25 m one on a day whose value
+         record measured 22 minutes of keyboard time across 10 turns. Work that really did
+         continue past the bound emits further heartbeats, which the 15 min merge rule
+         rejoins into the same stretch.
+      2. An interval is split at local midnight (see split_local_days).
+    """
     out = []
     for path in sorted(glob.glob(os.path.join(HEARTBEATS, "*.jsonl"))):
         try:
@@ -94,19 +128,22 @@ def load_heartbeats():
                         continue
                     if end < start:
                         end = start
-                    ls = to_local(start)
-                    iso = ls.isocalendar()
-                    out.append({
-                        "start": start, "end": end,
-                        "project": hb.get("project") or "Dev",
-                        "task": hb.get("task"),
-                        # passthrough only -- the rollup never groups by it (that would fragment
-                        # stretches and add a buffer + 0.5 h floor per session). The dashboard's
-                        # internal-hours triage uses it to join a stretch to its memory record.
-                        "session": hb.get("session") or "",
-                        "date": ls.strftime("%Y-%m-%d"),
-                        "week": "%04d-W%02d" % (iso[0], iso[1]),
-                    })
+                    if end - start > MAX_SPAN:
+                        end = start + MAX_SPAN
+                    for seg_start, seg_end in split_local_days(start, end):
+                        ls = to_local(seg_start)
+                        iso = ls.isocalendar()
+                        out.append({
+                            "start": seg_start, "end": seg_end,
+                            "project": hb.get("project") or "Dev",
+                            "task": hb.get("task"),
+                            # passthrough only -- the rollup never groups by it (that would fragment
+                            # stretches and add a buffer + 0.5 h floor per session). The dashboard's
+                            # internal-hours triage uses it to join a stretch to its memory record.
+                            "session": hb.get("session") or "",
+                            "date": ls.strftime("%Y-%m-%d"),
+                            "week": "%04d-W%02d" % (iso[0], iso[1]),
+                        })
         except Exception:
             pass
     return out
@@ -870,9 +907,28 @@ def finalize(hbs, today):
         rows = rows_for(day_hbs)
         if not rows:
             continue
-        write_daily(date, rows)
+        write_daily(date, rows, over_cap_note(rows))
         written.append(date)
     return written
+
+
+def over_cap_note(rows):
+    """A day that finalizes over DAY_CAP for one customer says so in its own file.
+
+    The cap is enforced when hours are MOVED (consolidate_week -> spill_over_cap); measured
+    hours are never moved behind you, so the net here is a flag, not a correction. It exists
+    because a 22.75 h day finalized silently on 2026-08-27 and was only caught days later."""
+    cust_day = {}
+    for r in rows:
+        c = customer_of(r["project"])
+        if c:
+            cust_day[c] = cust_day.get(c, 0.0) + r["hours"]
+    over = sorted((c, h) for c, h in cust_day.items() if h > DAY_CAP + 1e-9)
+    if not over:
+        return ""
+    return ("\n> **Over the %.1f h/customer/day cap:** %s. Measured, not corrected -- check it "
+            "against ops/time/value/ before entering it.\n"
+            % (DAY_CAP, ", ".join("%s = %.2f h" % (c, h) for c, h in over)))
 
 
 def preview(hbs, today):

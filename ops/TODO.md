@@ -37,7 +37,11 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
 - [ ] 2026-08-03 — fix the typo in `ops/TidsregInfo.xlsx`: Kunde reads `Vestforbræding`, missing the n (correct: Vestforbrænding). A CUSTOMER_ALIASES entry in dashboard.py works around it; fixing the sheet makes that line dead
 - [ ] 2026-08-03 — two Projektnr in `ops/TidsregInfo.xlsx` are literally `?` and cannot be entered in F&O: Aeven (4.25 h in July) and Melbye (`6013-?`)
 - [ ] 2026-08-03 — the local memory summarizer asserted a completed action that never happened for the 4th consecutive /log ("Entered internal time for July 2026" on a turn that entered nothing). Revise the model or the summarizer prompt — per-day vetting is no longer catching this early enough
-- [ ] **Time: cap a heartbeat span, and split one that crosses midnight.** A session left open
+- [x] **Time: cap a heartbeat span, and split one that crosses midnight.** Done 2026-08-30 in
+      `rollup.py` (derive-side, not the capture hook, so the raw JSONL stays honest and past days
+      heal): `MAX_SPAN = 60 min` per heartbeat, `split_local_days()` at local midnight, and a day
+      over `DAY_CAP` for one customer now writes a flag into its own timesheet file. Original note:
+      A session left open
       overnight wrote a single 22h13m span (`heartbeats/2026-08-28.jsonl`,
       2026-08-27T18:54:06Z -> 2026-08-28T17:06:53Z) and `rollup.py:80` buckets by `ts_start`, so the
       whole thing landed on 08-27 (22.75 h) while 08-28 read as empty. `DAY_CAP = 12.0` did not hold
