@@ -107,3 +107,15 @@ classes will keep recurring until they are closed deliberately.
   correction initiated by Niels. Data-quality gate spun out as
   `2026-08-19-carlras-atomic-dataquality-gate`. Still open in this chain: the Marketo failure from
   the same run.
+- 2026-08-27 — TEST's `PL_MainExecution` fails at `Scale Up` with `Failed to resolve connection ''`
+  (`InvalidExternalReferenceConnection`), runs 08-23 15:12 and 08-24 04:30. Cause: `Test.json`
+  overrides `VL_ConnectionId.CON-WI-Notebook` with an empty string on purpose (`356df51`); the scale
+  moving into `PL_MainExecution` (`747d9f2`) plus the live TEST schedule (`fda1d4b`) made it fatal.
+  Created `CON_Notebook_WI_TEST` (`c54d4c1b-980e-411c-ba38-dfb8db960604`, WorkspaceIdentity),
+  granted `User` on it to the schedule SPN `f05f446a…`, and pointed `Test.json` at it in
+  `Fabric-ETL` `ebee979` (pushed). **Not yet green — two steps outstanding, neither ours:**
+  (1) Update from git in `Fabric-ETL-DEV` + deploy `VL_ConnectionId` to TEST — both workspaces still
+  read `""` as of 08-27; (2) Carl Ras must add `85553fa2-1343-4d6e-89e4-433fd51ba6a6`
+  (`Fabric-ETL-TEST` workspace identity, **object** id) to `Fabric_Key_Vault_Users` — they added DEV
+  and PROD instead. Without (2) the run clears the connection error and fails in
+  `NB_CapacityManager_Bootstrap` on `getSecret`. Niels deploys; continue in a later session.

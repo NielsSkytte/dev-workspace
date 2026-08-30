@@ -761,3 +761,42 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Next:** commit/push the two new items and Update from git; create the Key Vault secrets; a
   filtered dry run, then a filtered real run against the test leads; the Impact mail — the date
   offset is now question 3 on it.
+
+### Carl Ras — TEST's scheduled run dies at Scale Up: a connection that resolves to nothing (session ran 08-24 → 08-30)
+
+- **Did:**
+  - **Diagnosed `PL_MainExecution` failing in TEST** (`Failed to resolve connection ''`,
+    `InvalidExternalReferenceConnection`; runs 08-23 15:12 and 08-24 04:30). `Scale Up`/`Scale Down`
+    bind `externalReferences.connection` to `VL_ConnectionId.CON-WI-Notebook`, which the `Test` and
+    `Prod` value sets override with an **empty string on purpose** (`356df51`) because no such
+    connection existed outside DEV. Moving the scale into `PL_MainExecution` (`747d9f2`) plus the
+    live TEST schedule (`fda1d4b`) turned a documented provisioning gap into a nightly failure.
+    The pipeline JSON is not at fault.
+  - **Provisioned the TEST half:** created `CON_Notebook_WI_TEST`
+    (`c54d4c1b-980e-411c-ba38-dfb8db960604`, Notebook / ShareableCloud / WorkspaceIdentity),
+    granted `User` on it to the schedule SPN `f05f446a…` (DEV's connection carries the same grant —
+    without it a scheduled run cannot use the connection), and pointed `Test.json` at it in
+    `Fabric-ETL` `ebee979`, pushed.
+  - **Verified nothing has landed yet.** DEV's *and* TEST's live `VL_ConnectionId` both still read
+    `CON-WI-Notebook: ""` — Update from git has not run, so neither has the deploy.
+  - **Caught the Key Vault grant going to the wrong principals.** Carl Ras added two workspace
+    identities to `Fabric_Key_Vault_Users` (holds Key Vault Secrets User on `KeyVaultDataHub`) —
+    DEV (`c898431c…`) and PROD (`fa075892…`). The one that matters, `Fabric-ETL-TEST`
+    (`85553fa2-1343-4d6e-89e4-433fd51ba6a6`), is in no group and has no direct role.
+    `NB_CapacityManager_Bootstrap:126` calls `getSecret` as the workspace identity, so the deploy
+    alone would clear the connection error and fail one step later.
+- **Decided:**
+  - **Each environment gets its own workspace-identity notebook connection**, carried as a
+    `VL_ConnectionId` value-set override — never one id shared across stages. A WI connection mints
+    a token for the workspace hosting the item and MS Learn flags cross-workspace reuse as "might
+    not work"; the connection object itself carries no workspace, so the per-stage override is the
+    only thing that makes the binding explicit.
+  - **A workspace identity needs the data-source grant as well as its workspace role** — two layers,
+    checked separately. Group membership is by service principal **object** id, not app id
+    (verified against DEV, whose group entry is the object id).
+- **Tasks:** `2026-08-11-carlras-operation-hardening` — session task, still in-progress; its
+  `activity:` is blank and needs filling before the timesheet entry.
+- **Next:** Niels runs Update from git in `Fabric-ETL-DEV` and deploys `VL_ConnectionId` to TEST;
+  Carl Ras adds `85553fa2…` to `Fabric_Key_Vault_Users`; then verify on the 04:30 run. Also
+  unresolved: the `fab` CLI is broken on this machine (`PermissionError: [WinError 5]` when
+  `ops/bin/tenant_shim.py` spawns `fab.exe`) — worked around with `az` tokens + curl.
