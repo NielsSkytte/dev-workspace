@@ -177,10 +177,14 @@ immutable record and past days heal on any re-read:
 - **One heartbeat is bounded at 60 minutes.** One heartbeat is one turn, and the `Stop` hook does not
   always fire at the end of one (memory `time-capture-defects`), so an unbounded span measures how
   long a window stayed open rather than work. Measured over 1,422 heartbeats: median span 1.9 min,
-  p99 48.4 min, and 8 spans over 60 min -- among them a 22 h 13 m span from a session left open
-  overnight and a 5 h 25 m span on a day whose value record measured 22 minutes of keyboard time
-  across 10 turns. Work that really did run past the bound emits further heartbeats, which the 15 min
-  merge rule rejoins into the same stretch.
+  p99 48.4 min, and 8 spans over 60 min -- **every one of which held at most 20 minutes of transcript
+  activity around a 5-13 hour hole.**
+
+  **The bound cannot tell a stalled turn from a genuinely long one** -- it sees only the span, and a
+  long turn normally writes a single heartbeat (only 30 of 1,391 turns ever emitted a second `Stop`,
+  and those share the same `ts_start`, so they extend the same interval rather than adding another).
+  It therefore never truncates silently: a bounded turn is **named in that day's timesheet file**
+  with the hours withheld, and the decision belongs to the review gate. See *Bounded turns* below.
 - **An interval is split at local midnight.** The rollup buckets by date, so a span crossing midnight
   is attributed to each date it covers. Before this it landed wholly on its `ts_start` date --
   2026-08-27 finalized at 22.75 h while 2026-08-28 read as empty.
@@ -240,6 +244,30 @@ worked.
 me 18 hours in one day" is a statement about a *customer*, not about a folder, and 12 h across two
 different customers is unremarkable because neither can see the other. A single long day for one
 customer is normal and stays; what the cap prevents is several days stacking into one.
+
+### Bounded turns (added 2026-08-30)
+
+A turn stalls for reasons that have nothing to do with work: the permission classifier times out
+("auto mode cannot determine the safety of Bash right now"), the API errors, the connection drops, a
+tool call is moved to the background. The turn does not end, so `Stop` does not fire, and one
+heartbeat swells to cover the whole wait. 32 such errors are on record since 2026-07-31 -- but most
+sit inside perfectly normal turns, so the **error alone is not the trigger; the span is.**
+
+When the rollup bounds a turn it writes the fact into that day's timesheet file: which session, when
+the turn started, how long it ran, and how much was withheld. To see *why* it ran that long:
+
+```
+python ops/time/value.py --stalls [--date YYYY-MM-DD]
+```
+
+It prints, per bounded turn, the busy minutes, the largest gap, the messages either side of it and
+any error at the gap -- then appends the finding to **`ops/time/stalls.md`**. If the turn really was
+working, correct the timesheet by hand (never the heartbeats) and note it in the `Verdict` column.
+
+**Run it the same day.** The check lives in `value.py` because that is where the transcript
+dependency belongs (section 7), and **transcripts do not survive**: five of the eight bounded turns
+on record have no transcript file left. `stalls.md` is tracked in git for the same reason
+`absence.md` is -- it is captured evidence plus a decision, and it has to outlive its source.
 
 The cap is enforced where hours are **moved** (`--merge`). Measured hours are never moved behind you,
 so at finalize a day over the cap for one customer is **flagged in its own timesheet file** instead --

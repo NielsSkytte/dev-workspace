@@ -105,11 +105,14 @@ def load_heartbeats():
       1. A single heartbeat is bounded at MAX_SPAN. One heartbeat is one turn, and the
          Stop hook does not always fire at the end of it (memory `time-capture-defects`),
          so an unbounded span measures how long a window stayed open, not work: median
-         span is 1.9 min, p99 48.4 min, and the eight spans over 60 min include a 22 h 13 m
-         one from a session left open overnight and a 5 h 25 m one on a day whose value
-         record measured 22 minutes of keyboard time across 10 turns. Work that really did
-         continue past the bound emits further heartbeats, which the 15 min merge rule
-         rejoins into the same stretch.
+         span is 1.9 min, p99 48.4 min, and every one of the eight spans over 60 min held
+         at most 20 min of transcript activity around a 5-13 h hole.
+         The bound CANNOT tell a stalled turn from a genuinely long one -- it sees only the
+         span, and a long turn usually writes a single heartbeat (only 30 of 1,391 turns
+         ever emitted a second Stop, and those share the same ts_start). So it never
+         truncates silently: capped_note() names every bounded turn in the day's timesheet
+         with the hours withheld, and `value.py --stalls` shows what the transcript says
+         happened in the gap. The decision is the review gate's.
       2. An interval is split at local midnight (see split_local_days).
     """
     out = []
@@ -128,7 +131,9 @@ def load_heartbeats():
                         continue
                     if end < start:
                         end = start
+                    capped = None
                     if end - start > MAX_SPAN:
+                        capped = end          # kept so the review gate can see what was withheld
                         end = start + MAX_SPAN
                     for seg_start, seg_end in split_local_days(start, end):
                         ls = to_local(seg_start)
@@ -143,6 +148,8 @@ def load_heartbeats():
                             "session": hb.get("session") or "",
                             "date": ls.strftime("%Y-%m-%d"),
                             "week": "%04d-W%02d" % (iso[0], iso[1]),
+                            "capped": capped,          # None, or the ts_end the bound withheld
+                            "raw_start": start,
                         })
         except Exception:
             pass
@@ -907,9 +914,41 @@ def finalize(hbs, today):
         rows = rows_for(day_hbs)
         if not rows:
             continue
-        write_daily(date, rows, over_cap_note(rows))
+        write_daily(date, rows, capped_note(day_hbs) + over_cap_note(rows))
         written.append(date)
     return written
+
+
+def capped_note(day_hbs):
+    """A turn whose heartbeat ran past MAX_SPAN is named in the day's own timesheet.
+
+    The bound cannot tell a stalled turn from a long one -- it only knows the span. So it
+    never truncates silently: the withheld hours are stated here, and the decision is the
+    review gate's. `python ops/time/value.py --stalls --date <date>` prints what the
+    transcript says happened inside the gap (the error text, if there was one) and appends
+    it to ops/time/stalls.md -- run it the same day, transcripts do not survive."""
+    seen, out = set(), []
+    for hb in day_hbs:
+        if not hb.get("capped"):
+            continue
+        key = (hb["session"], hb["raw_start"])
+        if key in seen:
+            continue
+        seen.add(key)
+        span = (hb["capped"] - hb["raw_start"]).total_seconds() / 3600.0
+        out.append((hb["session"], hb["raw_start"], span))
+    if not out:
+        return ""
+    lines = ["\n> **%d turn(s) bounded at %.0f min** -- counted as %.2f h each, not as measured. "
+             "Confirm or correct below.\n" % (len(out), MAX_SPAN.total_seconds() / 60.0,
+                                              MAX_SPAN.total_seconds() / 3600.0)]
+    for sid, start, span in sorted(out, key=lambda x: x[1]):
+        lines.append("> - session `%s`, turn started %s, ran %.2f h (%.2f h withheld)"
+                     % (sid, to_local(start).strftime("%H:%M"), span,
+                        span - MAX_SPAN.total_seconds() / 3600.0))
+    lines.append("> \n> Evidence: `python ops/time/value.py --stalls --date %s`\n"
+                 % to_local(out[0][1]).strftime("%Y-%m-%d"))
+    return "\n".join(lines)
 
 
 def over_cap_note(rows):

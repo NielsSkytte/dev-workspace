@@ -19,6 +19,10 @@ Modes:
   python ops/time/value.py --preview       today's live tally; writes nothing
   python ops/time/value.py --date D        one date (rewrites it)
   python ops/time/value.py --month [M]     by-date report for a month; writes nothing
+  python ops/time/value.py --stalls [--date D]
+                                           every heartbeat that ran past the rollup's bound,
+                                           with what the transcript says happened inside it;
+                                           appends the finding to ops/time/stalls.md
 """
 import sys, os, json, glob, re, datetime, collections
 
@@ -764,6 +768,168 @@ def summarise(records, label):
 
 # ---------------------------------------------------------------- main
 
+# ---------------------------------------------------------------- stall evidence
+
+STALLS = os.path.join(DEV_WORKSPACE, "ops", "time", "stalls.md")
+ERROR_PAT = re.compile(
+    r"temporarily unavailable|cannot determine the safety|API error|Request timed out"
+    r"|usage limit|Connection error|overloaded|did not complete within", re.I)
+
+
+def _ascii(s):
+    """Transcript text is arbitrary user/tool output; the console here is cp1252, so a stray
+    arrow or dash raises UnicodeEncodeError. Workspace convention: scripts are ASCII-only."""
+    return (s or "").encode("ascii", "replace").decode("ascii")
+
+
+def _msg_text(obj):
+    """Whatever text a transcript line carries, flattened to one line."""
+    c = (obj.get("message") or {}).get("content")
+    if isinstance(c, str):
+        return _ascii(" ".join(c.split()))
+    out = []
+    if isinstance(c, list):
+        for b in c:
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "text":
+                out.append(b.get("text") or "")
+            elif b.get("type") == "tool_result":
+                r = b.get("content")
+                out.append(r if isinstance(r, str) else json.dumps(r))
+            elif b.get("type") == "tool_use":
+                out.append("[tool_use %s]" % (b.get("name") or "?"))
+    return _ascii(" ".join(" ".join(out).split()))
+
+
+def session_events(s8):
+    """-> [(ts, is_error, text)] for one session, oldest first. Empty if the transcript
+    is gone -- Claude Code does not keep them forever (5 of the 8 long spans on record
+    have no transcript file left), which is why this runs at /log and appends its finding
+    to stalls.md rather than being re-derivable later."""
+    out = []
+    for path in glob.glob(os.path.join(TRANSCRIPTS, "*", "*.jsonl")):
+        if os.path.basename(path)[:8] != s8:
+            continue
+        try:
+            fh = open(path, encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        with fh as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                ts = parse_ts(obj.get("timestamp"))
+                if not ts:
+                    continue
+                txt = _msg_text(obj)
+                err = bool(obj.get("isApiErrorMessage")) or bool(ERROR_PAT.search(txt))
+                out.append((ts, err, txt))
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def stalls(date=None, bound_min=None):
+    """Report every heartbeat that ran past the rollup's bound, with what the transcript
+    says happened inside it, and append the finding to ops/time/stalls.md.
+
+    This answers the only question the span alone cannot: was the turn working, or waiting?
+    A stalled turn shows a single huge hole with an error at one end of it; a genuinely long
+    turn shows continuous activity. Nothing is corrected here -- the timesheet is edited by
+    hand, which is the correction path README section 5 already prescribes."""
+    bound = bound_min if bound_min is not None else rollup.MAX_SPAN.total_seconds() / 60.0
+    hbs = load_heartbeats()
+    found = []
+    for s8, items in hbs.items():
+        for hb in items:
+            span = (hb["end"] - hb["start"]).total_seconds() / 60.0
+            if span <= bound:
+                continue
+            d = hb["start"].astimezone().strftime("%Y-%m-%d")
+            if date and d != date:
+                continue
+            found.append((d, s8, hb, span))
+    found.sort(key=lambda x: x[2]["start"])
+    if not found:
+        print("No heartbeat over %.0f min%s." % (bound, " on " + date if date else ""))
+        return 0
+
+    entries = []
+    for d, s8, hb, span in found:
+        ev = [e for e in session_events(s8) if hb["start"] <= e[0] <= hb["end"]]
+        print("\n## %s  session %s  %s" % (d, s8, hb["project"]))
+        print("   turn %s -> %s   span %.0f min"
+              % (hb["start"].astimezone().strftime("%H:%M"),
+                 hb["end"].astimezone().strftime("%d %b %H:%M"), span))
+        if len(ev) < 2:
+            print("   transcript: %s -- nothing recoverable; the bound stands on the span alone."
+                  % ("gone" if not ev else "only %d event" % len(ev)))
+            entries.append((d, s8, hb, span, None, None, "no transcript"))
+            continue
+        busy = sum(min((b[0] - a[0]).total_seconds() / 60.0, IDLE_GAP)
+                   for a, b in zip(ev, ev[1:]))
+        gaps = sorted(((b[0] - a[0]).total_seconds() / 60.0, a, b)
+                      for a, b in zip(ev, ev[1:]))
+        hole, before, after = gaps[-1]
+        # The error that matters is the one AT the hole, not the last one anywhere in the
+        # span: a long turn can carry an unrelated error hours away from the stall.
+        err = next((e for e in ev if e[1] and e[0] >= before[0]), None)
+        print("   activity  %.1f min busy across %d events; largest gap %.0f min (%s -> %s)"
+              % (busy, len(ev), hole, before[0].astimezone().strftime("%H:%M"),
+                 after[0].astimezone().strftime("%d %b %H:%M")))
+        print("   before gap: %s" % (before[2][:150] or "(empty)"))
+        print("   after gap : %s" % (after[2][:150] or "(empty)"))
+        if err:
+            print("   ERROR     : %s" % err[2][:200])
+        verdict = ("stall" if hole > bound / 2.0 else "busy")
+        print("   -> looks like a %s. Timesheet counts %.2f h; measured span was %.2f h."
+              % (verdict, bound / 60.0, span / 60.0))
+        entries.append((d, s8, hb, span, busy, hole, err[2][:200] if err else ""))
+    record_stalls(entries, bound)
+    return 0
+
+
+def record_stalls(entries, bound):
+    """Append new findings to ops/time/stalls.md, keyed so a re-run does not duplicate.
+
+    Tracked in git like absence.md: this is captured evidence plus a decision, not derived
+    output -- and it must outlive the transcript it was read from."""
+    # no '|' in the key -- it is rendered inside a markdown table cell
+    key = lambda d, s8, hb: "%s/%s/%s" % (d, s8, hb["start"].strftime("%H:%M:%SZ"))
+    have = ""
+    if os.path.exists(STALLS):
+        with open(STALLS, encoding="utf-8") as f:
+            have = f.read()
+    else:
+        have = ("# Bounded turns\n\nEvery heartbeat that ran past the rollup's bound, with what "
+                "the transcript said\nwas happening inside it. Written by `value.py --stalls` at "
+                "/log, because transcripts\ndo not survive. The timesheet is corrected by hand; "
+                "note the decision in Verdict.\n\n"
+                "| Key | Date | Session | Start | Span h | Busy min | Largest gap min | "
+                "Counted h | Error | Verdict |\n|---|---|---|---|---|---|---|---|---|---|\n")
+    new = []
+    for d, s8, hb, span, busy, hole, err in entries:
+        k = key(d, s8, hb)
+        if k in have:
+            continue
+        new.append("| `%s` | %s | %s | %s | %.2f | %s | %s | %.2f | %s | |"
+                   % (k, d, s8, hb["start"].astimezone().strftime("%H:%M"),
+                      span / 60.0, "%.1f" % busy if busy is not None else "-",
+                      "%.0f" % hole if hole is not None else "-", bound / 60.0,
+                      (err or "-").replace("|", "/")[:120]))
+    if not new:
+        print("\n(stalls.md already has every finding)")
+        return
+    with open(STALLS, "w", encoding="utf-8") as f:
+        f.write(have.rstrip("\n") + "\n" + "\n".join(new) + "\n")
+    print("\nAppended %d finding(s) to %s" % (len(new), STALLS))
+
+
 def main(argv):
     mode = "derive"
     arg = None
@@ -775,6 +941,9 @@ def main(argv):
         elif argv[1] == "--month":
             mode = "month"
             arg = argv[2] if len(argv) > 2 else datetime.date.today().strftime("%Y-%m")
+        elif argv[1] == "--stalls":
+            mode = "stalls"
+            arg = argv[3] if len(argv) > 3 and argv[2] == "--date" else None
         elif argv[1] in ("-h", "--help"):
             print(__doc__)
             return 0
@@ -783,6 +952,9 @@ def main(argv):
         sys.stderr.write("value.py: no transcripts at %s -- cannot derive evidence.\n"
                          % TRANSCRIPTS)
         return 2
+
+    if mode == "stalls":
+        return stalls(arg)
 
     rows = build_turns()
     if not rows:
