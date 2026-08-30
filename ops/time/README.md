@@ -264,10 +264,15 @@ It prints, per bounded turn, the busy minutes, the largest gap, the messages eit
 any error at the gap -- then appends the finding to **`ops/time/stalls.md`**. If the turn really was
 working, correct the timesheet by hand (never the heartbeats) and note it in the `Verdict` column.
 
-**Run it the same day.** The check lives in `value.py` because that is where the transcript
-dependency belongs (section 7), and **transcripts do not survive**: five of the eight bounded turns
-on record have no transcript file left. `stalls.md` is tracked in git for the same reason
-`absence.md` is -- it is captured evidence plus a decision, and it has to outlive its source.
+**Run it at every `/log`, unconditionally** -- not only when a flag appears. It costs ~1.3 s, it is
+idempotent (a finding already in `stalls.md` is skipped), and the window it has to run inside is
+short: Claude Code keeps roughly **30 days** of transcripts (35 files on disk, oldest 2026-07-31),
+so a finding not captured in that window is gone -- which is exactly why the five bounded turns from
+June and July read `no transcript`. A weekly `/log` is safely inside it; a month-end-only pass is not.
+
+The check lives in `value.py` because that is where the transcript dependency belongs (section 7);
+`rollup.py` stays tool-neutral and knows only the span. `stalls.md` is tracked in git for the same
+reason `absence.md` is -- it is captured evidence plus a decision, and it has to outlive its source.
 
 The cap is enforced where hours are **moved** (`--merge`). Measured hours are never moved behind you,
 so at finalize a day over the cap for one customer is **flagged in its own timesheet file** instead --

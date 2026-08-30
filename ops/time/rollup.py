@@ -914,7 +914,11 @@ def finalize(hbs, today):
         rows = rows_for(day_hbs)
         if not rows:
             continue
-        write_daily(date, rows, capped_note(day_hbs) + over_cap_note(rows))
+        capped = capped_note(day_hbs)
+        write_daily(date, rows, capped + over_cap_note(rows))
+        if capped:
+            # also on stdout: the flag must not depend on anyone opening the file
+            print(capped.replace("> ", "  ").strip() + "\n")
         written.append(date)
     return written
 
