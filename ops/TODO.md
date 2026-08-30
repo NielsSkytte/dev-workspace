@@ -37,3 +37,10 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
 - [ ] 2026-08-03 — fix the typo in `ops/TidsregInfo.xlsx`: Kunde reads `Vestforbræding`, missing the n (correct: Vestforbrænding). A CUSTOMER_ALIASES entry in dashboard.py works around it; fixing the sheet makes that line dead
 - [ ] 2026-08-03 — two Projektnr in `ops/TidsregInfo.xlsx` are literally `?` and cannot be entered in F&O: Aeven (4.25 h in July) and Melbye (`6013-?`)
 - [ ] 2026-08-03 — the local memory summarizer asserted a completed action that never happened for the 4th consecutive /log ("Entered internal time for July 2026" on a turn that entered nothing). Revise the model or the summarizer prompt — per-day vetting is no longer catching this early enough
+- [ ] **Time: cap a heartbeat span, and split one that crosses midnight.** A session left open
+      overnight wrote a single 22h13m span (`heartbeats/2026-08-28.jsonl`,
+      2026-08-27T18:54:06Z -> 2026-08-28T17:06:53Z) and `rollup.py:80` buckets by `ts_start`, so the
+      whole thing landed on 08-27 (22.75 h) while 08-28 read as empty. `DAY_CAP = 12.0` did not hold
+      it either - check whether the spill ran. Two fixes: bound an individual span in the capture
+      hook, and attribute a crossing span to each day it covers. Timesheet corrected by hand
+      2026-08-30; the defect is still live. (found 2026-08-30)

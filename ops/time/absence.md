@@ -18,4 +18,5 @@ and ignored for the others. Keep the table sorted by date.
 | Date | Kind | Project | Note |
 |---|---|---|---|
 | 2026-08-26 | vacation | | |
-| 2026-08-27 | vacation | | |
+| 2026-08-27 | vacation | | 0.50 h keyboard time logged anyway; kept on the timesheet |
+| 2026-08-28 | vacation | | |
