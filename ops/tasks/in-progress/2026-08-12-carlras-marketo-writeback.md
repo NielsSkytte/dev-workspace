@@ -106,8 +106,22 @@ schemas being untracked locally, which `5642f32` settled.)*
 - **Raise with Impact:** the incumbent zeroes ~1,650 Marketo leads a day via `coalesce(...,0)`.
 - Missing inputs, both still unsupplied: `lookup_tables.cr_segment` (blocks the five segment flags
   and `Top20PctRevenue`) and `inriver_productdata` (blocks brand fields).
-- Census sync behaviour (Update Only / Update or Create / Mirror) and null handling — the field
-  mapping itself is already recovered from the audit trail.
+- ~~Census sync behaviour and null handling~~ **Answered 2026-08-21** from Impact's screenshots:
+  Behavior = **Update Only**, Key = `Email` → `Email Address`, daily 09:00 GMT+2 = 07:00 UTC. And
+  the field mapping in Census is **exactly** the 26 fields recovered from the audit trail — two
+  independent derivations, no extras either side. `MARKETO_WRITEBACK_GOAL.md` sections 15-16.
+- **Three asks left with Impact** (Benno), none blocking the build:
+  1. **Which integration creates the leads and carries permission?** Census only updates; it never
+     creates. So replacing Census does **not** replace lead creation, and that integration is
+     unnamed. Largest of the three — it is a scope gap, not a detail.
+  2. **What is `Inferred_Country`?** The one mapped source column that appears in none of the four
+     gold `.sql` files we hold, so the June snapshot has drifted.
+  3. Confirm the four unseen mapping rows are the `Order Count Account*` / `Order Count Contact`
+     fields. Near-formality; the alphabetical bracket leaves almost no room.
+- **Hourly sync gains nothing** (Impact asked; they are on the free tier). Every mapped field is
+  day-grain: the two day-count flags and the 365-day window move only at midnight, the date fields
+  carry no time, and the account measures cannot be fresher than the gold layer the sync reads.
+  Same-day purchase signal already reaches Marketo by the separate `purchase_c` order feed.
 - Reproduce or fix the account-grain store-count defect (distinct dates instead of order ids).
 - **Two deliberate divergences from the incumbent that need to be stated decisions, not side
   effects.** Both come from sourcing the grain off the invoice line rather than the order header:
@@ -130,9 +144,11 @@ schemas being untracked locally, which `5642f32` settled.)*
 ## Open with Impact — the questions and the mail that carries them
 
 *(merged 2026-08-17 from `2026-08-10-carlras-marketo-fieldpush-owner` and
-`2026-07-07-carlras-impact-marketo-mail`. Kasper (Impact) is the contact; Simon internally may know
-which side owns the order feed. Deliverable is one `.md` file per `email-outlook-ready`, Danish per
-`writing-voice`.)*
+`2026-07-07-carlras-impact-marketo-mail`. **Benno is the Impact contact** — corrected 2026-08-21;
+Kasper is Carl Ras's own IT director and the earlier note had them swapped. Simon internally may
+know which side owns the order feed. Deliverable is one `.md` file per `email-outlook-ready`,
+Danish per `writing-voice`. **A Danish draft covering the three remaining asks was written
+2026-08-21 in session but never saved or sent** — rewrite from the three items under `## Open`.)*
 
 **Answered — do not re-ask.** The chain is established end to end:
 `AX09 → Impact's Databricks silver_* → gold_census_contacts → Census → Marketo (importLead,
