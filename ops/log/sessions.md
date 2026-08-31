@@ -855,3 +855,76 @@ Chronological record of workspace sessions — what was done, decided, and what'
   genuine vacation and short days — decide the top-up against the value evidence before entering.
   Still open from 2026-08-30: `Fabric-ETL-TEST` (`85553fa2…`) not in `Fabric_Key_Vault_Users`, and
   the `fab` CLI still broken on this machine (`PermissionError: [WinError 5]`).
+
+### Session 2 — Carl Ras: every open task re-measured against DEV, TEST, PROD and the repos
+
+- **Did:** Niels asked for an overview of the Carl Ras datahub work, then for the four "chokepoints"
+  to be checked live, then for the whole task list to be verified — "we've had many sessions open,
+  could be that our current status is not correct."
+  - **Chokepoint sweep (read-only):** Fabric git-status API, Graph `checkMemberGroups`,
+    `az keyvault secret list`, TEST job history, Power BI refresh history. Two of four were already
+    closed — `Landingzone-Code-DEV` synced at `d706f41` (contains `074ea1c`, the 88-table restore)
+    and `Semantic-Model-DEV` synced at `6be70e6` (contains `c14e9d3`, Budget Ledger). The sync queue
+    was one commit, not five.
+  - **Twelve read-only agents, one per task**, each hard-constrained to GET-only APIs, SELECT-only
+    SQL, no `EXEC` of the transform procedures, no Update from git, no deployments, no Marketo API
+    calls. Verdicts: **8 stale-behind, 4 accurate** — work had landed in the service and the record
+    had not followed.
+  - **Wrote the corrections back** into all twelve task files and `CONTEXT.md`; committed `1fbfb0f`
+    (workspace) and `81e237e` (customer node). Nothing changed in Fabric or the customer repos.
+- **Findings that change the picture:**
+  - **PROD has already lost GL history** — `fact.GeneralLedgerTransactions` holds **353 rows,
+    2026-07-01 to 07-31**, frozen from a July rebuild. TEST holds August only (558,529). The
+    current-month window defect is no longer predicted; it has fired.
+  - **DEV's `Warehouse_Curated` diverges from git and Fabric's `git/status` reports it clean.**
+    Three views carry an uncommitted 13-month window (verified `OBJECT_DEFINITION` vs the repo file).
+    **A git-status-based drift gate would miss this** — bears directly on the drift task's item 4.
+  - **Two recorded blockers were already gone.** The Fabric CU quota was raised 16 -> 32 between
+    08-12 and 08-19 (scale-up has succeeded repeatedly since, and runs inline in `PL_MainExecution`),
+    and the Marketo inbound chain completed in both environments on 08-21 (33,315 leads, one row per
+    id). Neither was written back.
+  - **TEST's nightly failed at Raw today**, not at Scale Up — `AX09 table ingest failed`, manual run
+    07:40-09:07. New failure mode. Runs 08-24 to 08-28 were all the Scale-Up cause.
+  - **TEST's schedule was recreated 2026-08-30 owned by `EXT_NSKC`, not the SPN** — a hardening
+    regression that puts the nightly chain back on one person's account.
+  - **Row checks are unwatched and diverging:** 29 expectations (not 28); DEV last ran 08-20 with
+    `SalesInvoiceTransactions` at **-1,871** despite being recorded closed and green since 08-16;
+    TEST runs daily with **six** red today, five of which appear in no task file.
+  - **`Model_OneLake` IS pure Direct Lake** — the "7 import partitions" note was a TMDL misread
+    (calculated tables always serialise as `mode: import`). `Budget Ledger` answers a query at
+    842,590 rows / -517,770,124.91, matching the warehouse exactly.
+  - **TEST is not blocked for Direct Lake** — deploy steps 1-3 are done. What is open is the
+    deployment: DEV's Import `Model` is 42 tables against TEST's 38, last deployed 08-12.
+  - **PROD is far emptier than recorded:** no capacity items, no Marketo items, no `outbound` schema,
+    no BudgetLedger, no `_Full` refresh notebook, a 3-activity `PL_MainExecution` stub, a model that
+    has never refreshed, and a Sales workspace with **zero reports and zero datasets**.
+  - **The AX09 source row was never corrected** — `crcampaignforecast.RecId 5638443880` still holds
+    `FORECASTQTY = 2222222222222222`, unchanged since 08-18.
+- **Decided:**
+  - **A clean Fabric `git/status` is not proof a workspace matches git.** It misses
+    warehouse-internal changes. Build the release gate anyway, but do not trust it as sufficient.
+  - **Verify before trusting an agent's contradiction.** Two agents contradicted measurements taken
+    earlier in the session; both were resolved by re-measuring directly rather than by preferring
+    the newer report. `Fabric_Key_Vault_Users` holds **2** members (`c898431c…` Fabric-ETL-DEV,
+    `fa075892…` Fabric-ETL PROD) — a plain Graph `/members` call returns empty for a guest account
+    and the `microsoft.graph.servicePrincipal` cast is required.
+  - **`ebee979` is a one-file sync that threatens nothing** — it changes only
+    `VL_ConnectionId/valueSets/Test.json`, and `Warehouse_Enriched_AX09` shows `remoteChange: null`.
+    An earlier reading in this session that called the sync unsafe was wrong and is corrected in
+    both `CONTEXT.md` and the drift task.
+- **Tasks:** none created or moved status. Items closed inside existing tasks:
+  `2026-08-19-carlras-landingzone-dev-drift` steps 1-3; `2026-08-19-carlras-ax09-budgetledger-curated`
+  to-dos 1 and 5; `2026-08-17-carlras-curated-data-loss-windows` items 4 and 5;
+  `2026-08-07-carlras-api-source-connector-decision` gate met.
+- **Next:**
+  - **August F&O registration** — 08-31 finalizes on tomorrow's rollup; pull with
+    `python ops/time/rollup.py --month 2026-08 --merge`. Month reads **120.00 h of 142.50 h (84%)**;
+    only 08-24, 08-25 and 08-27 have headroom a `--topup` could use.
+  - **Open judgment calls for Niels:** is `inventtrans`'s ~7.2M duplicate `(INVENTTRANSID,
+    DATAAREAID)` keys a defect or a legitimate one-to-many key; was F64 a goal or a probe; add the
+    five orphan landing-zone tables (63 days stale, `DIRORGANIZATIONDETAIL` 116) to the ingest list
+    or drop them from the landing zone.
+  - **Still blocked on others:** `Fabric-ETL-TEST` (`85553fa2…`) not in `Fabric_Key_Vault_Users`;
+    no Marketo secrets in `KeyVaultDataHub` and no Pingala-owned LaunchPoint service; the Impact mail
+    still unwritten. `Fabric-TEST` is invisible to `EXT_NSKC` and stayed unchecked. `fab` CLI still
+    broken (`PermissionError: [WinError 5]`).
