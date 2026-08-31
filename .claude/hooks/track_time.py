@@ -223,6 +223,19 @@ def now_z():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+IDLE_TIMEOUT_MIN = 15   # matches ops/time/README.md section 3 -- one rule, both levels
+
+
+def _mins_between(a, b):
+    """Minutes from timestamp a to b, or None if either is unparseable."""
+    try:
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        return (datetime.datetime.strptime(b, fmt)
+                - datetime.datetime.strptime(a, fmt)).total_seconds() / 60.0
+    except Exception:
+        return None
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -242,14 +255,35 @@ def main():
         if project is None:
             return  # outside the workspace -> not tracked
         state[sid] = {"start": now_z(), "cwd": cwd,
-                      "project": project, "task": task}
+                      "project": project, "task": task, "last_stop": None}
         save_state(state)
         return
 
     # Stop (or anything else): write the heartbeat for this turn.
     s = state.get(sid) or {}
-    ts_start = s.get("start") or now_z()           # fall back to a point if no submit was seen
     ts_end = now_z()
+    ts_start = s.get("start") or ts_end            # fall back to a point if no submit was seen
+
+    # A Stop can fire WITHOUT a preceding UserPromptSubmit -- a `!`-prefixed bash-input does
+    # exactly this. The stamped start then belongs to some earlier turn, and reusing it invents
+    # every idle minute since. Verified 2026-08-03, session 5bbffdc6: the real turn ended at
+    # 10:24:39 and wrote its own correct heartbeat; a bash-input at 16:03 re-Stopped the session
+    # and wrote a SECOND heartbeat with the same ts_start, spanning 339.8 min, of which the
+    # transcript shows zero activity after 10:27:57. It put 5.5 phantom hours on a customer line.
+    #
+    # A later Stop is only trusted to extend the turn if it lands within the idle timeout of the
+    # previous one -- that is the legitimate case (a turn yields on background work, then
+    # continues). Beyond it the gap was idle by the same rule the rollup applies between turns,
+    # so the heartbeat becomes a point at ts_end and the idle time is discarded, not billed.
+    last = s.get("last_stop")
+    if last:
+        gap = _mins_between(last, ts_end)
+        if gap is None or gap > IDLE_TIMEOUT_MIN:
+            ts_start = ts_end
+    if s:
+        s["last_stop"] = ts_end
+        state[sid] = s
+        save_state(state)
     project = s.get("project")
     task = s.get("task")
     if project is None:                            # no submit seen this session -- resolve now

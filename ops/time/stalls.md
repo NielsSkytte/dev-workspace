@@ -12,5 +12,5 @@ do not survive. The timesheet is corrected by hand; note the decision in Verdict
 | `2026-07-03/145cec04/10:56:38Z` | 2026-07-03 | 145cec04 | 12:56 | 1.11 | - | - | 1.00 | no transcript | |
 | `2026-07-07/ec3422aa/10:34:35Z` | 2026-07-07 | ec3422aa | 12:34 | 1.52 | - | - | 1.00 | no transcript | |
 | `2026-07-23/36359848/07:25:03Z` | 2026-07-23 | 36359848 | 09:25 | 2.20 | - | - | 1.00 | no transcript | |
-| `2026-08-03/5bbffdc6/08:23:46Z` | 2026-08-03 | 5bbffdc6 | 10:23 | 5.66 | 9.3 | 335 | 1.00 | - | |
+| `2026-08-03/5bbffdc6/08:23:46Z` | 2026-08-03 | 5bbffdc6 | 10:23 | 5.66 | 9.3 | 335 | 0.00 | - | **Waiting - duplicate, dropped in full** (2026-08-31). Not a long turn: the same session holds the real turn `10:23:46 -> 10:24:39` (0.9 min), and this record shares its `ts_start`. No transcript event between 10:27:57 and 16:03:22; the duplicate was written when a `!`-bash-input re-Stopped the session at 16:03 with no `UserPromptSubmit` to refresh the start. Timesheet 2026-08-03 corrected 14.25 -> 8.75 h. Root cause fixed in `track_time.py` the same day. |
 | `2026-08-20/45041831/07:10:41Z` | 2026-08-20 | 45041831 | 09:10 | 5.42 | 20.2 | 310 | 1.00 | - | |

@@ -52,6 +52,15 @@ Every turn emits one heartbeat -- a JSON object appended as a line to `heartbeat
 
 Several heartbeats per turn are harmless: they are seconds apart and collapse into one stretch (below).
 
+**A `Stop` can fire with no `UserPromptSubmit` before it** -- a `!`-prefixed bash-input does exactly
+that. The stamped `start` then belongs to an earlier turn, and reusing it invents every idle minute
+since. Found 2026-08-03, session `5bbffdc6`: the real turn ended 10:24:39 and wrote its own correct
+0.9 min heartbeat; a bash-input at 16:03 re-Stopped the session and wrote a **second** heartbeat with
+the *same* `ts_start`, spanning 339.8 min, of which the transcript shows no activity after 10:27:57.
+It put 5.5 phantom hours on a customer line. So `track_time.py` records the previous `Stop` per
+session and only lets a later one extend the turn if it lands **within the 15 min idle timeout**;
+beyond that the heartbeat becomes a point at `ts_end` and the idle time is discarded, not billed.
+
 **By hand:** append a line per turn with the start/end times and the project of the folder you are in.
 
 ## 2. Attribution
