@@ -226,6 +226,41 @@ Grouped as the join actually compares, `inventsumdim` has zero duplicated keys a
   entities. The "curated invoice facts are ~7 weeks behind" thread in `CONTEXT.md` is stale.
 
 ## Log
+2026-08-31 — **VERIFIED; the "CLOSED" claim on `SalesInvoiceTransactions` no longer holds, and TEST
+             carries five failures this task has never mentioned.**
+             - **Count correction: there are 29 rowcheck expectations, not 28.** Every "28" / "25 of
+               28" / "27 of 28" in this file is off by one; 29 `rowcheck/Views/*.sql` files exist and
+               match the live log.
+             - **DEV, last full run 2026-08-20 13:44 (11 days stale), 27/29 pass:**
+               `GeneralLedgerTransactions` +4 (unchanged, view untouched, still not started) and
+               **`SalesInvoiceTransactions` -1,871 — a FAILURE, four days after the 08-16 "green,
+               12,276,137" reading.** It has flipped from overcount to undercount. The view has not
+               changed since `0a7f826`, so if real this is data-driven, not a code regression. DEV
+               needs a fresh row check before this table can be re-closed.
+             - **TEST, run today 08:43-08:44, 23/29 pass — six failures:**
+               `GeneralLedgerTransactions` **+58** (stable every run since 08-19, a different figure
+               from DEV's +4 and never recorded), plus `CustomerAccounts` -253, `Items` -312,
+               `OutputOrders` -14,684, `PickingRoutes` -12,849, `SalesChannel` -2. None of the five
+               appear anywhere in this task. `SalesInvoiceTransactions` and `SalesLineTransactions`
+               are both green in TEST.
+             - **Part 3 unchanged and unshipped.** `rawtablekeymap_ax09` still keys `SQLDICTIONARY`
+               and `DATAAREA` on bare `RECID`, in the repo and in both environments —
+               `NB_Table_PrimaryKeyMap_AX09` line 70 still reads `"COLUMN":"RECID"`. sqldictionary
+               duplicates: DEV **549 keys / 878 surplus rows, byte-identical to 2026-08-14** (DEV's
+               raw layer has been frozen); TEST **903 keys / 1,336 surplus** — so "growing" is true
+               of TEST, not of DEV.
+             - Bounded 5-table audit (part 3 item 3): `dataarea`, `ledgertable` clean;
+               `crreportinggroups` has **improved to 0** duplicate keys from the 12 groups measured
+               08-14, by a raw-data change rather than a fix. `inventtrans` shows ~7.2M duplicate
+               `(INVENTTRANSID, DATAAREAID)` keys — **flagged, not diagnosed**: `INVENTTRANSID` may
+               legitimately be one-to-many in AX, so this needs a decision on its true business key
+               before being treated as the same defect class.
+             - **Part 2 still not done, and its own citation is unverifiable:** the quoted
+               `"range expansion — row-multiplying, mirrored"` comment on
+               `ChartOfAccountToAlternativeChartOfAccount` **does not exist anywhere in the repo
+               today**. Re-establish where it came from before relying on it.
+             - `enriched.DeliveryAddress`: still present and empty in DEV with no view, as recorded;
+               it **does not exist at all in TEST**.
 2026-08-14 — created after the DEV deployment of `5ce780f` and the first `RowCheckLog` run.
 2026-08-14 — started (session task)
 2026-08-14 — diagnosed SalesInvoiceTransactions in full and SalesLineTransactions to 87%;

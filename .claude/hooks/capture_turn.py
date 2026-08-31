@@ -108,6 +108,11 @@ _EXTRA_OK = set(u"\u2013\u2014\u2018\u2019\u201c\u201d\u2026\u00a0")
 _INJECTION_MARKERS = (
     "ignore previous instructions", "ignore all previous", "disregard previous",
     "<system-reminder", "<command-name", "you are now", "new instructions:",
+    # A background-agent completion arrives as a User turn carrying raw harness markup.
+    # Sentinel found 8 such records in daily/2026-08-31.md, each truncated mid-element so
+    # <task-notification> and <note> open and never close - unbalanced XML that can parse as
+    # harness markup when the snapshot re-injects it, and each embedding a session temp path.
+    "<task-notification", "<local-command-stdout",
 )
 
 

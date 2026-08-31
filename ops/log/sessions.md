@@ -800,3 +800,58 @@ Chronological record of workspace sessions — what was done, decided, and what'
   Carl Ras adds `85553fa2…` to `Fabric_Key_Vault_Users`; then verify on the 04:30 run. Also
   unresolved: the `fab` CLI is broken on this machine (`PermissionError: [WinError 5]` when
   `ops/bin/tenant_shim.py` spawns `fab.exe`) — worked around with `az` tokens + curl.
+
+## 2026-08-31
+
+- **Did:** Audited the time rollup after the 2026-08-27 incident and found **four distinct
+  defects**, three of them new, each with a different mechanism:
+  1. **Unbounded heartbeat span.** One heartbeat is one turn, and `Stop` does not always fire at the
+     end of one. Every span over 60 min on record (8 of 1,422) held at most 20 min of transcript
+     activity around a 5-13 h hole. `rollup.py` now bounds a heartbeat at `MAX_SPAN = 60 min`.
+  2. **Bucketing by `ts_start` only.** A span crossing local midnight landed wholly on its start
+     date — 08-27 finalized at 22.75 h while 08-28 read empty. `split_local_days()` now attributes
+     an interval to every local date it covers. (`README.md` had claimed this already happened.)
+  3. **A `Stop` with no `UserPromptSubmit` inherited a stale turn start.** A `!`-prefixed bash-input
+     fires `Stop` alone, so `track_time.py` reused the `start` from an earlier turn. 2026-08-03,
+     session `5bbffdc6`: two heartbeats with the identical `ts_start`, the real turn (0.9 min) and a
+     duplicate ending 5.5 h later. The hook now records the previous `Stop` per session and only
+     lets a later one extend the turn within the 15 min idle timeout.
+  4. **An unanswered `AskUserQuestion` was billed.** The turn stays open until the user answers.
+     2026-08-20, session `45041831`: question at 09:15:55, answered at 14:25:44 — 310 of a 325 min
+     heartbeat. `track_time.py` is now registered on `PreToolUse`/`PostToolUse` with matcher
+     `AskUserQuestion`, and a turn is written as its **active segments**, one heartbeat each.
+  Also: `DAY_CAP = 12.0` never ran at finalize (it only bound the `--merge` path), so 22.75 h was
+  written silently. A day over the cap, and every bounded turn, is now named in its own timesheet
+  file and printed. New `value.py --stalls` mode reports the busy minutes, the largest gap and the
+  error text at the gap for every bounded turn, and appends the finding to `ops/time/stalls.md`
+  (tracked in git, backfilled with all 8).
+- **Corrected (none yet entered in F&O):** `2026-08-03` 14.25 → **8.75 h** (MarketoImport 6.75 →
+  1.25; duplicate dropped in full, since the real turn's own heartbeat covers the work).
+  `2026-08-20` 12.25 → **7.25 h** (internal `Dev` line 5.75 → 0.75; all four Carl-Ras lines
+  unchanged, reconstructed from the transcript's two real activity windows). Verdicts written into
+  `stalls.md`. Net effect of the rules across all history: **−34.00 h** on six dates.
+- **Decided:**
+  - **Both rollup corrections are derive-side, not capture-side** — the heartbeat JSONL stays the
+    immutable record and past days heal on any re-read. The capture hook is only fixed where it
+    writes something *false* (defects 3 and 4), never to make raw data smaller.
+  - **The bound never truncates silently.** It cannot tell a stalled turn from a genuinely long one:
+    a long turn normally writes a single heartbeat (only 30 of 1,391 turns ever emitted a second
+    `Stop`, and those share the same `ts_start`). So it names the turn and the decision is the
+    review gate's.
+  - **Stall evidence is captured at every `/log`, unconditionally.** Claude Code keeps ~30 days of
+    transcripts (35 files, oldest 2026-07-31); a finding not captured inside that window is gone,
+    which is why the five bounded turns from June/July read `no transcript`. Weekly `/log` is inside
+    the window; a month-end-only pass is not.
+  - **The transcript dependency stays in `value.py`** (README section 7); `rollup.py` remains
+    tool-neutral and knows only the span (Guardrail 7).
+  - **2026-08-27 was worked, not vacation** — its `absence.md` row removed; the day keeps its
+    measured 0.50 h and returns to the month target.
+- **Tasks:** none created or moved. TODO item "Time: cap a heartbeat span, and split one that
+  crosses midnight" closed.
+- **Next:** **F&O registration for August**, tomorrow — 08-31 is still accruing and only finalizes on
+  tomorrow's rollup. Pull it with `python ops/time/rollup.py --month 2026-08 --merge`. The month now
+  reads **119.75 h of 142.50 h (84%)**, short 18.25 h after the corrections and after 08-27 rejoined
+  the target; only 08-24, 08-25 and 08-27 have headroom a `--topup` could use, so most of the gap is
+  genuine vacation and short days — decide the top-up against the value evidence before entering.
+  Still open from 2026-08-30: `Fabric-ETL-TEST` (`85553fa2…`) not in `Fabric_Key_Vault_Users`, and
+  the `fab` CLI still broken on this machine (`PermissionError: [WinError 5]`).

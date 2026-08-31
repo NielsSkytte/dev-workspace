@@ -109,6 +109,41 @@ dims. Deploying the model first would fail on framing.
 - Related: `2026-08-18-carlras-atomic-ctas-merge` (the drop-create pattern behind the 25 s windows).
 
 ## Log
+- 2026-08-31 — **VERIFIED: TEST is no longer blocked, and the "not pure Direct Lake" contradiction
+  is settled in this task's favour.**
+  - **`Model_OneLake` IS pure Direct Lake.** 38 tables: 28 `directLake`, 7 `mode: import`, 3
+    calculation groups — and all 7 "import" tables are `partition … = calculated` with DAX sources
+    (field parameters, measure holders, one `GENERATESERIES`). TMDL always serialises a calculated
+    table as `mode: import`; `expressions.tmdl` carries exactly **one** data source,
+    `AzureStorage.DataLake` on Fabric-ETL-DEV `Warehouse_Curated`, and no `Sql.Database` anywhere.
+    The claim in `2026-08-19-carlras-ax09-budgetledger-curated` that 7 partitions are still Import
+    is a grep misread. Reword our own "no Import tables" to "no SQL-sourced tables".
+  - Shape has grown: **177 measures** (as recorded), **60 relationships** (not 55 — the +5 are Budget
+    Ledger's), 38 tables. `Budget Ledger` is present, `mode: directLake`, and **answers a query**:
+    842,590 rows, ΣAmount Mst -517,770,124.91, matching the warehouse fact exactly.
+  - **Deploy steps 1-3 are DONE, so "TEST is not ready" is stale.** Measured in TEST:
+    `viewdimtransform.Date.MonthSelector` and `viewdimtransform.AlternativeChartOfAccount.Linje`
+    both present on the views **and** the tables; `dim.Date` 5,114 and
+    `dim.AlternativeChartOfAccount` 1,320 in TEST, identical to DEV and to their views. And
+    Semantic-Model-TEST's identity already holds Contributor on Fabric-ETL-TEST.
+  - **Step 5 is the real open one, and wider than written:** DEV's Import `Model` now has **42
+    tables against TEST's 38** (Budget Ledger + the PnL measures landed in DEV on 08-21/08-31). Last
+    DEV->TEST deployment was 2026-08-12. Both models are behind, not just `Model_OneLake`.
+  - **The `Open` git blocker is resolved** — Semantic-Model-DEV reports `workspaceHead ==
+    remoteCommitHash == 6be70e6`, 0 changes, `ConnectedAndInitialized`, last synced 2026-08-27. The
+    workspace is not sitting on uncommitted model changes.
+  - `Model_OneLake` has never been paired to TEST (`targetItemId: null`); TEST holds `Model` plus
+    `Model_Optimized`, the latter created by `fab import` ("Imported from fab") and last refreshed
+    2026-08-05, 26 days stale.
+  - The Import path still works, intermittently: DEV `Model` last Completed 2026-08-21 16:32-16:40
+    after two same-day OOM failures; TEST `Model` refreshed **Completed three times today**, last
+    09:06:07. So "the Import model can no longer refresh" overstates it — it is flaky, not dead.
+  - Step 4 (the ADLS/OneLake data-source rule) remains **unverifiable** — deployment rules have no
+    read API. Indirect evidence says the SQL rule for the Import model exists and fires: DEV's and
+    TEST's `Model` carry different hardcoded server hostnames.
+  - Cross-check for "Also to do" 1: `Model_OneLake`'s last framing activity was 2026-08-21 11:09 —
+    two `DirectLake_TableNotFound` failures then a completed framing 6 s later, which is exactly the
+    post-rebuild race that item exists to fix.
 - 2026-08-18 — created. Model built, verified and benchmarked in DEV; reports cloned and rebound.
 - 2026-08-19 — model taken to **pure Direct Lake** and re-verified end to end. Two traps found and
   fixed on the way: a Fabric Warehouse CTAS rejects `nvarchar` (so `NCHAR(8203)` needs a `VARCHAR`

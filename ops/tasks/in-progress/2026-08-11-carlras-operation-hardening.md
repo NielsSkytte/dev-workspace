@@ -134,3 +134,30 @@ classes will keep recurring until they are closed deliberately.
   after the 08-27 entry above and recorded nowhere until now.
   **So the open cost is refresh headroom, not lost data.** Reprioritise accordingly. Also noted: a
   TEST run started 2026-08-31 07:40 UTC, off the 04:30 schedule, trigger not established.
+- 2026-08-31 (second pass) — **corrections to the entry above, all measured.**
+  - **The 07:40 run FAILED at Raw, not at Scale Up.** `invokeType: Manual`, ended 09:07:05,
+    `errorCode: "Operation on target AX09 failed: … AX09 table ingest failed"` /
+    `"Operation on target Fail Raw failed: Raw load failed"`. **This is a new failure mode** — a
+    stage that produces data — and it is distinct from the Scale-Up thread. Runs 08-24 through 08-28
+    were all the Scale-Up/connection failure, so this is new today, not a week-long pattern. Needs
+    its own investigation.
+  - **DEV was never affected by the empty `CON-WI-Notebook`.** DEV has no Dev value-set override, so
+    it resolves the base default `26b6988e-f53d-440b-852b-97c384cd5125` — a live connection, last
+    credential use 2026-08-21. Only TEST's value set carries the empty string. Drop "DEV and TEST
+    both still read empty".
+  - **TEST's schedule is user-owned, not SPN-owned.** Schedule `16fb5ff0…`, enabled, Mon-Fri 06:30,
+    owner **EXT_NSKC@carl-ras.dk**, `createdDateTime` **2026-08-30** — recreated the day before this
+    check. Whatever SPN-owned schedule existed is gone. **This is a hardening regression**: the chain
+    now depends on one person's account, which is the condition this task exists to remove.
+  - **`PL_Update_SemanticModel` already points at `NB_Refresh_SemanticModel_Full` in DEV and TEST**
+    (DEV notebookId `7b1df931…`, TEST `c70deb3f…`). The "still points at the old notebook
+    `33e45f7b…`" line is **PROD-only** — PROD has no `_Full` notebook item at all.
+  - DEV completed a full run 2026-08-20 12:19-14:00 and has not run since; its schedule is disabled
+    and owned by EXT_NSKC. PROD's schedule is disabled and owned by **ext_sigr@carl-ras.dk**
+    (Simon); PROD's model has **never** refreshed (empty refresh history); PROD's `VL_ConnectionId`
+    lacks `CON-WI-Notebook` and the Marketo variables entirely.
+  - **Correction to my own earlier note:** `Fabric_Key_Vault_Users` holds **2 members, not 0** —
+    `c898431c-f141-4fe3-9a7b-3031618956b6` (Fabric-ETL-DEV) and
+    `fa075892-6394-415c-b0a9-a25105e2f1a8` (Fabric-ETL / PROD). A plain `/members` call returns
+    empty for a guest account; the `microsoft.graph.servicePrincipal` cast reveals them. TEST is
+    still absent, so step (2) stands unchanged.

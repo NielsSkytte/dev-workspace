@@ -320,6 +320,10 @@ finalizes days):
 robocopy "C:\Dev\ops\time" "%OneDrive%\Backup\Dev-ops-time" /E /R:2 /W:5 /NP
 ```
 
+**From Git Bash, prefix it with `MSYS_NO_PATHCONV=1`** -- MSYS rewrites the `/E` switch into a path
+(`Invalid Parameter #3 : "E:/"`, exit 16). Found 2026-08-31 when the `/log` backup step failed
+silently under `>/dev/null`; check the exit code, do not assume.
+
 Robocopy exit codes 0-7 are success. `/E` copies without deleting on the target (a deleted local
 file survives in the mirror -- fine for a backup). **By hand / other LLM:** run the same command,
 or simply copy the `ops/time/` folder to the OneDrive path.

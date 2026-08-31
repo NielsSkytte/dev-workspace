@@ -89,6 +89,44 @@ SELECT YEAR(TransDate) y, COUNT(*) FROM enriched.GeneralLedgerTransactions GROUP
 ```
 
 ## Log
+- 2026-08-31 — **VERIFIED, and PROD is now the materialised proof of the defect.**
+  | env | `fact.GeneralLedgerTransactions` | live window |
+  |---|---|---|
+  | DEV | 2025-08-01 -> 2026-09-01, **8,681,082** rows | `DATEADD(MONTH,-12,…)` — hand-patched, **uncommitted** |
+  | TEST | 2026-08-01 -> 2026-09-01, **558,529** rows | current month, no offset (the bug) |
+  | PROD | **2026-07-01 -> 2026-07-31, 353 rows** | the bug, frozen from a July rebuild |
+  - **PROD already lost its history.** It holds July only because that is when it last rebuilt.
+    Today is still 08-31 so the boundary has not turned in TEST yet — PROD shows what happens when
+    it does.
+  - Enriched is intact everywhere: 113.5M rows, 2001-01-23 -> 2026-09-01 in DEV and TEST
+    (PROD enriched is itself a month behind at 2026-07-31, 112,493,667).
+  - **DEV diverged from git on 2026-08-21** — GL, `SalesTransactions` and `InventoryTransactions`
+    were all hand-widened to a 13-month rolling window directly in the service, uncommitted. Verified
+    by reading `OBJECT_DEFINITION` against the repo file: live
+    `TransDate >= DATEADD(MONTH, -12, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))` vs repo
+    `TransDate >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)`.
+  - **The drift is invisible to Fabric's own git status.** `workspaces/{id}/git/status` on
+    Fabric-ETL-DEV lists only `Warehouse_Enriched_AX09` and `VL_ConnectionId` —
+    `Warehouse_Curated` is reported clean while its views demonstrably differ from git. **A
+    git-status-based drift gate would not catch this** (bears directly on
+    `2026-08-19-carlras-landingzone-dev-drift` item 4).
+  - DEV's GL view has also **lost its `-- Auto Generated` header**, replaced by a raw `CREATE VIEW`,
+    so the usual drift marker is gone on that object.
+  - The pending `ebee979` sync does **not** touch `Warehouse_Curated` (verified: that commit changes
+    one file, `VL_ConnectionId/valueSets/Test.json`). The patch survives this sync by luck; any
+    future operation that re-imports the curated warehouse reverts it silently.
+  - **Item 4 CLOSED, verified not inferred:** no second window exists in the model. `Model` (Import)
+    pulls `fact.GeneralLedgerTransactions` through a bare `Sql.Database(...)` with no filter step,
+    and `Model_OneLake` reads the fact entity directly. Curated's window is exactly what reaches
+    reports.
+  - **Item 5 CLOSED:** no `rowcheck` schema or equivalent in `Warehouse_Curated`. Nothing compares
+    Curated against Enriched.
+  - **Item 3 additions** — two windows never enumerated: `viewdimtransform.SalesOrder`
+    (`PIN_CreatedDateTime >= YEAR(GETDATE())-5`) and `viewbridgetransform.SalesToCampaigns`
+    (both date columns `>= YEAR(GETDATE())-5`). `viewdimtransform.Date` carries a calendar span
+    (-12/+2 years), not a data-loss window.
+  - **Item 1 still open.** The 13-month figure was applied ad hoc in DEV; it is not a confirmed
+    business requirement and does not close the question.
 - 2026-08-17 — created from Niels's observation; measured both layers in DEV and located the
   window in `viewfacttransform.GeneralLedgerTransactions`. Nothing changed yet.
 - 2026-08-19 — **time attribution note.** Session `b436423e` carried this task's tag from 08-17 to

@@ -112,6 +112,30 @@ to restore the rule — Update from git — is what would destroy the running co
   the `sqlReaderQuery` replaced with PROD's running definition verbatim, 1 → 88 active tables, one
   line changed, CRLF and the `logicalId` notebook reference preserved. Git is now the truth.
   Remaining: Update from git into `Landingzone-Code-DEV`, taking the incoming side.
+- 2026-08-31 (second pass) — **two corrections and one finding that changes item 4's design.**
+  - **My "an Update from git would discard `Warehouse_Enriched_AX09`" was WRONG.** That item shows
+    `workspaceChange: Modified, remoteChange: null, conflictType: None`, and `ebee979` changes exactly
+    one file (`VL_ConnectionId/valueSets/Test.json`). The pending sync does not touch the warehouse.
+    It still needs its own commit — but it is not at risk from the pull, and the pull need not wait
+    for it.
+  - **Four-way table count now agrees exactly: 88 everywhere** — repo (`d706f41`), DEV, TEST and
+    PROD, with `LEDGERBUDGET` present in all four and all six pairwise name-set diffs empty. Items 1
+    and 2 close for good. `PL_Ingest_AX09_Metadata` is in the repo and in DEV, absent in TEST and
+    PROD (not yet promoted, not a defect) — which makes the customer-node `CLAUDE.md` line calling
+    it "in no repo we hold" stale.
+  - **Item 4 finding — a git-status gate would NOT be sufficient.** `Warehouse_Curated` in
+    Fabric-ETL-DEV reports **clean** in `git/status` while three of its views demonstrably differ
+    from git (the 13-month GL/Sales/Inventory hand-patch, verified by `OBJECT_DEFINITION` vs the repo
+    file — see `2026-08-17-carlras-curated-data-loss-windows`). So Fabric's own drift signal misses
+    warehouse-internal changes. Build the gate, but do not treat a clean `git/status` as proof a
+    workspace matches git.
+  - **Sweep completed:** Landingzone-Code-DEV clean; Semantic-Model-DEV clean (`6be70e64`); Sales-DEV
+    clean (`e333a817`); Fabric-ETL-DEV two items as above. **`Fabric-TEST` is not visible to
+    `EXT_NSKC@carl-ras.dk` at all** — an access gap, not an API error, so that repo stays unchecked.
+  - **Item 5 confirmed:** all five orphan tables still in the landing zone, still absent from the
+    88-table list, still ingested nightly by the RECID rule. Staleness today: 63 days for the three
+    ledger tables and `WMSBILLOFLADING`, **116 days** for `DIRORGANIZATIONDETAIL`. Raw serves them as
+    current. Needs your call: add to the list, or drop from the landing zone.
 - 2026-08-31 — **verified closed for `Landingzone-Code-DEV`.** Fabric git-status API: synced at
   `d706f41`, 0 changes, and `074ea1c` is an ancestor — the 88-table list is live in the workspace and
   git is the truth. `Semantic-Model-DEV` also clean (0 changes). Step 3's `PL_ScaleProcess_SP` is

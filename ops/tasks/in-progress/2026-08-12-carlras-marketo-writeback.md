@@ -214,6 +214,34 @@ ben+carlras@impact.dk, ~07:10 UTC daily)`.
 segmentation just starts targeting stale numbers.
 
 ## Log
+- 2026-08-31 (second pass) — **CORRECTION to the entry below: Next items 1-3 are DONE, and have
+  been since 2026-08-21.** The earlier entry's "nothing has moved" was scoped to the Key Vault, the
+  mail and the uncommitted push, and must not be read as covering the inbound chain.
+  - **#1 DONE (DEV):** `PL_Ingest_Lakehouse_Raw_Marketo` Completed 2026-08-21 08:23:37-08:32:03
+    after three failures on 08-20. `Lakehouse_Raw_Marketo.dbo.leads` = **33,315 rows = 33,315
+    distinct id = 33,315 current** — the dedupe fix (`a106aec`) works.
+  - **#2 DONE (DEV):** `PL_Transform_Enriched_Marketo` Completed 2026-08-21 08:41:20-08:43:24.
+    `enriched.Leads` 33,315 (one row per id), `enriched.Activities` 8,032,575.
+  - **#3 DONE (TEST):** `NB_Ingest_IngestChangedRecords` and `PL_Ingest_Lakehouse_Raw_Marketo` are
+    byte-identical to DEV/repo with `prep_dedupeByKeyOrderBy` wired; TEST ingest Completed
+    2026-08-21 08:51-08:59, same 33,315 figures. **Strike "blocked, fix ready and unproven."**
+  - **TEST's Marketo-specific failures stopped after 08-21.** The daily failures from 08-23 are the
+    `VL_ConnectionId` notebook-connection cause (`ebee979`), and today's is an AX09 raw ingest
+    failure. The "it will fail every morning until deployed" framing is stale for Marketo.
+  - **`outbound.Marketo_Lead` exists in TEST too** — 219,393 rows, 25 columns, and its view checksum
+    matches DEV, so TEST runs current GEN-010 logic. DEV holds 218,631. The note that TEST "may not
+    have it at all" is wrong.
+  - **#4 OPEN, and narrower than written:** TEST's `PL_MainExecution` schedule is enabled, but the
+    upstream `PL_Ingest_Marketo` in `Landingzone-Code-DEV` has its daily schedule **disabled** (last
+    success 2026-08-20 12:46:56, which is exactly the `_lz_ingested_at_utc` ceiling in both
+    environments). So a daily run would reprocess an unchanged snapshot — no fresh Marketo data is
+    landing anywhere.
+  - **#5 and #6 OPEN, confirmed:** `NB_Outbound_Marketo` / `PL_Outbound_Marketo` exist in neither
+    DEV nor TEST as workspace items, and no `Marketo_Lead_Delta` or summary object exists.
+  - **PROD confirmed bare:** zero items named Marketo, and `Warehouse_Curated` has no `outbound`
+    schema at all — the outbound layer as a whole has never reached PROD.
+  - **Unexplained:** TEST's `outbound.Marketo_Lead` is populated on current logic but
+    `PL_Transform_Curated_Outbound` has **no job history in TEST**. Provenance not established.
 - 2026-08-31 — **state verified, nothing has moved; this task now holds the project's only
   no-workaround blocker.** Measured read-only: `KeyVaultDataHub` holds four secrets
   (`Datahub-Scale-SP-ID`, `Datahub-Scale-SP-Secret`, `DataHubServicePrincipal`,

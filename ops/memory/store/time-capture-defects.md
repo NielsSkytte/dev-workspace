@@ -29,8 +29,13 @@ boundaries in *both* directions.
 **Fix used in `value.py`:** take turn boundaries from the transcript, **intersected with** the
 heartbeat. The transcript ends a turn whose `Stop` never fired; the heartbeat bounds a turn whose
 segmentation broke on a resumed session (an unbounded transcript walk produced a 3,137-minute
-"turn"). Neither source alone is sufficient. `rollup.py` still uses raw heartbeats - **the live
-timesheet still carries this defect.**
+"turn"). Neither source alone is sufficient.
+
+> **Superseded 2026-08-31 for `rollup.py`.** This record said "`rollup.py` still uses raw heartbeats
+> - the live timesheet still carries this defect." It no longer does: `rollup.py` bounds a heartbeat
+> at 60 min and splits it at local midnight, and two further capture defects were found and fixed
+> (a `!`-bash-input `Stop` inheriting a stale turn start, and an unanswered `AskUserQuestion`).
+> See `time-bounded-turns-and-stall-evidence`.
 
 **2. Intra-turn dead time is invisible to the between-turn idle rule.** On 2026-07-23, session
 `36359848`, `customers/Carl-Ras/fabric`: a **131.3-minute** turn containing **8.8 minutes** of

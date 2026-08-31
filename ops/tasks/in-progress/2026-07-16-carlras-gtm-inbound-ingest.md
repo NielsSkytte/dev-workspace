@@ -84,6 +84,28 @@ through `notebookutils.data.connect_to_artifact` is undocumented and unproven
 (`design/MARKETO_INGEST_DESIGN.md` §5, open item 2).
 
 ## Log
+- 2026-08-31 — **VERIFIED: half of Part 2's "missing" list was closed on 2026-08-11 and never
+  written back**, by `Fabric-ETL` commits `f3be10b` + `44e6b33` ("GTM Raw: give the stream a
+  pipeline and register it in PL_Execute_Raw").
+  - **Now present in DEV and TEST:** `PL_Ingest_Lakehouse_Raw_GTM` (DEV `8beb2cc8…`, TEST
+    `2fb182f1…`) and a GTM `ExecutePipeline` activity inside `PL_Execute_Raw` pointing at it.
+  - **The claim "`Warehouse_Enriched_GTM` exists in git but NOT in the workspace" is WRONG** — it is
+    in DEV (`3c95ab07…`) and TEST (`8da81f42…`), absent only in PROD.
+  - **Still genuinely missing, as recorded:** `PL_Transform_Enriched_GTM`, the `PL_Execute_Enriched`
+    entry, `NB_Table_PrimaryKeyMap_GTM`, and any GTM name in `VL_DatastoreId` / `VL_ConnectionId`.
+  - **The Part 2 decision was made, not left open:** GTM kept its bespoke polars notebook and got a
+    pipeline wrapper. Record it as decided.
+  - **`enriched.Events` does not exist in either environment.** `Warehouse_Enriched_GTM` holds only
+    `viewtransform.Events` — no CTAS has run, because there is no `PL_Transform_Enriched_GTM`. The
+    view returns 181,655,407 rows in DEV and 8,919,635 in TEST.
+  - **New live gap: DEV's Raw GTM is 11 days stale.** `Lakehouse_Raw_GTM` max `raw_processed_at_utc`
+    = 2026-08-20 12:25:50, ~3.1M events behind the landing zone, because DEV's `PL_MainExecution`
+    schedule is disabled and nothing has run it since. TEST's is current (2026-08-31 07:46:45).
+  - Part 1 is healthy: `PL_Ingest_GTM` hourly, enabled, SPN-owned, 100/100 sampled runs Completed,
+    latest 2026-08-31 09:10; `Lakehouse_Landingzone_GTM.dbo.events` = 337,599,587 rows, current to
+    07:11 today.
+  - Part 3 confirmed not started: no `NB_Generate_ViewTransform_GTM`, no `gtm_columns`, no
+    `rawtablekeymap_gtm`.
 - 2026-07-16 — created + started (session task); scoped to the LZ ingest first
 - 2026-07-27 — LZ ingest DONE and live: notebook + hourly pipeline in Landingzone-ETL/GTM (green), full backfill 2024-03→today verified exact (324,355,033 events, zero gaps/dups). Remaining in task scope: Raw layer (03 - Raw\GTM in Fabric-ETL), WI/SPN connection swap. Details in datahub/CONTEXT.md.
 - 2026-07-28 — Medallion scaffold started (goal: DirectLake model + hourly-freshness PBI report). Decisions: Raw=Python Lakehouse (full history); Enriched=Warehouse per house standard; Curated=shared Warehouse_Curated + GTM fact/dims; fact windowed to **13 months** (F16 DirectLake guardrail = 300M rows/table, ~155M at 13mo); DirectLake model (not import, unlike Atomic builds). BUILT: `Lakehouse_Raw_GTM` + `NB_Raw_GTM` (flatten LZ dbo.events→typed events, incremental on sequence_number) — pushed to Fabric-ETL main, smoke-tested green (1.03M rows, flatten verified). `Warehouse_Enriched_GTM` created; `viewtransform.Events` view + `transform.sp_CreateTableAsSelect` built via direct T-SQL (pyodbc+token). 14-month Raw load (full_reload, backfill_from=2025-06-01) running server-side at wrap. Folder bug found+fixed: fab mkdir creates at workspace root; moved LH→03-Raw/GTM, WH→02-Enriched/GTM via REST API; prevention noted in pingala-fabric skill. NEXT: materialize enriched.Events (EXEC sp after load done) → Curated fact/dims → DirectLake Model_GTM → freshness report; commit Enriched+Curated to git.

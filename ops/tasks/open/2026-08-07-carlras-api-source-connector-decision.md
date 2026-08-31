@@ -48,4 +48,27 @@ Do not start until the Marketo chain has run end to end — the whole point is t
 something proven, not from a design.
 
 ## Log
+- 2026-08-31 — **VERIFIED: the gate is met.** The Marketo chain ran end to end —
+  `PL_Ingest_Marketo` (LZ) Completed 2026-08-20 12:46-12:51, `PL_Ingest_Lakehouse_Raw_Marketo`
+  Completed 2026-08-21 08:23-08:32, `PL_Transform_Enriched_Marketo` Completed 08:41-08:43, each
+  starting after the previous stage succeeded. Nothing in the chain has run since 08-21, and the
+  Marketo daily schedule is still disabled — so it is **proven once by hand, not proven as a
+  repeatable schedule.**
+  - **The three-source table is still accurate.** CVR: ES scroll paging, full overwrite, no
+    watermark, and **still has no pipeline at all** — only bare notebooks, zero job history. GTM:
+    hourly, enabled, still on its bespoke polars notebook and its own `sequence_number` watermark,
+    **not** moved to the AutoLoader shell. Marketo: daily, still disabled.
+  - **No fourth API source exists.** Enumerated both DEV workspaces — only AX09, CVR, GTM, Marketo.
+  - **Correction to the §3.3 framing:** the *landing contract* has already generalised on its own.
+    `Lakehouse_Util` carries `rawtablekeymap_{ax09,cvr,marketo}` and `AutoLoader_{AX09,CVR,Marketo}`
+    on one uniform naming pattern. What is genuinely Marketo-only is *catalogue* metadata —
+    `marketo_entities`, `marketo_columns`, `marketo_fieldpush_reference` — needed because Marketo's
+    API surface is dynamic where AX09 and CVR have fixed shapes. That is evidence **for** the task's
+    own hypothesis: the landing contract generalises, the extraction does not.
+  - **Assessment, not measurement:** the decision is ripe for the landing-contract half only. Full
+    connector scope still waits on GTM converging onto the shared Raw shell and on Marketo running
+    unattended at least once. Niels decides.
+  - **Unresolved:** no evidence found in these two repos of the separate metadata-driven Atomic
+    ingest effort said to be underway elsewhere. That is a search-scope gap, not proof of absence —
+    and if it lands it could make this decision moot. Worth a direct ask before committing.
 - 2026-08-07 — created (handoff from the Marketo ingest build)
