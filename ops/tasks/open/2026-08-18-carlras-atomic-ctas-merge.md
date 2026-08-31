@@ -73,4 +73,25 @@ the drop-create, and nothing else.
 - Related: `2026-08-18-carlras-directlake-conversion`.
 
 ## Log
+- 2026-08-31 — **VERIFIED ACCURATE.** All five procedures still drop-then-create, byte-identical to
+  the repo, in the live warehouses: `transform.sp_CreateTableAsSelect`,
+  `facttransform.sp_CreateFactTableAsSelect`, `dimtransform.sp_CreateDimTableAsSelect`,
+  `bridgetransform.sp_CreateBridgeTableAsSelect`, `outboundtransform.sp_CreateOutboundTableAsSelect`.
+  No MERGE or append anywhere. `blocked_by` still holds.
+  - View count is **30** today, not ~29 (`viewfacttransform` 9, `viewdimtransform` 17,
+    `viewbridgetransform` 3, `viewoutboundtransform` 1) — the +1 is `fact.BudgetLedger`.
+  - **The trigger condition has technically fired**, twice, by our own hands: a Completed
+    `PL_MainExecution` in DEV 2026-08-20 12:19-14:00 UTC (14:19-16:00 CEST) and two in TEST on
+    2026-08-05 during working hours. All `invokeType: Manual`, none from the nightly schedule, and
+    neither environment carries live report traffic. So the letter of "rebuilt during working hours"
+    is met while the spirit — production load hitting a rebuild window — is not.
+  - **Direct Lake is still not committed to**, so `blocked_by` is correct: `Model_OneLake` exists
+    only in DEV; Sales-DEV's five production-named reports remain bound to the Import `Model` with
+    only the five `[OneLake]` clones on Direct Lake; Sales-TEST has no Direct Lake reports; and the
+    **Sales PROD workspace holds zero reports and zero datasets**.
+  - **Scope correction:** the sibling claim that `dim.Date` / `dim.AlternativeChartOfAccount`
+    "rebuild EMPTY" is **not reproducible** — both are populated and match their views in DEV and
+    TEST. That emptying is tied to `Update from git` / DacFx warehouse rebuilds, a different
+    mechanism from the routine drop-create examined here. It belongs on
+    `2026-08-19-carlras-ax09-budgetledger-curated` to-do 4, not on this task.
 - 2026-08-18 — created from the drop-create test during the Direct Lake trial.

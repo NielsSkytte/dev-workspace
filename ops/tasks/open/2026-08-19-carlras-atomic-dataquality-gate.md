@@ -100,4 +100,26 @@ not the answer here either. Notification is part of the feature, not a follow-up
   `customers/Carl-Ras/datahub/design/ATOMIC_GENERATOR_CHANGES.md`.
 
 ## Log
+- 2026-08-31 — **VERIFIED ACCURATE; premises hold and the evidence for them got stronger.** Nothing
+  described here has been built: no reject/quarantine schema in `Warehouse_Enriched_AX09` or
+  `Warehouse_Curated` in either environment, no rule table among `Lakehouse_Util`'s 26 tables, and no
+  `WebActivity`/Office365/Teams activity in any of the seven transform pipelines.
+  `transform.sp_RowCheck` is live-confirmed **logging only** — the `THROW 50001` block exists in the
+  header comment, not in the body.
+  - **"A log nobody watches" is now measurable.** DEV's row check has not run since **2026-08-21**
+    (11 days) with two failures outstanding the whole time — `GeneralLedgerTransactions` +4 and
+    `SalesInvoiceTransactions` **-1,871**, the latter a regression against the diff-0 result recorded
+    on 08-14/16. TEST's runs daily and shows **six** tables red as of today's 08:44 run. Nobody is
+    acting on either.
+  - **The triggering source record was never corrected.** `crcampaignforecast.RecId 5638443880` still
+    holds `FORECASTQTY = 2222222222222222`, `MODIFIEDDATETIME` unchanged at 2026-08-18 09:03:49 —
+    13 days after the correction was initiated. The platform survives only because the model column
+    was retyped.
+  - **The model-side fix is live where it matters:** `Campaign Forecasts[Forecast Quantity]` is
+    `dataType: double` in both DEV's and TEST's `Model`, which is what `VL_ModelId` resolves to.
+    **Footnote:** `Model_OneLake`'s copy of that column is still `decimal` — harmless while that model
+    is out of the refresh path, but it must be fixed before `Model_OneLake` is ever promoted.
+  - Currency sweep across 65 curated columns, both environments: exactly **one** violation, the known
+    row. `fact.InventoryTransactions.CostAmountPostedMST` sits at 484,633,785,324,405 = **52.5%** of
+    the ceiling — unchanged, no new risk.
 - 2026-08-19 — created after the Currency overflow took down the TEST model refresh.

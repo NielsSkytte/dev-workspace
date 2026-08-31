@@ -195,8 +195,31 @@ for us yet.
   and promotion to TEST/PROD.
 - 2026-08-31 — **the Semantic-Model-DEV sync has happened** (verified read-only against the Fabric
   git-status API: workspace at `6be70e6`, 0 changes, `c14e9d3` an ancestor). `Budget Ledger` is in
-  `Model_OneLake` in the service. Remaining on to-do 1 is only the framing refresh and a confirming
-  query. To-dos 2-5 untouched.
+  `Model_OneLake` in the service.
+- 2026-08-31 (second pass) — **task fully verified; to-dos 1 and 5 CLOSE.** Every recorded figure
+  reproduces on live measurement in both environments — enriched 1,596,773, fact 842,590, one
+  ModelNum, span 2010-01-04 -> 2026-12-31, and TEST's row check re-ran clean today at 08:44:28
+  (Success, diff 0).
+  - **To-do 1 DONE.** `Budget Ledger` answers a DAX query against `Model_OneLake`: **842,590 rows,
+    ΣAmount Mst -517,770,124.91** — matching the warehouse fact exactly and matching the TEST figure
+    recorded on 08-21. Note the refresh history shows **no explicit `DirectLakeFraming` event** for
+    it (last framing activity is 2026-08-21 11:09, for other tables), so automatic framing picked it
+    up. No manual framing step is needed.
+  - **To-do 5 DONE.** `LEDGERBUDGET` has no explicit `rawtablekeymap_ax09` entry and correctly falls
+    to `DEFAULT (RECID,DATAAREAID)`; raw `ledgerbudget` has **0** business keys carrying more than one
+    `SCDcurrent='true'` row, in DEV and TEST. No issue.
+  - **To-do 2 OPEN, confirmed:** all four BudgetLedger objects return `Invalid object name` in PROD,
+    and PROD holds only three warehouses.
+  - **To-do 3 OPEN, confirmed by item list:** Semantic-Model-TEST holds only `Model` and
+    `Model_Optimized` — no `Model_OneLake`.
+  - **To-do 4 — not currently manifesting.** `dim.Date` (5,114) and `dim.AlternativeChartOfAccount`
+    (1,320) are populated in DEV **and** TEST and match their views. Three independent agents
+    measured this. The defect is not disproved — no `Warehouse_Curated` git sync has run since they
+    were last rebuilt — but the standing "they rebuild EMPTY" claim is not true today.
+  - **Correction to this file:** the note that `Model_OneLake` "is not pure Direct Lake — 7
+    partitions are still `mode: import`" is a misread. All 7 are calculated tables with DAX sources,
+    and TMDL always serialises those as `mode: import`. The model has one data source
+    (`AzureStorage.DataLake`) and no `Sql.Database`. It is pure Direct Lake.
 - 2026-08-21 — model `2010` confirmed by Niels; GEN-011 logged (`datahub` `2fde2cf`, which also
   added the missing GEN-010 index row); Direct Lake model updated and pushed (`Semantic-Model`
   `c14e9d3`). Deployment question answered: the deployment pipeline works, but as two deployments in
