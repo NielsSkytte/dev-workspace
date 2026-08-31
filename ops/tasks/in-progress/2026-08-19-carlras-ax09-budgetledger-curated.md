@@ -157,8 +157,10 @@ right and the table is simply empty.
 
 ## To do
 
-1. **Niels: Update from git on `Semantic-Model-DEV`**, then a framing refresh so `Budget Ledger`
-   binds to the Delta files and answers a query.
+1. ~~**Niels: Update from git on `Semantic-Model-DEV`**~~ **Sync done — verified 2026-08-31.** The
+   workspace is synced at `6be70e6` with **0 changes**, and that commit contains `c14e9d3`, so
+   `Budget Ledger` is in `Model_OneLake` in the service. **Still to do: the framing refresh** and a
+   query to confirm it binds to the Delta files.
 2. **PROD** — same two-deployment order, then the same three statements.
 3. **Direct Lake model in TEST is a separate piece of work.** `Model_OneLake` has never been paired
    to TEST (`targetItemId: null`); TEST carries a TEST-only `Model_Optimized` instead, and only the
@@ -191,6 +193,10 @@ for us yet.
   and verified: 1,596,773 enriched / 842,590 curated, every number matching the pre-commit
   measurement. Remaining: Finance confirmation of the model, the semantic model, the GEN log entry,
   and promotion to TEST/PROD.
+- 2026-08-31 — **the Semantic-Model-DEV sync has happened** (verified read-only against the Fabric
+  git-status API: workspace at `6be70e6`, 0 changes, `c14e9d3` an ancestor). `Budget Ledger` is in
+  `Model_OneLake` in the service. Remaining on to-do 1 is only the framing refresh and a confirming
+  query. To-dos 2-5 untouched.
 - 2026-08-21 — model `2010` confirmed by Niels; GEN-011 logged (`datahub` `2fde2cf`, which also
   added the missing GEN-010 index row); Direct Lake model updated and pushed (`Semantic-Model`
   `c14e9d3`). Deployment question answered: the deployment pipeline works, but as two deployments in

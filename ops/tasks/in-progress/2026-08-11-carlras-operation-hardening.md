@@ -119,3 +119,18 @@ classes will keep recurring until they are closed deliberately.
   (`Fabric-ETL-TEST` workspace identity, **object** id) to `Fabric_Key_Vault_Users` — they added DEV
   and PROD instead. Without (2) the run clears the connection error and fails in
   `NB_CapacityManager_Bootstrap` on `getSecret`. Niels deploys; continue in a later session.
+- 2026-08-31 — **re-measured; both steps still outstanding, but the severity was overstated.**
+  `checkMemberGroups` on `85553fa2-1343-4d6e-89e4-433fd51ba6a6` returns empty, so step (2) has not
+  happened (the group holds 2 transitive members and was created 2026-08-25). `Fabric-ETL-DEV` is one
+  commit behind `ebee979`, so step (1) has not either — and it now carries an uncommitted
+  `Warehouse_Enriched_AX09`, so the sync needs a decision on that first.
+  **The correction: TEST is not down and has not been.** Runs 08-24 → 08-28 all report `Failed`, and
+  all of them built Raw, Enriched and Curated and refreshed the model — TEST's `Model` shows
+  `Completed` at 2026-08-28 05:43, from the 04:30 run that "failed". Only the terminal
+  `Fail Scale Up` marker fails; the underlying `errorCode` is still
+  `Failed to resolve connection ''`. The pipeline's own message states the degradation: *"allowed to
+  finish at the idle SKU - curated built, and the semantic model refresh ran without the memory it
+  needs."* That behaviour came from `5a5df6f`, `abc9663`, `cd71032`, `0d10a6c` — four commits made
+  after the 08-27 entry above and recorded nowhere until now.
+  **So the open cost is refresh headroom, not lost data.** Reprioritise accordingly. Also noted: a
+  TEST run started 2026-08-31 07:40 UTC, off the 04:30 schedule, trigger not established.

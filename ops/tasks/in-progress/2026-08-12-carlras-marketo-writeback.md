@@ -214,6 +214,17 @@ ben+carlras@impact.dk, ~07:10 UTC daily)`.
 segmentation just starts targeting stale numbers.
 
 ## Log
+- 2026-08-31 — **state verified, nothing has moved; this task now holds the project's only
+  no-workaround blocker.** Measured read-only: `KeyVaultDataHub` holds four secrets
+  (`Datahub-Scale-SP-ID`, `Datahub-Scale-SP-Secret`, `DataHubServicePrincipal`,
+  `ServiceAccountToRS01`) and **neither `marketo-client-id` nor `marketo-client-secret`** — so no
+  production write is possible, and the only credentials we have authenticate as
+  `ben+carlras@impact.dk`, Impact's own API user. Our own LaunchPoint service is the prerequisite.
+  **The Impact mail still does not exist as a file** — the 08-21 Danish draft was never saved; it is
+  blocked by nothing and has the longest turnaround of anything open (Next #7).
+  **The push is still uncommitted:** `NB_Outbound_Marketo` + `PL_Outbound_Marketo` are untracked in
+  `Fabric-ETL`; that repo is otherwise clean with nothing unpushed. Every other Carl Ras repo is
+  clean. Nothing was changed in Fabric or in the customer repos.
 - 2026-08-12 — workstream began (write-back reverse engineering, after the ingest chain was proven)
 - 2026-08-14 — formalised as its own task; session time re-attributed here from
   `2026-07-07-carlras-impact-marketo-mail`, which is about API access, not the build

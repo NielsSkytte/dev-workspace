@@ -73,10 +73,15 @@ lineage work hit (`2026-08-03-metaatomic-consolidation`) and solved by querying 
 ## To do
 
 1. ~~Get git and DEV onto the running 88-table list.~~ **Done 2026-08-20** — see Log.
-2. **Awaiting Niels: Update from git on `Landingzone-Code-DEV`, taking the incoming side.** The
-   workspace still holds the 1-table debug version. Until that runs, DEV and git disagree again —
-   this time with git correct.
-3. **Commit `PL_ScaleProcess_SP` from `Fabric-ETL-DEV`** — still Modified/uncommitted, same class.
+2. ~~**Awaiting Niels: Update from git on `Landingzone-Code-DEV`, taking the incoming side.**~~
+   **Done — verified 2026-08-31.** The Fabric git-status API reports `Landingzone-Code-DEV` synced at
+   `d706f41` with **0 changes**, and `d706f41` contains `074ea1c`, so the 88-table list is live in
+   the workspace. Git and DEV agree.
+3. ~~**Commit `PL_ScaleProcess_SP` from `Fabric-ETL-DEV`**~~ **Done** — landed in `2213b8c`; it no
+   longer appears in that workspace's git status. **But the same class has recurred:**
+   `Warehouse_Enriched_AX09` is now Modified/uncommitted in `Fabric-ETL-DEV` (verified 2026-08-31),
+   and `Fabric-ETL-DEV` is one commit behind (`ebee979`) — so an Update from git there would discard
+   the workspace change. Commit or discard it deliberately first.
 4. **Sweep the remaining git-connected workspaces** for uncommitted changes — `Semantic-Model-DEV`,
    `Sales-DEV`, `Fabric-TEST` were not checked.
 5. **Decide on the five orphan landing-zone tables** — `LEDGERTABLEINTERVAL`,
@@ -107,6 +112,14 @@ to restore the rule — Update from git — is what would destroy the running co
   the `sqlReaderQuery` replaced with PROD's running definition verbatim, 1 → 88 active tables, one
   line changed, CRLF and the `logicalId` notebook reference preserved. Git is now the truth.
   Remaining: Update from git into `Landingzone-Code-DEV`, taking the incoming side.
+- 2026-08-31 — **verified closed for `Landingzone-Code-DEV`.** Fabric git-status API: synced at
+  `d706f41`, 0 changes, and `074ea1c` is an ancestor — the 88-table list is live in the workspace and
+  git is the truth. `Semantic-Model-DEV` also clean (0 changes). Step 3's `PL_ScaleProcess_SP` is
+  committed. **Task stays open on steps 4-5 and the recurrence:** `Warehouse_Enriched_AX09` is now
+  Modified/uncommitted in `Fabric-ETL-DEV`, which is the same failure mode one item further along —
+  and that workspace is one commit behind (`ebee979`), so a sync would discard it. Step 4 (make it
+  observable — a `git/status` gate in `fabric_release.py`) would have caught this without a manual
+  sweep; this is the second occurrence, which is the argument for building it.
 - 2026-08-20 — noted for the record: a separate metadata-driven ingest solution for Atomic is being
   built by someone else. If it lands, the hardcoded list in this pipeline is superseded. The
   observation still holds that `TableMetaData_AX09` is `OverwriteSchema`-refreshed and therefore
