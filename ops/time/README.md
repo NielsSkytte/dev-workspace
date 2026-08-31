@@ -52,6 +52,17 @@ Every turn emits one heartbeat -- a JSON object appended as a line to `heartbeat
 
 Several heartbeats per turn are harmless: they are seconds apart and collapse into one stretch (below).
 
+**A turn that asks the user a question stays open until they answer**, so its single heartbeat
+covers the wait. Found 2026-08-20, session `45041831`: an `AskUserQuestion` issued at 09:15:55 was
+answered at 14:25:44, and the turn's heartbeat spanned 325 min -- 310 of them the question sitting
+there. `track_time.py` is therefore registered on `PreToolUse`/`PostToolUse` **with the matcher
+`AskUserQuestion`**, so it fires once per question rather than once per tool call, and a wait past
+the 15 min idle timeout is cut out: the turn is written as its **active segments**, one heartbeat
+each. A question answered in twenty seconds is ordinary turn time and is not cut, since fragmenting
+there would add a tail buffer and a 0.5 h floor for nothing. Other blocking waits -- a permission
+prompt, the auto-mode classifier -- are not tools and stay invisible to the hook; the 60 min bound
+and the `stalls.md` review are the guard for those.
+
 **A `Stop` can fire with no `UserPromptSubmit` before it** -- a `!`-prefixed bash-input does exactly
 that. The stamped `start` then belongs to an earlier turn, and reusing it invents every idle minute
 since. Found 2026-08-03, session `5bbffdc6`: the real turn ended 10:24:39 and wrote its own correct

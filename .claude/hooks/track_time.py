@@ -225,6 +225,11 @@ def now_z():
 
 IDLE_TIMEOUT_MIN = 15   # matches ops/time/README.md section 3 -- one rule, both levels
 
+# Tools that block on the USER. The turn stays open while one is pending, so its wait is
+# not work. Registered as PreToolUse/PostToolUse matchers, so the hook fires once per
+# question rather than once per tool call.
+BLOCKING_TOOLS = ("AskUserQuestion",)
+
 
 def _mins_between(a, b):
     """Minutes from timestamp a to b, or None if either is unparseable."""
@@ -234,6 +239,29 @@ def _mins_between(a, b):
                 - datetime.datetime.strptime(a, fmt)).total_seconds() / 60.0
     except Exception:
         return None
+
+
+def subtract_waits(ts_start, ts_end, waits):
+    """[ts_start, ts_end] minus each [a, b] in waits -> the active segments.
+
+    A turn that asks the user a question stays OPEN until they answer, so its single
+    heartbeat covers the wait. Found 2026-08-20, session 45041831: an AskUserQuestion
+    issued at 09:15:55 was answered at 14:25:44 and the turn's heartbeat spanned 325
+    min, 310 of which was the question sitting there. Cutting the wait out leaves the
+    two real windows -- which is exactly how that day was reconstructed by hand."""
+    segs = [(ts_start, ts_end)]
+    for a, b in waits:
+        nxt = []
+        for s, e in segs:
+            if b <= s or a >= e:          # no overlap
+                nxt.append((s, e))
+                continue
+            if a > s:
+                nxt.append((s, a))
+            if b < e:
+                nxt.append((b, e))
+        segs = nxt
+    return [(s, e) for s, e in segs if e > s]
 
 
 def main():
@@ -255,7 +283,31 @@ def main():
         if project is None:
             return  # outside the workspace -> not tracked
         state[sid] = {"start": now_z(), "cwd": cwd,
-                      "project": project, "task": task, "last_stop": None}
+                      "project": project, "task": task,
+                      "last_stop": None, "waits": []}
+        save_state(state)
+        return
+
+    # PreToolUse/PostToolUse are registered for BLOCKING_TOOLS only, so this costs one
+    # process per question asked, not one per tool call.
+    if event in ("PreToolUse", "PostToolUse"):
+        if hook.get("tool_name") not in BLOCKING_TOOLS:
+            return
+        s = state.get(sid)
+        if not s:
+            return  # no turn in flight for this session -- nothing to attribute a wait to
+        if event == "PreToolUse":
+            s["ask_at"] = now_z()
+        else:
+            asked = s.pop("ask_at", None)
+            end = now_z()
+            gap = _mins_between(asked, end) if asked else None
+            # Only a wait past the idle timeout is deducted. Answering in twenty seconds
+            # is ordinary turn time, and fragmenting the heartbeat over it would add a
+            # tail buffer and a 0.5 h floor for nothing.
+            if gap is not None and gap > IDLE_TIMEOUT_MIN:
+                s.setdefault("waits", []).append([asked, end])
+        state[sid] = s
         save_state(state)
         return
 
@@ -296,13 +348,18 @@ def main():
     # Duplicates are free: the rollup merges overlapping intervals, and Claude
     # Code deduplicates the identical command strings of the workspace +
     # user-level registrations anyway.
-    rec = {"ts_start": ts_start, "ts_end": ts_end,
-           "project": project, "session": sid[:8], "task": task}
+    # A turn that waited on the user is written as its ACTIVE segments, not as one span.
+    segments = subtract_waits(ts_start, ts_end, s.get("waits") or [])
+    if not segments:
+        return  # the whole turn was a wait -- nothing worked, nothing to record
     try:
         os.makedirs(HEARTBEATS, exist_ok=True)
         date = ts_end[:10]  # UTC date for the file name
         with open(os.path.join(HEARTBEATS, date + ".jsonl"), "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec) + "\n")
+            for seg_start, seg_end in segments:
+                f.write(json.dumps({"ts_start": seg_start, "ts_end": seg_end,
+                                    "project": project, "session": sid[:8],
+                                    "task": task}) + "\n")
     except Exception:
         pass
 
