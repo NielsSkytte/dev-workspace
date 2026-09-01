@@ -17,5 +17,8 @@ and ignored for the others. Keep the table sorted by date.
 
 | Date | Kind | Project | Note |
 |---|---|---|---|
+| 2026-08-24 | vacation | | ferie; lidt arbejde registreret (0.75 h) |
+| 2026-08-25 | vacation | | ferie; lidt arbejde registreret (0.50 h) |
 | 2026-08-26 | vacation | | |
+| 2026-08-27 | vacation | | ferie; lidt arbejde registreret (0.50 h) |
 | 2026-08-28 | vacation | | |

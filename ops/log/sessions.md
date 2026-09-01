@@ -959,8 +959,8 @@ Chronological record of workspace sessions — what was done, decided, and what'
     555 255 258 259`. Verified every id against F&O's own task list; `555` and `524` did not exist
     and Niels created them mid-session.
   - **Registered August in F&O** — 49 lines across seven journals, two companies:
-    PING `021924` W31 3,50 / `021926` W32 24,75 / `021928` W33 50,50 / `021953` W34 46,50 /
-    `021954` W35 4,00 / `021975` W36 1,25; PNO1 `004431` 6,25. All **ubogført**.
+    PING `021924` W31 3,50 / `021926` W32 33,00 / `021928` W33 50,50 / `021953` W34 46,50 /
+    `021954` W35 4,00 / `021975` W36 1,25; PNO1 `004431` 6,25. **145,00 h.**
 - **Decided:**
   - **Carl Ras registers on TASK only.** Proj ID `230-02` always; F&O derives the activity from the
     task, so we never write an `activity:`. Everything worked on there needs a task. Written into
@@ -978,15 +978,28 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Tasks:** `2026-07-06-matas-enhance-user-stories` — `activity:` and `fno_task:` PENDING placeholders
   cleared; now carries `Task-65905` and both task definitions.
 - **Next:**
-  - **Four lines still to enter** (all previously blocked, now unblocked): 05-08 `555` 4,00 and 06-08
-    `555` 3,75 and 09-08 `524` 0,50 into W32; 07-08 Element Logic 0,50 into PNO1-004431. That takes
-    August to **145,50 h**.
-  - **Against a 155 h target that leaves −9,50 h.** Only 24., 25. and 27. August have headroom; the
-    value model supports 1,50 / 0,50 / 1,50 against 0,75 / 0,50 / 0,50 registered. A `--topup` dry
-    run is the next move — nothing applied.
-  - **Bogfør is Niels's** — all seven journals are unposted. The utilisation page still reads 33,00 h
-    for August because only posted lines count.
+  - **Bogfør is Niels's** — the six PING journals are approved, not posted. The utilisation page
+    still reads 33,00 h for August because only posted lines count; it corrects itself on posting.
   - **Browser automation was the bottleneck**, not the data: the extension dropped twice, the tab
     group was rebuilt three times, screenshots timed out repeatedly and the page rescaled between
     them, which put one bad value in a production journal (cleared). For bulk entry next month, use
     the dashboard's **Copy rows** into F&O's Excel add-in rather than driving the grid.
+  - **Vestforbrænding's billable flag** is documented but not encoded — a billable total spanning
+    July still overstates by 5.75 h.
+
+### Close-out (same session)
+
+- **The four blocked lines were entered** — 05-08 `555` 4,00; 06-08 `555` 3,75; 09-08 `524` 0,50 into
+  W32; the Element Logic 07-08 0,50 h line was **dropped** at Niels's instruction rather than opening
+  a new PNO1 journal for it. August lands at **145,00 h** — PING 138,75 + PNO1 6,25.
+- **The −9,50 h "gap" was a vacation week, not a shortfall.** The `--topup` dry run proposed +17,50 h
+  across 24., 25. and 27. August; it was **refused** — the value model's evidence did not support
+  those days. Niels: *"der var jeg på ferie men arbejde lidt"*. The three days went into
+  `ops/time/absence.md` as `vacation`, which moved August from **125,00 of 142,50 (88%)** to
+  **125,00 of 120,00 (104%)**. ADR-005 v2 held: the shortfall was in the target, not the measurement.
+- **Approved, not posted.** All six PING journals were taken through **Godkendelse → Finished**
+  (`021924` 3,50 / `021926` 33,00 / `021928` 50,50 / `021953` 46,50 / `021954` 4,00 / `021975` 1,25).
+  `Bogfør` was started and stopped — Niels: *"tror bare du skal godkende dem"*. PNO1-004431 was
+  already posted. The empty `PING-021923` was left untouched.
+- **Decided:** *approve, don't post* is the month-close step here. Finished is an approval state —
+  the journals stay under "Ikke bogført" and posting is a separate, later decision.
