@@ -928,3 +928,65 @@ Chronological record of workspace sessions — what was done, decided, and what'
     no Marketo secrets in `KeyVaultDataHub` and no Pingala-owned LaunchPoint service; the Impact mail
     still unwritten. `Fabric-TEST` is invisible to `EXT_NSKC` and stayed unchecked. `fab` CLI still
     broken (`PermissionError: [WinError 5]`).
+
+## 2026-09-01
+
+### Month close: August registered in F&O, and the dashboard rebuilt around the entry it produces
+
+- **Did:**
+  - **Rebuilt the week page as the entry surface** (`ops/dashboard.html`, `ops/dashboard.py`). The
+    audit route is now the primary time-entry page and Month is the overview; the F&O company blocks
+    moved to the top, sections reordered to **1 F&O lines / 2 Effort / 3 Exceptions / 4 Coverage /
+    5 Funnel**, grouped by customer then date, with Billable / Internal / Week-total sums.
+    Added a **Month filter** (current / last) that clips the week picker *and* the whole page to the
+    month, splitting a straddling week at the boundary and consolidating each segment separately so
+    no hours cross months. The week window is now computed, not fixed at 8, so "last month" always
+    reaches its first day (`audit_mondays()`).
+  - **Renamed the measures** to what they mean: keyboard -> **work time** (with a % control against
+    the 15+5 model) -> **F&O entry** -> **value time**, each column carrying a %. Added the **F&O
+    entry** column itself: `entry = work + (1 - e^-x)(value - work)` where `x` is turns and files
+    **per work hour** (p90 densities 10 and 8), rounded to 0.25 h. Work time is the floor, value time
+    the ceiling. The entry blocks now carry that figure, distributed across consolidated rows per
+    dimension so a block sums to the entry total exactly.
+  - **`TURN_GAP = 15.0` in `value.py`** — split from `IDLE_GAP`, which now only caps dead time inside
+    a turn. Between turns the gap is credited at 1.0x and splits stretches at 15 min, matching
+    `rollup.py`. Measured on the 25 days whose transcripts survive: billable value time
+    **155.25 -> 167.50 h (+7.9%)**, stretches **421 -> 243**, keyboard unchanged. Forward only.
+  - **Normalised the timesheet store** — `marketoimport` -> `MarketoImport` (2 rows),
+    `customers/carl-ras/marketo` -> `customers/Carl-Ras/marketo`. Zero case collisions remain.
+  - **Tagged every August line to an ADO task.** Matas: all 25 lines across `Task-65905` /
+    `Task-65904`. Carl Ras: all 56 August lines, line by line, across `490 493 483 491 498 524 553
+    555 255 258 259`. Verified every id against F&O's own task list; `555` and `524` did not exist
+    and Niels created them mid-session.
+  - **Registered August in F&O** — 49 lines across seven journals, two companies:
+    PING `021924` W31 3,50 / `021926` W32 24,75 / `021928` W33 50,50 / `021953` W34 46,50 /
+    `021954` W35 4,00 / `021975` W36 1,25; PNO1 `004431` 6,25. All **ubogført**.
+- **Decided:**
+  - **Carl Ras registers on TASK only.** Proj ID `230-02` always; F&O derives the activity from the
+    task, so we never write an `activity:`. Everything worked on there needs a task. Written into
+    `ops/time/README.md` §4.1 (new per-customer protocol table) and the project's `CLAUDE.md`.
+  - **Element Logic is activity-only** — `6001-01`, Opgave blank, activity `600003` "Operations",
+    company **PNO1**, confirmed against the posted July journal. The `45394` in the sheet note is not
+    the Task field.
+  - **Vestforbrænding is not billable** — F&O books `222` as `No charge`. The workspace still counts
+    every `customers/…` project billable, so a billable total spanning July overstates by 5.75 h.
+    Recorded in §4.1; no code change yet.
+  - **August goes out at the F&O entry figure for Carl Ras** (132,25 h vs 90,00 h work time) and at
+    **work time** for Element Logic, matching how July was registered there.
+  - **`Task-65904` was never created in DevOps** ("Opgaven eksisterer ikke - nye opgaver bør oprettes
+    via DevOps"). All time mapped to it now books to `Task-65905` — 8 timesheet files retagged.
+- **Tasks:** `2026-07-06-matas-enhance-user-stories` — `activity:` and `fno_task:` PENDING placeholders
+  cleared; now carries `Task-65905` and both task definitions.
+- **Next:**
+  - **Four lines still to enter** (all previously blocked, now unblocked): 05-08 `555` 4,00 and 06-08
+    `555` 3,75 and 09-08 `524` 0,50 into W32; 07-08 Element Logic 0,50 into PNO1-004431. That takes
+    August to **145,50 h**.
+  - **Against a 155 h target that leaves −9,50 h.** Only 24., 25. and 27. August have headroom; the
+    value model supports 1,50 / 0,50 / 1,50 against 0,75 / 0,50 / 0,50 registered. A `--topup` dry
+    run is the next move — nothing applied.
+  - **Bogfør is Niels's** — all seven journals are unposted. The utilisation page still reads 33,00 h
+    for August because only posted lines count.
+  - **Browser automation was the bottleneck**, not the data: the extension dropped twice, the tab
+    group was rebuilt three times, screenshots timed out repeatedly and the page rescaled between
+    them, which put one bad value in a production journal (cleared). For bulk entry next month, use
+    the dashboard's **Copy rows** into F&O's Excel add-in rather than driving the grid.

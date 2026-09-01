@@ -295,7 +295,7 @@ def collect_time(today):
 # whole, and what is behind each number" -- measured vs target vs the weighted hours from the
 # value model, per ADR-005 v2. Derive-only: rollup owns the hours, ops/time/value/ the evidence.
 
-AUDIT_WEEKS = 8          # how many ISO weeks back the page can page through
+AUDIT_WEEKS = 8          # floor: the page always offers at least this many ISO weeks back
 VALUE = os.path.join(ROOT, "ops", "time", "value")
 TIER_NAME = {"1": "T1", "2": "T2", "3": "T3", "4": "T4", "5": "T5"}
 
@@ -341,6 +341,21 @@ def _fold(a, v):
     return a
 
 
+def audit_mondays(today):
+    """Mondays of the ISO weeks the week page offers, newest first.
+
+    Far enough back to reach the FIRST DAY OF LAST MONTH: the page's month filter offers 'last
+    month' for exactly the case where entry is late, and that is worthless if the month's opening
+    weeks are missing. A fixed count cannot do it -- the distance to the 1st of last month runs
+    from ~5 weeks (early in a month) to ~10 (at month end)."""
+    cur = datetime.date.fromisoformat(today)
+    monday = cur - datetime.timedelta(days=cur.weekday())
+    prev_first = (cur.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)
+    first_monday = prev_first - datetime.timedelta(days=prev_first.weekday())
+    n = max(AUDIT_WEEKS, (monday - first_monday).days // 7 + 1)
+    return [monday - datetime.timedelta(days=7 * back) for back in range(n)]
+
+
 def collect_audit(today):
     """-> {weeks: [...], byWeek: {wk: {...}}} -- one fully-categorised block per ISO week."""
     hbs = rollup.load_heartbeats()
@@ -349,11 +364,8 @@ def collect_audit(today):
         hbs_by_date.setdefault(hb["date"], []).append(hb)
     absence = rollup.load_absence()
 
-    cur = datetime.date.fromisoformat(today)
-    monday = cur - datetime.timedelta(days=cur.weekday())
     weeks, by_week = [], {}
-    for back in range(AUDIT_WEEKS):
-        m = monday - datetime.timedelta(days=7 * back)
+    for m in audit_mondays(today):
         iso = m.isocalendar()
         wk = "%04d-W%02d" % (iso[0], iso[1])
         weeks.append(wk)
@@ -439,7 +451,7 @@ def _audit_week(wk, hbs_by_date, absence, today):
     tot = lambda f: round(sum(x[f] for x in days), 2)
     claimed = tot("claimed")
     return {
-        "week": wk, "start": dates[0], "end": dates[6],
+        "week": wk, "start": dates[0], "friday": dates[4], "end": dates[6],
         "running": any(x["date"] == today for x in days),
         "days": days, "lines": lines, "spill": spill,
         "target": round(target, 2),
@@ -727,7 +739,8 @@ def collect_entry(entries, customers, today):
     on the page -- it is the thing you open a separate sheet for.
 
     Returned FLAT (every date, not pre-bucketed) so the timesheet page can slice any range --
-    a month, last week, the week before -- without the collector knowing which."""
+    an ISO week (the entry surface) or a calendar month (the overview) -- without the collector
+    knowing which."""
     comp = read_companies()
     by_key = {c["key"]: c for c in comp}
     ws_keys = {_norm_customer(c): c for c in customers}
@@ -774,17 +787,33 @@ def collect_entry(entries, customers, today):
     # across days.
     d0 = datetime.date.fromisoformat(today)
     ranges = {}
-    for key, first, last in (
-            ("month0", d0.replace(day=1), None),
-            ("month1", (d0.replace(day=1) - datetime.timedelta(days=1)).replace(day=1), None),
-            ("week1", d0 - datetime.timedelta(days=7 + d0.weekday()), 7),
-            ("week2", d0 - datetime.timedelta(days=14 + d0.weekday()), 7)):
-        if last is None:                       # whole calendar month
-            nxt = (first.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
-            span = (nxt - first).days
-        else:
-            span = last
+    for key, first in (
+            ("month0", d0.replace(day=1)),
+            ("month1", (d0.replace(day=1) - datetime.timedelta(days=1)).replace(day=1))):
+        nxt = (first.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+        span = (nxt - first).days
         ranges[key] = [(first + datetime.timedelta(days=i)).isoformat() for i in range(span)]
+
+    # The week page is the entry surface, and its picker walks the same AUDIT_WEEKS the audit
+    # sections do -- so every one of those weeks needs its own range and its own consolidation
+    # pass, keyed by the ISO week itself.
+    #
+    # A week that straddles a month boundary (W31 is 27 Jul - 2 Aug) additionally gets one range
+    # PER MONTH, keyed '<week>@<YYYY-MM>'. F&O takes a timesheet per month, and consolidation packs
+    # a week's hours onto as few days as it can -- over a whole straddling week that would move
+    # hours across the boundary and misstate both months. Consolidating each segment on its own is
+    # what keeps the month totals true.
+    for m in audit_mondays(today):
+        iso = m.isocalendar()
+        wk = "%04d-W%02d" % (iso[0], iso[1])
+        days = [(m + datetime.timedelta(days=i)).isoformat() for i in range(7)]
+        ranges[wk] = days
+        by_month = {}
+        for d in days:
+            by_month.setdefault(d[:7], []).append(d)
+        if len(by_month) > 1:
+            for mk, ds in by_month.items():
+                ranges["%s@%s" % (wk, mk)] = ds
 
     merged = {}
     for key, dates in ranges.items():
@@ -1030,6 +1059,88 @@ def launch(path, mode, prompt=""):
     return True, ("Session starting at %s%s" % (cwd, " with: " + prompt[:60] if prompt else ""))
 
 
+# ---------- reassign (the one write path) ----------
+# Dev -> project only. ops/time/README.md sec.2 and memory feedback-time-attribution-dev-to-project:
+# time already on a NAMED project stays there, and is never moved between two named projects by
+# judgement. The UI only offers the control on Dev rows; this refuses anything else regardless,
+# because a rule enforced only in the page is not enforced.
+#
+# Both halves of a line move together. The audit joins the CLAIM (timesheet/<date>.md) to its
+# EVIDENCE (value/<date>.jsonl) on (date, project, activity, task) -- move one and the row lands
+# under the new project with nothing behind it, and an orphan sits under the old one.
+
+
+def _reassign_note(date, to_project, hours):
+    return ("\n> Reassigned %s: Dev -> %s (%.2f h), from the dashboard.\n"
+            "> Dev -> project only (ops/time/README.md sec.2); heartbeats untouched.\n"
+            % (date, to_project, hours))
+
+
+def reassign_dev(date, to_project, activity="", fno_task=""):
+    """Move a Dev row on one date to a named project. -> (ok, message)."""
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date or ""):
+        return False, "bad date"
+    to_project = (to_project or "").strip().replace("\\", "/").strip("/")
+    if not to_project or to_project == "Dev":
+        return False, "pick a target project"
+    proj_dir = os.path.join(ROOT, to_project.replace("/", os.sep))
+    if not os.path.exists(os.path.join(proj_dir, "CLAUDE.md")):
+        return False, "%s is not a project (no CLAUDE.md)" % to_project
+
+    rows = rollup.parse_daily_file(date)
+    if rows is None:
+        return False, "no finalized timesheet for %s -- close the day first" % date
+    src = [r for r in rows
+           if r["project"] == "Dev" and r["activity"] == activity and r["fno_task"] == fno_task]
+    if not src:
+        return False, "no Dev row on %s for that line" % date
+    moved = round(sum(r["hours"] for r in src), 2)
+
+    proj_id = rollup.project_id(to_project)
+    billable = to_project.lower().startswith("customers/")
+    keep = [r for r in rows if r not in src]
+    for r in keep:                                  # merge into an existing identical line
+        if (r["project"] == to_project and r["activity"] == activity
+                and r["fno_task"] == fno_task):
+            r["hours"] = round(r["hours"] + moved, 2)
+            break
+    else:
+        keep.append({"project": to_project, "proj_id": proj_id, "activity": activity,
+                     "fno_task": fno_task, "hours": moved, "billable": billable})
+    keep.sort(key=lambda r: (not r["billable"], r["project"], r["activity"], r["fno_task"]))
+
+    # Everything after the totals block is prior provenance -- keep it, then add this move.
+    raw = read(rollup.daily_path(date))
+    tail = ""
+    m = re.search(r"\*\*Internal total:\*\*[^\n]*\n", raw)
+    if m:
+        tail = raw[m.end():]
+    rollup.write_daily(date, keep, tail + _reassign_note(date, to_project, moved))
+
+    # the evidence side
+    vpath = os.path.join(VALUE, date + ".jsonl")
+    touched = 0
+    if os.path.exists(vpath):
+        out = []
+        with open(vpath, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                v = json.loads(line)
+                if (v.get("project") == "Dev" and (v.get("activity") or "") == activity
+                        and (v.get("fno_task") or "") == fno_task):
+                    v["project"] = to_project
+                    v["proj_id"] = proj_id
+                    v["billable"] = billable
+                    touched += 1
+                out.append(json.dumps(v, sort_keys=True))
+        with open(vpath, "w", encoding="utf-8") as f:
+            f.write("\n".join(out) + "\n")
+    return True, ("Moved %.2f h from Dev to %s on %s (%d evidence record%s)"
+                  % (moved, to_project, date, touched, "" if touched == 1 else "s"))
+
+
 # ---------- server ----------
 
 class Handler(BaseHTTPRequestHandler):
@@ -1060,14 +1171,19 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, "not found", "text/plain")
 
     def do_POST(self):
-        if not self.path.startswith("/api/launch"):
+        launching = self.path.startswith("/api/launch")
+        if not launching and not self.path.startswith("/api/reassign"):
             self._send(404, "{}")
             return
         try:
             n = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(n) or b"{}")
-            ok, msg = launch(req.get("path", ""), req.get("mode", "claude"),
-                             req.get("prompt", ""))
+            if launching:
+                ok, msg = launch(req.get("path", ""), req.get("mode", "claude"),
+                                 req.get("prompt", ""))
+            else:
+                ok, msg = reassign_dev(req.get("date", ""), req.get("to", ""),
+                                       req.get("activity", ""), req.get("fno_task", ""))
             self._send(200 if ok else 400, json.dumps({"ok": ok, "message": msg}))
         except Exception as exc:
             self._send(500, json.dumps({"ok": False, "message": str(exc)}))

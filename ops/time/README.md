@@ -231,6 +231,35 @@ Resolution is **additive** (a task adds its activity/task beneath the project id
 activity-level line merges only when there is no task, and project-level only when there is no activity.
 **Billable** = the project is a `customers/…` project (`Dev` and `own/…` are non-billable).
 
+### 4.1 Per-customer registration protocol
+
+Which of the three dimensions a customer actually wants is the customer's rule, not ours. Source of
+truth is `ops/TidsregInfo.xlsx` (Firma / Kunde / Projektnr / Aktivitet / task note); the table below
+records what has been confirmed directly with Niels, which overrides the sheet where they differ.
+
+| Customer | Proj ID | Registers on | Activity | Confirmed |
+|---|---|---|---|---|
+| **Carl Ras** | `230-02` (always) | **Task, always** — every line needs one | **Never supplied by us.** F&O derives it from the task | 2026-08-31 |
+| **Matas** | `212-01` | Task | Filled automatically by F&O | 2026-08-31 |
+| Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
+| Element Logic | `6001-01` | Activity `600003` | from the sheet | sheet |
+| Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet |
+| Finansforbundet | `4053-01` | Activity `Møder` | from the sheet | sheet |
+
+**Billable is not the same as `customers/…`.** The rollup marks every `customers/…` project billable
+(section 4). **Vestforbrænding is the known exception**: its F&O lines carry `Linjeegenskab: No charge`,
+confirmed by Niels 2026-08-31 and visible on every 222 line in the posted July journal. The workspace
+still counts its hours billable, so any billable total that includes Vestforbrænding overstates by that
+much (5.75 h to date, all in July). Nothing in the substrate encodes it yet -- treat the table above as
+the source of truth until a per-project `billable:` flag exists.
+
+**Carl Ras, in full (2026-08-31):** the project id is always `230-02`; below it the work is split by
+**ADO task**, and each task carries its own activity id *by default in F&O*. We therefore never write
+an `activity:` for Carl Ras — a value we invent there is noise at best and contradicts the task's own
+activity at worst. **Everything worked on at Carl Ras needs a task.** Tasks in use so far:
+`CarlRData-496` Marketo ingest, `CarlRData-553` Marketo write-back, `CarlRData-555` operational
+hardening.
+
 ## 5. Daily review gate + cadence
 
 Heartbeats accrue continuously; a day becomes **final** when its timesheet is written and you have
@@ -361,9 +390,17 @@ fired; the heartbeat bounds a turn whose segmentation broke on a resumed session
 a 1-minute turn on 2026-08-03 recorded a 340-minute heartbeat, and a 131-minute turn on 2026-07-23
 contained 8.8 minutes of activity.
 
-Within a turn, each inter-event gap is capped at **5 minutes** -- the same rule already used between
-turns (section 3), applied one level down. A pending permission prompt or a long-running tool call is
-not keyboard time.
+Within a turn, each inter-event gap is capped at **5 minutes** (`IDLE_GAP`). A pending permission
+prompt or a long-running tool call is not keyboard time.
+
+**Between turns the cap is 15 minutes** (`TURN_GAP`, raised from 5 on 2026-08-31), matching the
+rollup's idle timeout in section 3. A gap under 15 minutes is Niels thinking and writing the next
+prompt; the timesheet already bills it, so the value ceiling must not discard it. The same 15
+minutes splits stretches, so a think no longer starts a fresh stretch with its own tail buffer.
+Measured over the 25 days whose transcripts survive: billable value time **155.25 -> 167.50 h
+(+7.9%)**, stretches **421 -> 243**; keyboard time unchanged. **Forward only** -- existing
+`value/` records stay as derived at 5 min and are NOT re-derived, because transcripts before
+~2026-07-31 have aged out and a re-derive would empty those days.
 
 ### 7.2 Tiers (derived from tool evidence)
 
@@ -379,7 +416,7 @@ not keyboard time.
 was fitted to one completed deliverable and is exactly determined, therefore untested. Do not cite
 the fit as validation. Everything else in this section is derived and reproducible.
 
-Weighted hours = sum over turns of `keyboard minutes x multiplier`, plus gaps (capped at 5 min) and a
+Weighted hours = sum over turns of `keyboard minutes x multiplier`, plus gaps (capped at `TURN_GAP`) and a
 5-minute tail per stretch **at 1.0x**, then rounded to 0.25 h with the same 0.5 h floor as section 3.
 
 ### 7.3 Deliverable classes

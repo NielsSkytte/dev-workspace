@@ -230,7 +230,12 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(-
 .titem{display:flex;gap:10px;align-items:flex-start;padding:10px 8px;margin:0 -8px;
   border-bottom:1px solid var(--grid);cursor:pointer;border-radius:8px;transition:background .15s}
 .titem:last-child{border-bottom:0}
-/* --- Week audit page (route #timesheet/audit) --- */
+/* A secondary label inside a chip follows the chip's own ink, so it stays legible when selected. */
+.chip .sub{color:inherit;opacity:.7}
+
+/* --- Week timesheet page (route #timesheet/audit): entry on top, audit below --- */
+.ausplit{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  font-weight:600;margin:26px 0 0;padding-top:14px;border-top:1px solid var(--ring)}
 .autiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   margin:14px 0 0}
 .autile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 14px}
@@ -253,6 +258,12 @@ table.autable th+th,table.autable td+td{padding-left:12px}
 table.autable th.r,table.autable td.r{text-align:right;padding-right:0}
 table.autable th:last-child,table.autable td:last-child{padding-right:0}
 table.autable tr.wk td{background:var(--band)}
+/* Totals under a table: the split rows read as subtotals, the last as the line the eye lands on. */
+table.autable tr.autot td{border-top:1px solid var(--ring);border-bottom:none;color:var(--muted)}
+table.autable tr.autot.grand td{border-top:1px solid var(--axis);color:var(--ink);font-weight:600}
+/* Customer band: the table is walked one customer at a time, so the name has to be unmissable. */
+table.autable tr.augrp td{background:var(--band);border-top:1px solid var(--axis);border-bottom:none;
+  font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:7px 10px 6px 0}
 table.autable td.sub{white-space:normal;min-width:14ch}
 .warnink{color:var(--accent)}
 .okink{color:var(--s1)}
@@ -273,10 +284,8 @@ table.autable td.sub{white-space:normal;min-width:14ch}
     <header>
       <h1>DEV — Workspace Dashboard</h1>
       <nav class="navlinks">
-        <a href="#timesheet/audit">Week audit</a>
-        <a href="#timesheet/month">Month timesheet</a>
-        <a href="#timesheet/week1">Last week timesheet</a>
-        <a href="#timesheet/week2">Previous week</a>
+        <a href="#timesheet/audit">Week timesheet</a>
+        <a href="#timesheet/month">Month overview</a>
       </nav>
       <div class="grow sub" id="stamp"></div>
       <input type="search" id="q" placeholder="Filter projects, customers, tasks…">
@@ -468,7 +477,8 @@ function bindChips(){
   document.querySelectorAll('.chip[data-period]').forEach(b => b.onclick = () => {
     PERIOD = b.dataset.period;
     try{ localStorage.setItem('dash.period', PERIOD); }catch(e){}
-    paintPeriod(); if(D){ dailyChart(); projChart(); internalPanel(); if(ROUTE) renderTimesheet(); }
+    paintPeriod(); if(D){ dailyChart(); projChart(); internalPanel();
+      if(ROUTE) (ROUTE === 'audit' ? renderAudit : renderTimesheet)(); }
   });
   document.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => {
     const [g,k] = b.dataset.f.split('.');
@@ -923,7 +933,7 @@ function hygiene(){
    grouping comes from ops/tidsreginfo.xlsx (Firma -> Kunde), read live from the workbook.
    Within a company: one line per date / customer / project / activity / task, which is the
    granularity F&O actually accepts (Project ID -> Activity -> Task). */
-let ROUTE = '';                         // '' = dashboard, else month | week1 | week2
+let ROUTE = '';                         // '' = dashboard, else audit (the week) | month
 let TSMONTH = 0;                        // months back on the month route: 0 = current, 1 = previous
 let TSOFF = new Set();                  // companies toggled OFF on the timesheet page
 let TSCUST = new Set();                 // customers toggled OFF on the timesheet page
@@ -931,28 +941,16 @@ let TSMERGE = true;                     // consolidate sub-2h entries by week (a
 
 /* Ranges are built field-wise from D.today -- never via Date(string)/toISOString, which shift by
    the UTC offset and can land the week on the wrong day. Weeks are ISO (Monday start). */
-function tsRange(which){
-  const [Y,M,Dd] = D.today.split('-').map(Number);
-  if(which === 'month'){
-    const y = M - TSMONTH > 0 ? Y : Y - 1, m = ((M - 1 - TSMONTH) % 12 + 12) % 12 + 1;
-    const last = new Date(y, m, 0).getDate(), days = [];
-    for(let d = 1; d <= last; d++) days.push(`${y}-${pad(m)}-${pad(d)}`);
-    return {days, label: `${MONTHS[m-1]} ${y}`, kind: 'Month timesheet'};
-  }
-  const back = which === 'week2' ? 14 : 7;
-  const d = new Date(Y, M-1, Dd - back);
-  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay()+6) % 7));
-  const days = [];
-  for(let i = 0; i < 7; i++){
-    const x = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+i);
-    days.push(`${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`);
-  }
-  return {days, label: `${shortDate(days[0])} – ${shortDate(days[6])}`,
-          kind: which === 'week2' ? 'Previous week' : 'Last week timesheet'};
+function tsRange(){
+  const [Y,M] = D.today.split('-').map(Number);
+  const y = M - TSMONTH > 0 ? Y : Y - 1, m = ((M - 1 - TSMONTH) % 12 + 12) % 12 + 1;
+  const last = new Date(y, m, 0).getDate(), days = [];
+  for(let d = 1; d <= last; d++) days.push(`${y}-${pad(m)}-${pad(d)}`);
+  return {days, label: `${MONTHS[m-1]} ${y}`};
 }
 
 function showRoute(){
-  const m = (location.hash || '').match(/^#timesheet\/(month|week1|week2|audit)$/);
+  const m = (location.hash || '').match(/^#timesheet\/(month|audit)$/);
   ROUTE = m ? m[1] : '';
   $('#timesheetPage').classList.toggle('hidden', !ROUTE);
   ['.top .tiles','#alerts','.panes'].forEach(sel => {
@@ -965,25 +963,46 @@ function showRoute(){
   window.scrollTo(0,0);
 }
 
-function renderTimesheet(){
-  const E = D.entry, per = tsRange(ROUTE);
-  // The backend owns the range windows so raw and consolidated always cover identical days
-  // (tsRange supplies the label only).
-  const rkey2 = ROUTE === 'month' ? 'month' + TSMONTH : ROUTE;
-  const inR = new Set((E.ranges && E.ranges[rkey2]) || per.days);
-  const rows = TSMERGE ? ((E.merged || {})[rkey2] || [])
-                       : (E.rows || []).filter(r => inR.has(r.date));
-  $('#tsHead').innerHTML = `${esc(per.kind)} <span class="sub" style="font-weight:400">— `
-    + `${esc(per.label)} · ${h(rows.reduce((s,r)=>s+r.hours,0))} h</span>`;
+/* The F&O entry surface — company chips, the reconciliation card, and one block per company
+   timesheet. Shared by the WEEK page (where time is actually entered, one ISO week at a time) and
+   the MONTH page (the overview it reconciles into), so both always group, consolidate and copy
+   identically. `rerender` is whatever redraws the calling page after a filter toggle. */
+function entryView(rkey, periodLabel, leadChips, rerender, scale){
+  const E = D.entry;
+  // The backend owns the range windows so raw and consolidated always cover identical days.
+  const inR = new Set((E.ranges && E.ranges[rkey]) || []);
+  let rows = TSMERGE ? ((E.merged || {})[rkey] || [])
+                     : (E.rows || []).filter(r => inR.has(r.date));
+  const per = {label: periodLabel};
+  const monthChips = leadChips || '';
 
-  // Month route carries its own current/previous switch -- both months are entered in the same
-  // sitting (the month closes after the 1st), so they belong on one page, not two links.
-  const monthChips = ROUTE !== 'month' ? '' :
-    `<span class="flabel">Month</span>` +
-    [0,1].map(n => {
-      const save = TSMONTH; TSMONTH = n; const lbl = tsRange('month').label; TSMONTH = save;
-      return `<button class="chip${n===TSMONTH?' on':''}" data-tsmonth="${n}">${esc(lbl)}</button>`;
-    }).join('') + `<span class="fsep"></span>`;
+  /* These blocks are what gets typed into F&O, so they must carry the F&O ENTRY figure, not work
+     time — the week page is the source of truth for the entry, and two numbers for one line is how
+     a month gets entered wrong. `scale` gives, per F&O dimension, the work and entry totals for the
+     period. Consolidation only moves hours BETWEEN days within a dimension, so the dimension's
+     entry total is distributed across its rows in proportion to their work hours, rounded to the
+     0.25 h F&O step, with the last row absorbing the rounding remainder so the block still sums to
+     the entry total exactly. */
+  if(scale){
+    const dk = r => `${r.project}|${r.activity || ''}|${r.fno_task || ''}`;
+    const byDim = {};
+    rows.forEach(r => (byDim[dk(r)] ||= []).push(r));
+    rows = rows.map(r => Object.assign({}, r));
+    const groups = {};
+    rows.forEach(r => (groups[dk(r)] ||= []).push(r));
+    for(const k in groups){
+      const g = groups[k], s = scale[k];
+      if(!s || !s.work){ continue; }
+      const work = g.reduce((a,r) => a + r.hours, 0);
+      if(!work) continue;
+      let left = Math.round(s.entry * 4) / 4;
+      g.forEach((r,i) => {
+        if(i === g.length - 1){ r.hours = Math.round(left * 100) / 100; return; }
+        const h = Math.round(s.entry * (r.hours / work) * 4) / 4;
+        r.hours = h; left = Math.round((left - h) * 100) / 100;
+      });
+    }
+  }
 
   const allFirmas = [...new Set(rows.map(r => r.firma))]
     .sort((a,b) => (a==='INTERNAL')-(b==='INTERNAL') || (a==='')-(b==='') || a.localeCompare(b));
@@ -1027,29 +1046,38 @@ function renderTimesheet(){
 
   const bind = () => {
     $('#tsBody').querySelectorAll('[data-tsmonth]').forEach(b =>
-      b.onclick = () => { TSMONTH = +b.dataset.tsmonth; renderTimesheet(); });
+      b.onclick = () => { TSMONTH = +b.dataset.tsmonth; rerender(); });
     $('#tsBody').querySelectorAll('[data-firma]').forEach(b =>
       b.onclick = () => {
         const f = b.dataset.firma;
         TSOFF.has(f) ? TSOFF.delete(f) : TSOFF.add(f);
-        renderTimesheet();
+        rerender();
       });
     $('#tsBody').querySelectorAll('[data-cust]').forEach(b =>
       b.onclick = () => {
         const c = b.dataset.cust;
         TSCUST.has(c) ? TSCUST.delete(c) : TSCUST.add(c);
-        renderTimesheet();
+        rerender();
       });
     const m = $('#tsBody').querySelector('[data-tsmerge]');
-    if(m) m.onclick = () => { TSMERGE = !TSMERGE; renderTimesheet(); };
+    if(m) m.onclick = () => { TSMERGE = !TSMERGE; rerender(); };
+    $('#tsBody').querySelectorAll('[data-copyfirma]').forEach(b => b.onclick = async () => {
+      const rs = rows.filter(r => r.firma === b.dataset.copyfirma);
+      // TSV: pastes straight into Excel or an F&O grid, one line per F&O time-entry line
+      const txt = ['Date\tCustomer\tProject\tProj ID\tActivity\tTask\tHours']
+        .concat(rs.map(r => [r.date, r.customer || '', r.project.replace(/^customers\//,''),
+          r.proj_id || '', r.activity || '', r.fno_task || '', h(r.hours)].join('\t'))).join('\n');
+      try{ await navigator.clipboard.writeText(txt);
+           toast(`Copied ${rs.length} rows for ${b.dataset.copyfirma || 'unassigned'}`); }
+      catch(e){ toast('Copy failed: ' + e.message); }
+    });
+    bindLineTips($('#tsBody'));    // raw rows only -- see the data-sess guard in block()
   };
 
-  if(!rows.length){
-    $('#tsBody').innerHTML = chips + '<div class="card"><p class="sub" style="margin:0">'
-      + 'No time in this period.</p></div>';
-    bind();
-    return;
-  }
+  if(!rows.length)
+    return {rows, total: 0, bind,
+            html: chips + '<div class="card"><p class="sub" style="margin:0">'
+                  + 'No time in this period.</p></div>'};
 
   /* Per-company totals for whichever view is open. Deliberately covers EVERY company in the
      period regardless of the company filter -- this is the reconciliation figure (one F&O
@@ -1067,7 +1095,7 @@ function renderTimesheet(){
         <td style="padding:4px 8px;text-align:right">${h(hrs)} h</td>
         <td style="padding:4px 0 4px 8px" class="sub">${note||''}</td></tr>`;
     return `<div class="card" style="margin-bottom:14px">
-      <h3 style="font-size:15px;margin:0 0 8px">Totals per company — ${esc(per.label)}</h3>
+      <h3 style="font-size:15px;margin:0 0 8px">Totals per company — ${esc(per.label)}${scale ? ' <span class="sub" style="font-weight:400">· F&amp;O entry hours</span>' : ''}</h3>
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         ${allFirmas.map(f => line(nameOf(f), nOf(f), sumOf(f),
             f === 'INTERNAL' ? 'not entered in F&amp;O'
@@ -1103,7 +1131,7 @@ function renderTimesheet(){
           <th style="padding:3px 8px 3px 0">Date</th><th style="padding:3px 8px">Customer</th>
           <th style="padding:3px 8px">Project</th><th style="padding:3px 8px">Proj ID</th>
           <th style="padding:3px 8px">Activity</th><th style="padding:3px 8px">Task</th>
-          <th style="padding:3px 0 3px 8px;text-align:right">Hours</th></tr>
+          <th style="padding:3px 0 3px 8px;text-align:right">${scale ? 'F&amp;O entry' : 'Hours'}</th></tr>
         ${rs.map(r => `<tr style="border-top:1px solid var(--ring)"${
           TSMERGE ? '' : ` data-sess="${esc(sessKey(r.date, r.project, r.activity, r.fno_task))}"`}>
           <td style="padding:3px 8px 3px 0;white-space:nowrap">${esc(r.date)}</td>
@@ -1124,23 +1152,31 @@ function renderTimesheet(){
   if(E.no_project && E.no_project.length) flags.push(`In the sheet with no workspace project: `
     + E.no_project.map(n => `<b>${esc(n)}</b>`).join(', '));
 
-  $('#tsBody').innerHTML = chips + totalsCard
-    + (flags.length ? `<div class="card" style="margin-bottom:14px"><div class="sub">`
-      + flags.map(f => `<div>${f}</div>`).join('') + `</div></div>` : '')
-    + firmas.map((f,i) => block(f,i)).join('');
-  bind();
-  bindLineTips($('#tsBody'));      // raw rows only -- see the data-sess guard above
+  return {rows, total, bind,
+          html: chips + totalsCard
+            + (flags.length ? `<div class="card" style="margin-bottom:14px"><div class="sub">`
+              + flags.map(f => `<div>${f}</div>`).join('') + `</div></div>` : '')
+            + firmas.map((f,i) => block(f,i)).join('')};
+}
 
-  $('#tsBody').querySelectorAll('[data-copyfirma]').forEach(b => b.onclick = async () => {
-    const rs = rows.filter(r => r.firma === b.dataset.copyfirma);
-    // TSV: pastes straight into Excel or an F&O grid, one line per F&O time-entry line
-    const txt = ['Date\tCustomer\tProject\tProj ID\tActivity\tTask\tHours']
-      .concat(rs.map(r => [r.date, r.customer || '', r.project.replace(/^customers\//,''),
-        r.proj_id || '', r.activity || '', r.fno_task || '', h(r.hours)].join('\t'))).join('\n');
-    try{ await navigator.clipboard.writeText(txt);
-         toast(`Copied ${rs.length} rows for ${b.dataset.copyfirma || 'unassigned'}`); }
-    catch(e){ toast('Copy failed: ' + e.message); }
-  });
+/* Month route: the overview the entered weeks reconcile into. It carries its own
+   current/previous switch -- both months are read in the same sitting (the month closes after
+   the 1st), so they belong on one page, not two links. */
+function renderTimesheet(){
+  const per = tsRange('month');
+  const monthChips = `<span class="flabel">Month</span>` +
+    [0,1].map(n => {
+      const save = TSMONTH; TSMONTH = n; const lbl = tsRange('month').label; TSMONTH = save;
+      return `<button class="chip${n===TSMONTH?' on':''}" data-tsmonth="${n}">${esc(lbl)}</button>`;
+    }).join('') + `<span class="fsep"></span>`;
+
+  const v = entryView('month' + TSMONTH, per.label, monthChips, renderTimesheet);
+  $('#tsHead').innerHTML = `Month overview <span class="sub" style="font-weight:400">— `
+    + `${esc(per.label)} · ${h(v.total)} h</span>`;
+  $('#tsBody').innerHTML = v.html
+    + `<p class="sub" style="margin:10px 2px 0">Time is entered week by week on the
+       <a href="#timesheet/audit">week timesheet</a> — this page is the month's reconciliation.</p>`;
+  v.bind();
 }
 
 /* ---------- drill-down ---------- */
@@ -1451,8 +1487,9 @@ const matchC = c => !Q || (c.name + ' ' + c.about + ' ' + c.focus).toLowerCase()
   || c.projects.some(k => { const p = D.projects.find(x => x.key === k); return p && match(p); });
 const matchT = t => !Q || (t.title + ' ' + t.slug + ' ' + t.project + ' ' + t.what).toLowerCase().includes(Q);
 
-/* ---------- Week audit page ----------
-   The entry page answers "what do I type into F&O". This one answers "is the week whole, and
+/* ---------- Week timesheet page ----------
+   The primary time-entry surface: entryView() renders the F&O blocks for the selected ISO week at
+   the top, and the sections below answer "is that week whole, and
    what is behind each number" -- the four measures side by side (keyboard, measured, claimed,
    weighted) against the 7.5 h x workdays target, per ADR-005 v2. Read-only: every number comes
    from ops/time/ via the collector, and closing a short period is still `/time topup`. */
@@ -1466,8 +1503,11 @@ const auWeek = () => { const A = AU();
 
 /* '2026-08-10' -> '10 Aug'; a week label collapses a shared month. */
 const auDay = ds => `${+ds.slice(8,10)} ${MONTHS[+ds.slice(5,7)-1].slice(0,3)}`;
-const auRange = w => w.start.slice(5,7) === w.end.slice(5,7)
-  ? `${+w.start.slice(8,10)}–${auDay(w.end)}` : `${auDay(w.start)} – ${auDay(w.end)}`;
+/* The working week is Mon–Fri: that is the span the timesheet is judged over, so it is the span
+   the label states. Weekend days still appear as rows in the per-day tables. */
+const auRange = w => { const end = w.friday || w.end;
+  return w.start.slice(5,7) === end.slice(5,7)
+    ? `${+w.start.slice(8,10)}–${auDay(end)}` : `${auDay(w.start)} – ${auDay(end)}`; };
 
 /* A number that is only meaningful when non-zero reads as a dash, not as 0.00. */
 const auN = (v, unit) => (v === null || v === undefined || v === 0)
@@ -1504,27 +1544,138 @@ function tierBar(tiers){
     + `</span>`;
 }
 
+/* The entry range key for one ISO week inside one month. A week wholly in that month IS its own
+   segment ('2026-W36'); a straddling one has a per-month segment ('2026-W31@2026-08'); a week that
+   never touches the month has neither, and drops out of the picker. */
+function auKey(wk, mkey){
+  const R = (D.entry && D.entry.ranges) || {};
+  if(R[wk + '@' + mkey]) return wk + '@' + mkey;
+  const days = R[wk];
+  return (days && days[0].slice(0,7) === mkey) ? wk : null;
+}
+
+/* F&O entry: work time is the floor, value time the ceiling, and turns+files decide how far up
+   the band a line sits. Both are counted PER WORK HOUR, not raw: raw counts rise with the length
+   of the line, so a long quiet line would out-score a short dense one and the column would just
+   re-measure duration. The saturating curve means more evidence always moves toward value time
+   but never past it -- value time stays the maximum that can ever be registered. */
+const TURNS_PER_H = 10, FILES_PER_H = 8;    // the p90 densities: one unit of evidence each
+const entryOf = l => {
+  const work = l.claimed || 0, value = l.weighted || 0;
+  if(!work || value <= work) return work;   // no band to sit in; exceptions flags value < work
+  const x = l.turns / (TURNS_PER_H * work) + l.files / (FILES_PER_H * work);
+  const f = 1 - Math.exp(-x);
+  return Math.round((work + f * (value - work)) * 4) / 4;   // F&O takes 0.25 h steps
+};
+const entrySum = ls => Math.round(ls.reduce((s,l) => s + entryOf(l), 0) * 100) / 100;
+
+/* A week that straddles a month boundary, cut down to the days inside the selected month. The
+   entry blocks were already clipped by their range key; without this the audit sections below them
+   still showed the whole ISO week, so picking August left July days on the page. Everything derived
+   from days or lines is recomputed — a total that still counted the dropped days would be worse
+   than not clipping at all. */
+function clipWeek(w, allowed){
+  const days = w.days.filter(d => allowed.has(d.date));
+  const lines = w.lines.filter(l => allowed.has(l.date));
+  const target = Math.round(days.reduce((s,d) => s + d.target, 0) * 100) / 100;
+  const sum = f => Math.round(days.reduce((s,d) => s + d[f], 0) * 100) / 100;
+  const claimed = sum('claimed');
+  const n = f => days.reduce((s,d) => s + d[f], 0);
+  return Object.assign({}, w, {
+    days, lines, target,
+    spill: (w.spill || []).filter(s => allowed.has(s.date)),
+    running: days.some(d => d.date === D.today),
+    totals: {
+      keyboard: sum('keyboard'), measured: sum('measured'), claimed, weighted: sum('weighted'),
+      turns: n('turns'), stretches: n('stretches'), t5: n('t5'),
+      billable: Math.round(lines.filter(l => l.billable)
+                                .reduce((s,l) => s + l.claimed, 0) * 100) / 100,
+      internal: Math.round(lines.filter(l => !l.billable)
+                                .reduce((s,l) => s + l.claimed, 0) * 100) / 100,
+      coverage: target ? Math.round(1000 * claimed / target) / 10 : null,
+      short: Math.round(Math.max(0, target - claimed) * 100) / 100,
+    },
+    exceptions: {
+      under: (w.exceptions.under || []).filter(x => allowed.has(x.date)),
+      unaccounted: (w.exceptions.unaccounted || []).filter(d => allowed.has(d)),
+      unfinalized: (w.exceptions.unfinalized || []).filter(d => allowed.has(d)),
+      overCap: (w.exceptions.overCap || []).filter(d => allowed.has(d)),
+    },
+  });
+}
+
+/* The lines of one week as the selected month sees them — used by the week chips so a straddling
+   week's % counts only its own month's days. */
+function monthLines(b, mkey){
+  const k = auKey(b.week, mkey);
+  if(!k || k === b.week) return b.lines;
+  const allowed = new Set((D.entry.ranges || {})[k] || []);
+  return b.lines.filter(l => allowed.has(l.date));
+}
+
 function renderAudit(){
-  const A = AU(), w = auWeek();
-  if(!w){ $('#tsHead').textContent = 'Week audit';
+  const A = AU();
+  /* Month filter: F&O closes a month at a time, so entering hours is always "this month" — or
+     "last month" when you are late. It clips the picker to the weeks that touch the chosen month
+     and clips the entry rows to that month's days. */
+  const mkey = tsRange().days[0].slice(0,7);
+  const weeks = A.weeks.filter(k => auKey(k, mkey));
+  if(weeks.length && !weeks.includes(AUDITWK)) AUDITWK = weeks[0];
+  const raw = weeks.length ? A.byWeek[AUDITWK] : auWeek();
+  if(!raw){ $('#tsHead').textContent = 'Week timesheet';
     $('#tsBody').innerHTML = '<div class="card"><p class="sub" style="margin:0">'
       + 'No time data collected.</p></div>'; return; }
+  /* One clip, applied before anything is derived: the entry blocks and every audit section below
+     them then see exactly the same days. */
+  const rkey = auKey(raw.week, mkey) || raw.week;
+  const split = rkey !== raw.week;
+  const w = split ? clipWeek(raw, new Set((D.entry.ranges || {})[rkey] || [])) : raw;
   const T = w.totals, full = A.fullDay;
 
-  $('#tsHead').innerHTML = `Week audit <span class="sub" style="font-weight:400">— `
+  $('#tsHead').innerHTML = `Week timesheet <span class="sub" style="font-weight:400">— `
     + `${esc(w.week)} · ${esc(auRange(w))}</span>`;
 
-  /* --- week picker: coverage is on the chip, so a thin week is visible before you open it --- */
-  const chips = `<div class="stickybar"><div class="filterbar">
-    <span class="flabel">Week</span>
-    ${A.weeks.map(k => { const b = A.byWeek[k], c = b.totals.coverage;
+  /* --- week picker: the chip carries what the week would BILL against a normal working week —
+         F&O entry over the 7.5 h × workdays target — so a thin week is visible before you open it.
+         Section 4 · Coverage keeps measuring work time against the same target; that one answers
+         "is the week whole", this one answers "what does it come to".
+         It leads the SAME filter bar as the company/customer chips, because the week is the first
+         thing you pick and the company is the second — one bar, one sticky row. --- */
+  const monthChips = `<span class="flabel">Month</span>` +
+    [0,1].map(n => {
+      const save = TSMONTH; TSMONTH = n; const lbl = tsRange().label; TSMONTH = save;
+      return `<button class="chip${n===TSMONTH?' on':''}" data-tsmonth="${n}">${esc(lbl)}</button>`;
+    }).join('') + `<span class="fsep"></span>`;
+
+  const weekChips = monthChips + `<span class="flabel">Week</span>
+    ${weeks.map(k => { const b = A.byWeek[k], ls = monthLines(b, mkey);
+      const e = entrySum(ls), c = b.target ? 100 * e / b.target : null;
       return `<button class="chip${k===AUDITWK?' on':''}" data-auwk="${esc(k)}"
-        title="${esc(auRange(b))} · ${h(b.totals.claimed)} h of ${h(b.target)} h">`
-        + `${esc(k.slice(5))}${c===null?'':` · ${Math.round(c)}%`}</button>`;
+        title="${esc(auRange(b))} · F&amp;O entry ${h(e)} h of ${h(b.target)} h normal hours`
+        + ` (work time ${h(b.totals.claimed)} h, value time ${h(b.totals.weighted)} h)">`
+        + `${esc(k.slice(5))} <span class="sub">${esc(auRange(b))}</span>`
+        + `${c===null?'':` · ${Math.round(c)}%`}</button>`;
     }).join('')}
-    <span style="margin-left:auto" class="sub">Target ${h(w.target)} h
-      · 7.5 h × workdays, less absence${w.running ? ' — today joins tomorrow' : ''}</span>
-    </div></div>`;
+    <span class="fsep"></span>`;
+
+  /* The entry surface, above the evidence: this page is where the week is typed into F&O, and
+     sections 1..n below answer "is that week whole" for the week you are typing. The blocks carry
+     the F&O ENTRY figure, derived per dimension from the same lines section 1 shows. */
+  const entryScale = {};
+  w.lines.forEach(l => {
+    const k = `${l.project}|${l.activity || ''}|${l.fno_task || ''}`;
+    const s = entryScale[k] ||= {work: 0, entry: 0};
+    s.work += l.claimed || 0; s.entry += entryOf(l);
+  });
+  const ev = entryView(rkey, split ? `${w.week} in ${tsRange().label}`
+                                   : `${w.week} · ${auRange(w)}`, weekChips, renderAudit,
+                       entryScale);
+  const chips = ev.html + (!split ? '' :
+    `<p class="sub" style="margin:0 2px 14px"><b>${esc(w.week)}</b> spans two months. This page
+      shows only its ${(D.entry.ranges[rkey]||[]).length} day(s) in
+      <b>${esc(tsRange().label)}</b> — entry blocks and every section below — consolidated within
+      that stretch, so no hours cross the month. The rest of the week is on the other Month
+      chip.</p>`);
 
   /* --- the four measures, left to right in the order they are derived --- */
   const cover = T.coverage === null ? '–' : Math.round(T.coverage) + '%';
@@ -1535,16 +1686,17 @@ function renderAudit(){
   const tiles = `<div class="autiles">
     ${tile('Keyboard', h(T.keyboard) + ' h', 'measured production time')}
     ${tile('Measured', h(T.measured) + ' h', 'the 15+5 model')}
-    ${tile('Claimed', h(T.claimed) + ' h', 'what the timesheet says', 'strong')}
-    ${tile('Weighted', h(T.weighted) + ' h', 'what the value model supports')}
+    ${tile('Work time', h(T.claimed) + ' h', T.measured ? Math.round(100*T.claimed/T.measured) + '% of measured' : 'what gets registered', 'strong')}
+    ${tile('Value time', h(T.weighted) + ' h', 'what the value model supports')}
     ${tile('Coverage', cover, `of ${h(w.target)} h target`, coverRole)}
   </div>
   <p class="sub" style="margin:8px 2px 16px">
-    Claimed / keyboard <b>${auX(T.claimed, T.keyboard)}</b> ·
-    weighted / keyboard <b>${auX(T.weighted, T.keyboard)}</b> ·
+    Work time / keyboard <b>${auX(T.claimed, T.keyboard)}</b> ·
+    value time / keyboard <b>${auX(T.weighted, T.keyboard)}</b> ·
     billable <b>${h(T.billable)} h</b> · internal <b>${h(T.internal)} h</b> ·
     ${T.turns} turns in ${T.stretches} stretches${T.t5 ? ` · <b>${T.t5} T5 event${
-      T.t5===1?'':'s'}</b>` : ''}</p>`;
+      T.t5===1?'':'s'}</b>` : ''}<br>Target ${h(w.target)} h — 7.5 h × workdays, less absence${
+      w.running ? ' — today joins tomorrow' : ''}</p>`;
 
   /* --- 1. coverage: the ADR-005 check, per day --- */
   const stat = d => {
@@ -1571,11 +1723,11 @@ function renderAudit(){
         : shortish ? 'under a full day — the week is the unit, not the day' : ''))}</td>
     </tr>`;
   }).join('');
-  const sec1 = `<div class="card ausec"><h3>1 · Coverage</h3>
+  const sec1 = `<div class="card ausec"><h3>4 · Coverage</h3>
     <p class="sub">Measured time against 7.5 h a workday. Nothing here is topped up automatically
       (ADR-005 v2) — a short <i>week</i> is closed deliberately with
       <code>/time topup ${esc(w.week)}</code>.</p>
-    ${auTable(['Date','Day','Status','Claimed','Target','Short','Weighted','Note'],
+    ${auTable(['Date','Day','Status','Work time','Target','Short','Value time','Note'],
               [covRows], {right:[3,4,5,6]})}
     <p class="sub" style="margin:10px 0 0"><b>${h(T.claimed)} h</b> of
       <b>${h(w.target)} h</b>${T.short ? ` — <b class="warnink">${h(T.short)} h short</b>`
@@ -1594,39 +1746,112 @@ function renderAudit(){
       <td class="r">${d.topup ? '<span class="okink">+' + h(d.topup) + '</span>' : auN(0)}</td>
       <td class="r muted">${auX(d.claimed, d.keyboard)}</td>
     </tr>`).join('');
-  const sec2 = `<div class="card ausec"><h3>2 · The funnel, per day</h3>
+  const sec2 = `<div class="card ausec"><h3>5 · The funnel, per day</h3>
     <p class="sub">Keyboard time is what was typed; weighted is what the tiers say it was worth;
       measured is the 15+5 model; claimed is the timesheet. Top-up is non-zero only where someone
       ran <code>--topup</code>.</p>
-    ${auTable(['Date','Keyboard','Weighted','Eff.','Measured','Claimed','Top-up','Claim/kb'],
+    ${auTable(['Date','Keyboard','Value time','Eff.','Measured','Work time','Top-up','Work/kb'],
               [funRows], {right:[1,2,3,4,5,6,7]})}</div>`;
 
   /* --- 3. the F&O lines, with their evidence beside them --- */
-  const lineRows = w.lines.map(l =>
+  /* Work time = what is registered, with its agreement against the 15+5 measurement beside it.
+     Measured is not a number to bill on -- it is the control that says the rules and the meter have
+     not drifted apart -- so it rides along as a percentage instead of taking a column of its own.
+     100% means the entry is exactly what was measured; anything far off is a deliberate correction
+     or a defect, and either way it should be visible without a second column to compare against. */
+  const ctrl = l => !l.measured ? '' :
+    ` <span class="muted">${Math.round(100 * l.claimed / l.measured)}%</span>`;
+  /* How much of the ceiling the entry takes. 100% would be billing the full value the model
+     credits; work time alone shows as whatever share of value time that happens to be. */
+  const ofValue = (e, v) => !v ? '' :
+    ` <span class="muted">${Math.round(100 * e / v)}%</span>`;
+  /* Keyboard and value time read against the number actually registered, so the row scans as one
+     scale: what was typed, what is billed (100%), and how much headroom the ceiling leaves. */
+  const ofEntry = (x, e) => (!e || !x) ? '' :
+    ` <span class="muted">${Math.round(100 * x / e)}%</span>`;
+  const lineRow = l =>
     `<tr data-sess="${esc(sessKey(l.date, l.project, l.activity, l.fno_task))}"${
       l.topFiles && l.topFiles.length
         ? ` data-tipextra="${esc(l.topFiles.join(', '))}"` : ''}>
       <td>${esc(auDay(l.date))}</td>
-      <td>${esc(l.project)}${l.live ? ' <span class="pill warn">live</span>' : ''}</td>
+      <td>${esc(l.project)}${l.live ? ' <span class="pill warn">live</span>' : ''}${
+        l.project === 'Dev' && !l.live
+          ? ` <button class="mini reassign" data-redate="${esc(l.date)}"
+              data-react="${esc(l.activity || '')}" data-retask="${esc(l.fno_task || '')}"
+              title="Move this Dev row to the project it was really for. Dev → project only.">→</button>`
+          : ''}</td>
       <td class="muted">${esc(l.proj_id)}</td>
       <td>${esc(l.activity) || '<span class="muted">–</span>'}</td>
       <td>${esc(l.fno_task) || '<span class="muted">–</span>'}</td>
-      <td class="r"><b>${auN(l.claimed)}</b></td>
-      <td class="r muted">${auN(l.measured)}</td>
-      <td class="r">${auN(l.keyboard)}</td>
-      <td class="r">${auN(l.weighted)}</td>
+      <td class="r">${auN(l.keyboard)}${ofEntry(l.keyboard, entryOf(l))}</td>
+      <td class="r">${auN(l.claimed)}${ctrl(l)}</td>
+      <td class="r"><b>${auN(entryOf(l))}</b>${ofValue(entryOf(l), l.weighted)}</td>
+      <td class="r">${auN(l.weighted)}${ofEntry(l.weighted, entryOf(l))}</td>
       <td class="r muted">${l.turns}/${l.stretches}</td>
       <td class="r muted">${l.files || '–'}</td>
       <td class="r">${l.t5 ? '<b class="accentink">' + l.t5 + '</b>' : '–'}</td>
       <td>${l.billable ? '<i class="swatch" style="background:var(--s1)"></i>'
                        : '<i class="swatch" style="background:var(--s2)"></i>'}</td>
-    </tr>`).join('');
-  const sec3 = `<div class="card ausec"><h3>3 · F&amp;O lines</h3>
-    <p class="sub">One row per date and F&amp;O dimension (Project ID → Activity → Task),
-      each with the evidence behind it. To type these into F&amp;O company by company, use the
-      <a href="#timesheet/week1">week timesheet</a> instead — this view is for checking them.</p>
-    ${auTable(['Date','Project','Proj ID','Activity','Task','Claimed','Measured','Keyboard',
-               'Weighted','Turns/str','Files','T5',''], [lineRows], {right:[5,6,7,8,9,10,11]})}</div>`;
+    </tr>`;
+
+  /* Sums under the lines: billable and internal apart, then the week. The point of the table is
+     deciding what gets registered against what was measured, and that decision is made on the
+     column totals, not on any one row. */
+  const sum = (ls, f) => ls.reduce((s,l) => s + (l[f] || 0), 0);
+  const totRow = (label, ls, cls) => {
+    if(!ls.length) return '';
+    return `<tr class="autot${cls ? ' ' + cls : ''}">
+      <td colspan="5">${esc(label)} <span class="muted">· ${ls.length} line${
+        ls.length===1?'':'s'}</span></td>
+      <td class="r">${auN(Math.round(sum(ls,'keyboard')*100)/100)}${
+        ofEntry(sum(ls,'keyboard'), entrySum(ls))}</td>
+      <td class="r">${auN(Math.round(sum(ls,'claimed')*100)/100)}${
+        sum(ls,'measured') ? ` <span class="muted">${
+          Math.round(100 * sum(ls,'claimed') / sum(ls,'measured'))}%</span>` : ''}</td>
+      <td class="r"><b>${auN(entrySum(ls))}</b>${ofValue(entrySum(ls), sum(ls,'weighted'))}</td>
+      <td class="r">${auN(Math.round(sum(ls,'weighted')*100)/100)}${
+        ofEntry(sum(ls,'weighted'), entrySum(ls))}</td>
+      <td class="r">${sum(ls,'turns')}/${sum(ls,'stretches')}</td>
+      <td class="r">${sum(ls,'files') || '–'}</td>
+      <td class="r">${sum(ls,'t5') || '–'}</td><td></td></tr>`;
+  };
+  const bill = w.lines.filter(l => l.billable), intern = w.lines.filter(l => !l.billable);
+  const lineTotals = totRow('Billable', bill) + totRow('Internal', intern)
+                   + totRow('Week total', w.lines, 'grand');
+
+  /* Grouped by customer, then by date inside the customer. F&O is entered one customer at a time
+     (its own timesheet, its own Proj ID), and within that you walk the days — so the table is
+     ordered the way the typing is done, not the way the days happened. */
+  const custOfLine = p => p.toLowerCase().startsWith('customers/')
+    ? (p.split('/')[1] || 'No customer') : 'Internal';
+  const byCust = {};
+  for(const l of w.lines) (byCust[custOfLine(l.project)] ||= []).push(l);
+  const custOrder = Object.keys(byCust)
+    .sort((a,b) => (a==='Internal')-(b==='Internal') || a.localeCompare(b));
+  const groupRows = custOrder.map(c => {
+    const ls = byCust[c].slice().sort((x,y) => x.date.localeCompare(y.date)
+      || x.project.localeCompare(y.project) || (x.activity||'').localeCompare(y.activity||''));
+    return `<tr class="augrp"><td colspan="13">${esc(c)}</td></tr>`
+      + ls.map(lineRow).join('')
+      + totRow(c + ' total', ls);
+  }).join('');
+
+  const sec3 = `<div class="card ausec"><h3>1 · F&amp;O lines</h3>
+    <p class="sub">Grouped by customer, then by date — the order the entry is typed in, since F&amp;O
+      takes one timesheet per customer. One row per date and F&amp;O dimension (Project ID →
+      Activity → Task), each with the evidence behind it. Every hours column carries a %:
+      <b>keyboard</b> and <b>value time</b> read against F&amp;O entry, so the row scans as one
+      scale — what was typed, what is billed, and how much ceiling is left.
+      <b>Work time</b> is measured time, and the % beside it is that against the 15+5 model — a
+      control that the rules and the meter have not drifted apart, not a number to bill on.
+      <b>Value time</b> is the ceiling the value model supports. <b>F&amp;O entry</b> sits in the
+      band between them: turns and files per work hour decide how far up, saturating so more
+      evidence always moves toward value time and never past it. The % beside it is the share of
+      value time taken — how much of the ceiling is being billed. Lines with no evidence, or where
+      the value model supports less than the measurement, stay at work time.</p>
+    ${auTable(['Date','Project','Proj ID','Activity','Task','Keyboard','Work time','F&O entry',
+               'Value time','Turns/str','Files','T5',''],
+              [groupRows, lineTotals], {right:[5,6,7,8,9,10,11]})}</div>`;
 
   /* --- 4. where the effort sat --- */
   const effRows = w.days.filter(d => d.turns).map(d =>
@@ -1637,7 +1862,7 @@ function renderAudit(){
       <td class="r muted">${d.turns}/${d.stretches}</td>
       <td class="r">${d.t5 ? '<b class="accentink">' + d.t5 + '</b>' : '–'}</td>
       <td class="r muted">${d.files || '–'}</td></tr>`).join('');
-  const sec4 = `<div class="card ausec"><h3>4 · Effort profile</h3>
+  const sec4 = `<div class="card ausec"><h3>2 · Effort profile</h3>
     <p class="sub">Keyboard minutes by tier (ADR-004, provisional). T4 and T5 are where the
       multiplier is largest and least tested — a week that leans on them is a week whose
       claim rests on the weakest part of the model.</p>
@@ -1651,7 +1876,7 @@ function renderAudit(){
       — no keyboard time and no absence entry. Answer them in
       <code>ops/time/absence.md</code>: vacation, holiday, sick, or offline.</p></div>`);
   if(ex.under.length) blocks.push(`<div class="block"><h4>Days under a full day</h4>
-    ${auTable(['Date','Claimed','Short','Weighted supports'], [ex.under.map(u =>
+    ${auTable(['Date','Work time','Short','Value time supports'], [ex.under.map(u =>
       `<tr><td>${esc(auDay(u.date))}</td><td class="r">${h(u.claimed)}</td>
         <td class="r warnink">−${h(u.short)}</td>
         <td class="r">${u.weighted === null ? '<span class="muted">not derived</span>'
@@ -1672,13 +1897,51 @@ function renderAudit(){
         s.activity ? ' / ' + esc(s.activity) : ''}, ${h(s.hours)} h)`).join('<br>')}</p>
     <p class="sub" style="margin:2px 0 0">Value-model hours moved off a capped date. Hours are
       moved, never dropped; period totals are unchanged.</p></div>`);
-  const sec5 = `<div class="card ausec"><h3>5 · Exceptions</h3>${
+  const sec5 = `<div class="card ausec"><h3>3 · Exceptions</h3>${
     blocks.join('') || '<p class="sub" style="margin:0">Nothing outstanding for this week.</p>'}</div>`;
 
-  $('#tsBody').innerHTML = chips + tiles + sec1 + sec2 + sec3 + sec4 + sec5;
+  $('#tsBody').innerHTML = chips
+    + `<h2 class="ausplit">The week behind the numbers</h2>`
+    + tiles + sec3 + sec4 + sec5 + sec1 + sec2;
+  ev.bind();                       // company/customer/consolidated chips + Copy rows + line tips
   $('#tsBody').querySelectorAll('[data-auwk]').forEach(b =>
     b.onclick = () => { AUDITWK = b.dataset.auwk; renderAudit(); });
   bindLineTips($('#tsBody'));
+  bindReassign();
+}
+
+/* Dev -> project reassignment. Only Dev rows carry the control, and the server refuses anything
+   else: time on a named project stays there (ops/time/README.md sec.2). The picker replaces the
+   button in place rather than opening a dialog — one row, one decision, escape to back out. */
+function bindReassign(){
+  $('#tsBody').querySelectorAll('button.reassign').forEach(b => b.onclick = e => {
+    e.stopPropagation(); hideTip();
+    const {redate, react, retask} = b.dataset;
+    const opts = D.projects.filter(p => p.key !== 'Dev')
+      .sort((x,y) => (!x.key.startsWith('customers/')) - (!y.key.startsWith('customers/'))
+                     || x.key.localeCompare(y.key));
+    const sel = document.createElement('select');
+    sel.className = 'mini';
+    sel.innerHTML = '<option value="">move to…</option>'
+      + opts.map(p => `<option value="${esc(p.key)}">${esc(p.key)}${
+          p.fno_code ? ' · ' + esc(p.fno_code) : ''}</option>`).join('');
+    b.replaceWith(sel);
+    sel.focus();
+    sel.onkeydown = k => { if(k.key === 'Escape') renderAudit(); };
+    sel.onchange = async () => {
+      if(!sel.value) return;
+      sel.disabled = true;
+      try{
+        const r = await fetch('/api/reassign', {method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({date: redate, to: sel.value,
+                                activity: react || '', fno_task: retask || ''})});
+        const j = await r.json();
+        toast(j.message || (j.ok ? 'moved' : 'failed'));
+        if(j.ok){ await load(); renderAudit(); } else { sel.disabled = false; }
+      }catch(err){ toast('Reassign failed: ' + err.message); sel.disabled = false; }
+    };
+  });
 }
 
 /* ---------- "what was this line about" hover ----------

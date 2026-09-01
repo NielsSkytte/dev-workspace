@@ -39,7 +39,13 @@ TRANSCRIPTS = os.environ.get(
 
 # ---------------------------------------------------------------- constants
 
-IDLE_GAP = 5.0        # min. Splits stretches AND caps intra-turn dead time. One rule, both levels.
+IDLE_GAP = 5.0        # min. Caps intra-turn dead time (a permission prompt, a long tool call).
+TURN_GAP = 15.0       # min. BETWEEN turns: splits stretches and caps the gap credited at 1.0x.
+                      # Matches rollup.py's idle timeout (2026-08-31): a gap under 15 min is Niels
+                      # thinking and writing the next prompt, which the timesheet already bills, so
+                      # the value ceiling must not discard it. Applies FORWARD only -- existing
+                      # value/ records were derived at 5.0 and are not re-derived (transcripts
+                      # before ~2026-07-31 are gone, so a re-derive would empty those days).
 TAIL_BUFFER = 5.0     # min per stretch, unweighted
 MIN_HOURS = 0.5       # per F&O line per day, as rollup.py
 CUSTOMER_CAP = 12.0   # h per CUSTOMER per day -- hard, triggers spill. The only view a customer has.
@@ -373,14 +379,14 @@ def turn_tier(r):
 
 
 def stretch_groups(items):
-    """Split turns into stretches on an IDLE_GAP boundary. Returns lists of indices."""
+    """Split turns into stretches on a TURN_GAP boundary. Returns lists of indices."""
     if not items:
         return []
     order = sorted(range(len(items)), key=lambda i: items[i]["start"])
     groups = [[order[0]]]
     end = items[order[0]]["end"]
     for i in order[1:]:
-        if (items[i]["start"] - end).total_seconds() / 60.0 <= IDLE_GAP:
+        if (items[i]["start"] - end).total_seconds() / 60.0 <= TURN_GAP:
             groups[-1].append(i)
             if items[i]["end"] > end:
                 end = items[i]["end"]
@@ -464,7 +470,7 @@ def score(rows):
                     weighted_min += dur * MULTIPLIER[tier]
                 for a, b in zip(idx, idx[1:]):
                     gap = (items[b]["start"] - items[a]["end"]).total_seconds() / 60.0
-                    gap = max(0.0, min(gap, IDLE_GAP))
+                    gap = max(0.0, min(gap, TURN_GAP))
                     weighted_min += gap
                     rec["overhead_min"] += gap
                 weighted_min += TAIL_BUFFER
