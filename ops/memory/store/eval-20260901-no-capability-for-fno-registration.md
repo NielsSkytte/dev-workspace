@@ -6,8 +6,27 @@ scope: workspace
 source: session:e15b57a5
 tags: [workspace, skills, fno, time, browser, capability-gap]
 status: distilled
-description: "A full day of month-close ran with no skill covering it - the routine is now written down in README 4.1 and the F&O entry column, and the real bottleneck was the browser bridge, not the knowledge"
+description: "A full day of month-close ran with no skill covering it - the deferral below applied the repeatability test where the depth test belonged, was overruled, and the capability was built the same day as fno-time-registration + /fno"
 ---
+
+> **SUPERSEDED 2026-09-01, same day.** The recommendation below - *"don't build one yet, revisit at
+> the September close"* - **applied the wrong test and has been overruled by Niels.** It deferred on
+> a *repeatability* argument ("revisit next month, if the Excel path works it needs no skill"), but
+> the skill axis is **depth**: one demonstrated failure is enough, and this day produced eight, each
+> in a production ERP, each corrected by Niels - `activity:` written on Carl Ras lines, `Bogfoer`
+> instead of `Godkendelse`, Element Logic hunted in PING instead of PNO1, `Kategori` assumed
+> mandatory, `Timer` assumed to recompute, an empty task lookup read as a resolved task, a `--topup`
+> of +17,50 h nearly applied against its own evidence, and `0,75` typed into `Rolle-id`. AGENTS.md
+> states this explicitly: *"If you defer a skill because it hasn't happened twice, you're applying
+> the wrong test."*
+>
+> The transport observation below was **right and was kept** - it became the skill's doctrine rather
+> than a reason not to build. **Built the same day:** the skill `fno-time-registration` (with
+> `references/browser-fallback.md`) and the command `/fno`. The skill carries the eight failure modes
+> and makes the Excel add-in paste the default with the browser grid as a guarded fallback; the
+> command carries the fixed per-period sequence, including a pre-flight for time already registered
+> in the period. **No agent was built** - every mid-task decision in this routine resolves to "put it
+> back to Niels", which is a rule, not judgment.
 
 **Skill-evaluation checkpoint for 2026-09-01.** Skills that fired: `/log` only. Skills that should
 have fired: none exist. A seven-hour month-close — the single most repeated financial routine in the

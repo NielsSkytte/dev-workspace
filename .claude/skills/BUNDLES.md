@@ -101,4 +101,5 @@ Update procedure: `/update-skills`
 | `writing-voice` | Niels's business writing voice (DA/EN) - strip the AI smell, match his voice; strict offer layer |
 | `pingala-offer` | Trusted-advisor doctrine and structure for writing Pingala customer offers / SoWs |
 | `fabric-licensing` | Microsoft Fabric licensing & cost (capacity SKUs, Free/Pro/PPU, the F64 rule, buy/reserve/pause, Copilot metering; data-agent consumption in a reference), cited to MS Learn |
+| `fno-time-registration` | Registering time into Dynamics 365 F&O — per-customer dimensions, journal-per-week-per-company, Godkendelse -> Finished (never Bogfør), pre-flight gates, and the paste-first transport rule (browser grid is the guarded fallback) |
 | `pingala-stream-maturity-matrix` | Standardized data platform progress overview skill for Agent M & Agent Q. Generates executive HTML matrix tracking 6 Medallion stages per source stream with live volume metrics and DEV/TEST/PROD environment statuses. |

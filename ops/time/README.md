@@ -368,6 +368,12 @@ Task -> hours).
 modes (section 5) are just the daily files stacked into one by-date view for a week or a month, so you
 can pull a whole period at once without a separate aggregate file.
 
+**Getting the rows into F&O.** The registration routine itself -- pre-flight, the paste transport,
+one journal per ISO week per company, and `Godkendelse -> Finished` (never `Bogfør`) -- is written up
+in the memory records `fno-registration-per-customer-protocol`, `fno-month-close-approve-not-post`
+and `dashboard-copy-rows-transport`. Those are the durable source; the Claude harness only
+accelerates them (skill `fno-time-registration`, command `/fno`).
+
 ## 7. Value model (ADR-004, PROVISIONAL -- re-evaluate end of 2026-08)
 
 Sections 1-6 measure **time**. This section derives a second number, **weighted hours**, from what

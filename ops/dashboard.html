@@ -1062,7 +1062,10 @@ function entryView(rkey, periodLabel, leadChips, rerender, scale){
     const m = $('#tsBody').querySelector('[data-tsmerge]');
     if(m) m.onclick = () => { TSMERGE = !TSMERGE; rerender(); };
     $('#tsBody').querySelectorAll('[data-copyfirma]').forEach(b => b.onclick = async () => {
-      const rs = rows.filter(r => r.firma === b.dataset.copyfirma);
+      // MUST match block()'s filter exactly, customer chips included -- what you copy is what you
+      // see. Filtering on firma alone put deselected customers on the clipboard invisibly, which
+      // is an over-registration straight into a production ERP.
+      const rs = rows.filter(r => r.firma === b.dataset.copyfirma && !TSCUST.has(custOf(r)));
       // TSV: pastes straight into Excel or an F&O grid, one line per F&O time-entry line
       const txt = ['Date\tCustomer\tProject\tProj ID\tActivity\tTask\tHours']
         .concat(rs.map(r => [r.date, r.customer || '', r.project.replace(/^customers\//,''),

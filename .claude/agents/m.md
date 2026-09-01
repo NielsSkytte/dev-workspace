@@ -82,6 +82,7 @@ The Fabric domain is split in three around the semantic model (the model is the 
 | `/log` | Session-log entry + memory distill + time rollup + time backup + internal-repo commits | DEV root / session end |
 | `/time` | Show/roll up tracked time per project (live preview, week/month reports) | Any context |
 | `/switch-task` | Set the time-tracking task for the current customer project | Customer project sessions |
+| `/fno` | Register a period's time into Dynamics 365 F&O — pre-flight, rows at the F&O entry figure, one journal per ISO week per company, approve (never post) | DEV root / week + month close |
 | `/fill-sow` | Generate a customer SoW from mapping + template | Content agent |
 | `/new-project` | Scaffold a new project (template + interview + VS Code task) | DEV root context |
 | `/update-skills` | Pull the skills-for-fabric vendor submodule | DEV root |
@@ -130,6 +131,14 @@ Q clears entries after hiring.
 | | | |
 
 <!-- Cleared 2026-07-06: `fabric-project-access` skill was built and is live in .claude/skills/ (attached to fabric-back). -->
+
+<!-- Cleared 2026-09-01 (Q): F&O time registration. The gap was never on this board — it was logged
+as the evaluative record `eval-20260901-no-capability-for-fno-registration`, which recommended
+deferring; that deferral applied the repeatability test where the depth test belonged and was
+overruled by Niels. Built: skill `fno-time-registration` (+ `references/browser-fallback.md`) and
+command `/fno`. No agent — every mid-task decision in the routine resolves to "put it back to
+Niels", which is a rule, not judgment. Lesson for this board: an evaluative memory record saying
+"revisit later" is not a substitute for a Hiring Board entry; log the gap here. -->
 
 ---
 

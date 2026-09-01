@@ -44,7 +44,7 @@ reads short and there are no unaccounted days, close it deliberately — see bel
 
 ### `/time topup <YYYY-Www|YYYY-MM>` — close a period to 100%
 
-Run `python C:\Dev\ops	imeollup.py --topup <period>` and show the output. It is a **dry run**:
+Run `python C:\Dev\ops\time\rollup.py --topup <period>` and show the output. It is a **dry run**:
 it prints the shortfall, the proposed lift per day, and the weighted hours behind each one. Days
 whose value record does not cover the claim are flagged.
 

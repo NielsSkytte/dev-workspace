@@ -1002,4 +1002,18 @@ Chronological record of workspace sessions — what was done, decided, and what'
   `Bogfør` was started and stopped — Niels: *"tror bare du skal godkende dem"*. PNO1-004431 was
   already posted. The empty `PING-021923` was left untouched.
 - **Decided:** *approve, don't post* is the month-close step here. Finished is an approval state —
-  the journals stay under "Ikke bogført" and posting is a separate, later decision.
+  the journals stay under "Ikke bogført" and posting is a separate, later decision. Niels posted
+  them afterwards.
+- **Open question raised at wrap-up — possible double registration.** Niels asked when the 33-hour
+  week was closed, which surfaced that **two independent 33,00 h** exist: `PING-021926` (W32), and
+  the utilisation page's August figure. They are not the same number — when the page showed 33,00 h,
+  W32 stood at 24,75 h and all six journals were unposted. That 33,00 h therefore came from lines
+  posted **outside** our journals, and our 138,75 h went on top of it. August may be over-registered
+  by up to 33,00 h on billable time. Nothing verified — the browser bridge was down. Task
+  `2026-09-01-fno-august-double-registration-check` (priority high), deferred to 02-09 by Niels.
+- **Capability:** Niels asked for time registration to become a reusable capability — *"dette bliver
+  noget vi kommer til at gøre hver uge/måned"*. `Q` dispatched to design and build it. The
+  evaluative record written earlier the same day recommended **deferring** a skill until the
+  September close; that applied the repeatability test where `AGENTS.md`'s rubric calls for the
+  depth test — **one demonstrated failure is enough**, and the day produced eight. Recommendation
+  superseded; Q is correcting the record.
