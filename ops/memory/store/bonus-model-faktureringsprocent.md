@@ -56,3 +56,25 @@ they answer different questions.
 an unlogged meeting, a day the value model supports and the timesheet undercounts, customer work
 sitting in internal. **Never** entering hours that were not worked. The evidence rule is unchanged:
 `time-shortfall-can-be-in-the-target`.
+
+**Timing vacation: there is no general rule, and the direction flips.** Since the target is not
+reduced, it looks as though concentrating vacation in one month beats spreading it. Tested over two
+months with ten vacation days, the winner depends entirely on how much is billed per working day:
+
+| billable h / working day | 10 days in one month | 5 + 5 split | winner |
+|---|---|---|---|
+| 9.06 (Aug 2026's actual) | 57,187 kr | 69,581 kr | split, +12,394 |
+| 8.00 | 48,384 kr | 49,152 kr | split, +768 |
+| 7.40 | 37,296 kr | 28,416 kr | concentrate, +8,880 |
+
+The question is never "concentrate or spread" but **which arrangement puts more months just above a
+boundary instead of just below one**. The asymmetry runs against concentrating: the top is capped at
+24%, so a month at 122% pays no more than one at 105%, while the bottom collapses — 65% pays 2% and
+55% pays nothing. **A month falling below ~70% is the thing to avoid**, and that is exactly what
+piling all the vacation into one month risks.
+
+**A caveat that may dissolve the whole question.** August billed 145.00 h across 16 working days =
+9.06 h/day, well above the 7.4 h/day the basis assumes. That is evidence the work is demand-limited
+and gets *compressed* rather than lost — in which case vacation costs no billable hours and its
+timing is irrelevant to the bonus. The truth is likely between the two models; 9.06 h/day is
+probably not sustainable across a full month.
