@@ -15,8 +15,27 @@ STATE_FILE = os.environ.get(
     "MEMORY_STATE_FILE",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), ".capture_state.json"),
 )
-# Summarizer: a tiny local Ollama model (zero cost, fully local). If Ollama is unreachable
-# the caller falls back to a deterministic truncated extract.
+# Summarizer: DISABLED 2026-09-02 (Niels). The daily stream now records the assistant's own
+# words, truncated -- never a model's paraphrase of them.
+#
+# Why. qwen3:1.7b inverted a finding on three consecutive days, each time about money: a REFUSED
+# topup recorded as a decision to bill it (01-09), "taking a vacation reduces the monthly target"
+# when it does not (02-09), and "identifying duplicate entries" on the turn that refuted double
+# registration (02-09). sanitize_summary() cannot catch this by construction -- it checks length,
+# script and instruction-shape, all of which a polarity flip passes cleanly. There is no
+# deterministic test for "is this claim true", so the gate was sentinel, a full agent pass every
+# /log. In three days not one store/ record came from a summary; every one was written from
+# session context. The summarizer's only advantage over the verbatim fallback was compactness,
+# and daily/ is an archive nothing reads automatically (build_snapshot.py reads store/ only).
+#
+# Verbatim text cannot invert a finding. That is the whole argument.
+#
+# To re-enable with a larger model -- the option considered and not taken -- set SUMMARIZE = True
+# and point MEMORY_SUMMARY_MODEL at it. Keep the sentinel pass at /log if you do; the failure is
+# a property of small models on negation, not of this one model.
+# NOTE: Ollama itself stays -- own/MetaAtomic/lineage_engine/describe.py uses it for the Element
+# Logic lineage descriptions. This flag governs turn capture only.
+SUMMARIZE = os.environ.get("MEMORY_SUMMARIZE", "0") == "1"
 SUMMARY_URL = os.environ.get("MEMORY_SUMMARY_URL", "http://localhost:11434/api/chat")
 SUMMARY_MODEL = os.environ.get("MEMORY_SUMMARY_MODEL", "qwen3:1.7b")
 SUMMARY_TIMEOUT = int(os.environ.get("MEMORY_SUMMARY_TIMEOUT", "20"))
@@ -189,7 +208,12 @@ def _summarize_local(prompt):
 
 
 def summarize(user_text, asst_text):
-    """Local Ollama summary, validated; or "" so the caller truncates."""
+    """Local Ollama summary, validated; or "" so the caller truncates verbatim.
+
+    Returns "" unconditionally while SUMMARIZE is off -- see the flag at the top of this file.
+    """
+    if not SUMMARIZE:
+        return ""
     if not (user_text or asst_text):
         return ""
     prompt = PROMPT_TMPL % (user_text[:2000], asst_text[:4000])

@@ -62,3 +62,19 @@ so most readily on turns where the user's message is short (`"regnes per måned"
 lives in the assistant's reasoning rather than the prompt. Short user turns carrying big conclusions
 are the ones to vet hardest. Nothing was distilled from the stream on any of the three days — the
 store records were written from session context — which is the only reason none of it landed.
+
+**Acted on the same day: turn-capture summarization is off** (`SUMMARIZE` in `capture_turn.py`,
+default off; `MEMORY_SUMMARIZE=1` re-enables). `daily/` now holds the assistant's own words,
+truncated to 700 chars — the fallback that already existed for when Ollama was unreachable is now
+the only path. Verbatim text cannot invert a finding.
+
+The deciding argument was not that the model is bad but that **the check was unbuildable**.
+`sanitize_summary()` tests length, script and instruction-shape; a flipped polarity passes all
+three, and there is no deterministic test for whether a claim is true. The only gate was a full
+sentinel agent pass every `/log` — real cost, every session, forever — to protect an artefact that
+had contributed **zero** `store/` records in three days. Compactness was its sole advantage, and
+`daily/` is an archive nothing reads automatically.
+
+Ollama stays: `own/MetaAtomic/lineage_engine/describe.py` uses it for the Element Logic lineage
+descriptions. Sentinel's role was rewritten to point there instead, carrying the polarity lesson
+with it — **read for direction, not just subject.**

@@ -64,10 +64,23 @@ recall-miss proves keyword is insufficient.
 **STORAGE / capture.** Append a record to today's `daily/<date>.md`. The `Stop` hook writes one
 per turn automatically (`status: raw`, `source: turn-hook`) - keyed by (date, session, user
 message), so repeated `Stop` firings within one turn **replace** that turn's record in place
-rather than piling up duplicates. The assistant body is summarized by a **tiny local Ollama
-model** (`MEMORY_SUMMARY_MODEL`, default `qwen3:1.7b`, zero cost / fully local); if Ollama is
-unreachable it falls back to a deterministic truncated extract. By hand, write a record in the
+rather than piling up duplicates. The assistant body is the assistant's **own words, truncated**
+(700 chars) — the daily stream quotes, it does not paraphrase. By hand, write a record in the
 shape above with `source: manual`.
+
+**Local summarization was switched off 2026-09-02** (`SUMMARIZE` in `capture_turn.py`, default
+off). `qwen3:1.7b` inverted a finding on three consecutive days, each time about money — a
+**refused** topup recorded as a decision to bill it, *"taking a vacation reduces the monthly
+target"* when it does not, and *"identifying duplicate entries"* on the turn that **refuted**
+double registration. `sanitize_summary()` cannot catch this by construction: it tests length,
+script and instruction-shape, and a flipped polarity passes all three. There is no deterministic
+test for whether a claim is true, so the only gate was a full sentinel pass every `/log`. Across
+those three days **not one `store/` record came from a summary** — every one was written from
+session context. Compactness was the summarizer's sole advantage, and `daily/` is an archive that
+nothing reads automatically (`build_snapshot.py` reads `store/` only). **Verbatim text cannot
+invert a finding.** To re-enable with a larger model, set `MEMORY_SUMMARIZE=1`; keep the sentinel
+pass if you do, since the failure is a property of small models on negation. Ollama itself stays —
+`own/MetaAtomic/lineage_engine/describe.py` uses it for the Element Logic lineage descriptions.
 
 **STORAGE / distill.** When a raw daily record is worth keeping, copy it into `store/<id>.md`
 (`status: distilled`), refine the body, and add a line to `store/MEMORY.md`. `/log` does this for

@@ -51,6 +51,16 @@ Full derivation, validation and every source-column decision:
 
 ## Next
 
+> **BLOCKER FOUND 2026-09-02 (Dataverse session).** `NB_Outbound_Marketo.Notebook/` and
+> `PL_Outbound_Marketo.DataPipeline/` exist **only in the local working copy**. Verified: no git
+> history on either path in `Fabric-ETL`; absent from `Fabric-ETL-DEV` (50 items, no folders) and
+> from `Fabric-ETL-TEST`; PROD not checked (no access from this session). Local files date from
+> 2026-08-21 ~11:00 and were never committed, pushed or imported. `PL_Transform_Curated_Outbound`
+> and the view DID land, so `outbound.Marketo_Lead` is built - but nothing pushes it to Marketo.
+> Also unexplained: `PL_Outbound_Marketo` pins `notebookId 8e0fa5b3-5e13-46bb-8a72-7f2b98f414bb`,
+> which cannot be a git logicalId if the item was never committed. Resolve before assuming the
+> write-back path exists. Niels: handle in a dedicated session.
+
 > Two streams run in parallel and meet at `outbound.Marketo_Lead` and at the baseline.
 > **Inbound** = landing zone -> raw -> enriched, which is what makes a baseline possible.
 > **Outbound** = payload semantics and the push. Keep this list as the single queue for both.
