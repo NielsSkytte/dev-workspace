@@ -1022,3 +1022,60 @@ Chronological record of workspace sessions — what was done, decided, and what'
   September close; that applied the repeatability test where `AGENTS.md`'s rubric calls for the
   depth test — **one demonstrated failure is enough**, and the day produced eight. Recommendation
   superseded; Q is correcting the record.
+
+## 2026-09-02
+
+> This day holds **two sessions**. The entry below covers the F&O / bonus session only; the
+> Carl Ras Dataverse write-back work ran in parallel and is logged by that session.
+
+### August verified, the bonus model established, and Element Logic's missing field found
+
+- **Did:**
+  - **Closed the double-registration alarm as a false one.** Utilisation came to show **145,00 h**
+    for August — exactly the entered total (138,75 PING + 6,25 PNO1). The 33,00 h read on 01-09 was
+    our own time on a **lagging page**, not a second source. Task closed `not-a-defect`; the
+    reasoning error is recorded in `store/fno-month-close-approve-not-post` and encoded in `/fno`'s
+    first pre-flight gate, which now says to read journals and never that page.
+  - **Built `ops/time/bonus.py`** and wired it into `/fno` as a gate that runs *before* entry, while
+    there is still time to act. It reports the tier, the margin above the line, and the distance to
+    the next boundary, and flags a margin under 2 h as **THIN**.
+  - **Established the bonus model** against the F&O page `HRMUtalizationEmplTrans_PIN`, verified on
+    all five 2026 rows: `faktureringsprocent = Fakturerbare timer / Timer per måned`, a step
+    function paying 0 / 2 / 10 / 16 / 20 / 24% at each whole 10% mark, capped at 24%.
+  - **Locked the August payout predictions before payout** in
+    `2026-09-02-bonus-verify-august-payout` — there is no HR department, so the ferie rule can only
+    be recovered by observation, and an observation only teaches anything if the prediction precedes
+    it. ~33–35 t.kr means vacation is not deducted; ~41,8 t.kr means it is.
+  - **Recorded Element Logic's `Beskrivelse` rule** in README §4.1, the skill's field table and the
+    memory record — `<number> <title>`, e.g. `45394 Lineage documentation`. Element Logic only, and
+    per-engagement rather than constant.
+  - **Fixed two defects in my own work:** `dashboard.html` *Copy rows* filtered on company while the
+    table it sits under also filtered on the customer chips, so copying with a customer deselected
+    put extra rows on the clipboard — a silent over-registration into a production ERP; and
+    `bonus.py` pointed a fresh month at the 50% boundary, which pays 0%.
+- **Decided:**
+  - **The bonus is evaluated per month, never accumulated** (Niels). Each month stands alone —
+    May–Aug together is 46,10% and would pay nothing; monthly, August pays 20%.
+  - **Vacation does not lower the bonus target.** August shows the full 155,50 h against 21
+    arbejdsdage despite a week off, so a vacation week costs ~37 h of capacity against an unmoved
+    target. **A month containing holiday is structurally harder and that should be known going in.**
+  - **Two percentages sit on that page and only one pays.** *Nytte til stede* uses `Normtimer`,
+    which *is* absence-adjusted (102,84% in August). The workspace's own coverage check behaves the
+    same way, which is why August reads **104% internally and 93,25% for bonus**. Both correct,
+    different questions.
+  - **There is no general rule for timing vacation.** Concentrating ten days in one month beats
+    splitting them only at low billing intensity; at August's own 9,06 h per working day, splitting
+    wins by 12.394 kr. The principle is boundaries, not concentration — the top is capped at 24% so
+    a month at 122% pays no more than one at 105%, while the bottom collapses (65% → 2%, 55% → 0%).
+    **Avoid letting any month fall below ~70%.**
+- **Tasks:** `2026-09-01-fno-august-double-registration-check` → **done** (`not-a-defect`);
+  `2026-09-02-bonus-verify-august-payout` → **open**, blocked on the payout.
+- **Next:**
+  - **August lands at 93,25%** — tier 90%, 20% bonus, 5,05 h clear of the line. 100% would have
+    needed 155,50 h.
+  - **September's basis is 163,00 h**: 90% needs **146,70 h**, 100% needs 163,00 h.
+  - **Check the payout against the locked predictions** and capture the bonus *percentage* from the
+    payslip, not only the amount — 1.200 kr is an assumed rate, so the amount alone may not separate
+    the scenarios.
+  - **Element Logic's August lines were fixed by our controller.** The rule is now encoded, so the
+    next close carries it without help.
