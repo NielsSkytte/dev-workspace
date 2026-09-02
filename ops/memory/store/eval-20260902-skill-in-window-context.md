@@ -45,3 +45,20 @@ it.
 was treated as evidence of a *second source* of posted time, raising a false double-registration
 alarm. The premise — that the page was current — was never established. See
 `fno-month-close-approve-not-post`. **A stale number is not a second number.**
+
+**The summarizer inverted a finding for the third consecutive day.** Sentinel returned 11 flags on
+`daily/2026-09-02.md`, 4 fidelity failures in this session's 5 records. Two were marked `rejected`
+in place:
+
+- `:231` — *"taking a vacation reduces the monthly target"*, the direct negation of the day's central
+  finding, on the very turn where Niels confirmed the per-month rule. The ~118 h it cites is the
+  *hypothetical* had vacation been deducted; it was not.
+- `:19` — *"identifying duplicate entries"* on the turn that **refuted** double registration, with
+  the decisive 145,00 h dropped entirely.
+
+Both concern money, as did 01-09's fabricated decision to bill a refused topup. The pattern is now
+specific enough to name: **the summarizer preserves the topic and loses the polarity**, and it does
+so most readily on turns where the user's message is short (`"regnes per måned"`) and the finding
+lives in the assistant's reasoning rather than the prompt. Short user turns carrying big conclusions
+are the ones to vet hardest. Nothing was distilled from the stream on any of the three days — the
+store records were written from session context — which is the only reason none of it landed.
