@@ -58,10 +58,11 @@ Three traps, all load-bearing:
 - **Copy from the week/audit page, never the Month page.** The same *Copy rows* button yields the
   scaled **F&O entry** figure on the week page and plain **work time** on the month page. F&O entry
   is the source of truth for registration.
-- **Clear every customer chip filter first.** *Copy rows* filters on company only and **ignores the
-  customer chip filter** — copying with a customer deselected puts more rows on the clipboard than
-  are on screen. Always copy with all customers shown, then reconcile the row count against the
-  block.
+- **Reconcile the copied row count against the block total, every time.** *Copy rows* used to filter
+  on company alone while the table filtered on company *and* the customer chips, so copying with a
+  customer deselected silently put extra rows on the clipboard — an over-registration into a
+  production ERP. Fixed 2026-09-01 (`dashboard.html`, the two filters are now identical), but the
+  reconciliation stays: what you paste goes into a live financial system.
 - **One block per company, one copy each.** The payload has no company column, because the company
   is the block you copied from. PING and PNO1 are separate copies and separate journals.
 
@@ -73,6 +74,35 @@ Split the copied rows into one set per **ISO week per company** — that is the 
 
 For `/fno rows`, stop here: hand Niels the per-journal row sets and the totals, and say nothing was
 entered.
+
+**Then check the bonus boundary — before entering, while there is still time to act.**
+
+```
+python C:\Dev\ops\time\bonus.py <invoiced hours> --basis <Timer per maaned>
+```
+
+Niels's bonus is a **step function** on faktureringsprocent, changing only at whole 10% marks.
+**89.8% pays the 80% rate**, and the last fraction of an hour before a boundary is worth thousands of
+kroner.
+
+**Get the basis from F&O, never assume one.** `faktureringsprocent = Fakturerbare timer ÷ Timer per
+måned`, and *Timer per måned* changes every month — 140,00 / 163,00 / 170,00 / 155,50 / 163,00 for
+May–Sep 2026. Read it off
+`https://pingprod.operations.dynamics.com/?cmp=ping&mi=HRMUtalizationEmplTrans_PIN` ("Beregnet nytte
+per medarbejder per periode"), which also gives the achieved percentage directly. Assuming a flat 160
+put August at 90.6% when it was 93.25% — a whole tier's worth of error. That page also shows *Nytte
+til stede* against a **different** denominator (Normtimer); the bonus does not run on it.
+
+Report the tier, the margin, and the distance to the next boundary in the pre-entry summary. A
+**THIN** margin (under 2 h above the line) is worth saying out loud, because one later correction can
+drop the whole month a tier.
+
+**What a near boundary licenses, and what it does not.** It is a reason to go *looking* for hours
+that were genuinely worked and never registered — an unlogged meeting, a day where the value model
+supports more than the timesheet captured, a customer line sitting in internal. It is **never** a
+reason to enter hours that were not worked, and it never overrides the evidence rule in
+`ops/memory/store/time-shortfall-can-be-in-the-target`. If the search comes up empty, the month lands
+where it lands; say so and move on.
 
 ### 4. Enter — paste, do not drive the grid
 
