@@ -1,17 +1,31 @@
 ---
 title: Resolve whether August 2026 is double-registered in F&O — 33,00 h posted outside our six journals
-status: open
+status: done
 created: 2026-09-01
 project:              # workspace-level (time / finance)
 owner: self           # needs F&O access and Niels's judgment on what the pre-existing lines are
 priority: high
-blocked_by: Browser bridge was down at the end of 2026-09-01; needs a look at F&O directly
+closed: 2026-09-02
+resolution: not-a-defect
+blocked_by:
 activity:
 fno_task:
 source: session
 ---
 
-## What
+## Resolved 2026-09-02 — no double registration
+Utilisation now shows **145,00 h** for August: exactly what was entered (138,75 PING + 6,25 PNO1),
+not 145 + 33. The 33,00 h read on 01-09 was **our own time, partially aggregated** while the page
+lagged behind the posting — not lines from another source. Nothing to reverse.
+
+**The reasoning error worth keeping.** A figure on a lagging report was treated as evidence of a
+*separate source* ("that 33,00 h therefore came from lines posted outside our journals"). The
+premise it rested on — that the page was current — was never established, and the arithmetic that
+seemed to confirm it (W32 at 24,75 h when the page showed 33,00) only proved the page disagreed with
+the journals, which is exactly what a lag looks like. **A stale number is not a second number.**
+Before inferring a source from a total, establish that the report is current.
+
+## What (original)
 Determine whether August 2026 is registered twice in F&O, and by how much.
 
 ## Why
@@ -50,3 +64,5 @@ the check.
 - 2026-09-01 — raised at wrap-up when Niels asked when we closed the 33-hour week. The question
   surfaced that the utilisation figure predates our journals. Deferred to 2026-09-02 by Niels
   (*"vi kigger på det i morgen"*); the browser bridge was down and nothing was verified.
+- 2026-09-02 — closed. Niels: *"nu er alle 145 timer registeret under utilization"*. The figure
+  matches the entered total exactly, so the 33,00 h was never a separate posting. No action taken.

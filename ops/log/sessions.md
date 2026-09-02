@@ -1004,13 +1004,18 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** *approve, don't post* is the month-close step here. Finished is an approval state —
   the journals stay under "Ikke bogført" and posting is a separate, later decision. Niels posted
   them afterwards.
-- **Open question raised at wrap-up — possible double registration.** Niels asked when the 33-hour
-  week was closed, which surfaced that **two independent 33,00 h** exist: `PING-021926` (W32), and
-  the utilisation page's August figure. They are not the same number — when the page showed 33,00 h,
-  W32 stood at 24,75 h and all six journals were unposted. That 33,00 h therefore came from lines
-  posted **outside** our journals, and our 138,75 h went on top of it. August may be over-registered
-  by up to 33,00 h on billable time. Nothing verified — the browser bridge was down. Task
-  `2026-09-01-fno-august-double-registration-check` (priority high), deferred to 02-09 by Niels.
+- **A double-registration alarm was raised at wrap-up — and it was wrong (closed 02-09).** Niels
+  asked when the 33-hour week was closed. The utilisation page's August figure was also 33,00 h, and
+  since `PING-021926` (W32) stood at 24,75 h at the time it was read, the two were reasoned to be
+  *different* numbers — so the page's 33,00 h "therefore came from lines posted outside our
+  journals", putting August up to 33 h over-registered on billable time. **It did not.** The next
+  day, everything posted, utilisation read exactly **145,00 h** — the entered total. The 33,00 h had
+  been our own time, partially aggregated on a lagging page.
+  The premise — that the page was current — was never established, and the arithmetic that seemed to
+  confirm a second source only showed the page disagreeing with the journals, which is what a lag
+  looks like. **A stale number is not a second number.** Written into
+  `store/fno-month-close-approve-not-post` and into `/fno`'s first pre-flight gate, which now says to
+  read journals rather than the utilisation page. Task closed `not-a-defect`, no action taken.
 - **Capability:** Niels asked for time registration to become a reusable capability — *"dette bliver
   noget vi kommer til at gøre hver uge/måned"*. `Q` dispatched to design and build it. The
   evaluative record written earlier the same day recommended **deferring** a skill until the

@@ -26,13 +26,15 @@ Run them in order and report each result. **Any red gate stops the run** and bec
 question to Niels.
 
 1. **Already registered?** Check F&O for lines in the period that sit **outside** the journals you
-   are about to create — posted or unposted. Open issue as of 2026-09-01: August's utilisation page
-   read 33,00 h from lines outside our six journals, possibly a double registration — tracked as
-   `ops/tasks/open/2026-09-01-fno-august-double-registration-check.md`, which carries the exact
-   check. An unexplained existing line in the period is a **stop**.
+   are about to create — posted or unposted. An unexplained existing line in the period is a **stop**.
    Mechanically: Timekladde → `Vis` = **Bogført**, list every journal in the period beyond the ones
    you are about to create, open `Linjer` and compare dates and project ids against
    `ops/time/timesheet/<YYYY-MM>/`.
+   **Read journals, never the utilisation page.** That page counts only posted lines *and lags*. In
+   the 2026-08 close it read 33,00 h mid-posting and was taken as evidence of a second source,
+   raising a false double-registration alarm; the next day it read the full 145,00 h — it had been
+   showing our own time all along. A stale total is not a second total
+   (`ops/tasks/done/2026-09-01-fno-august-double-registration-check.md`).
 2. **Days finalized.** `python C:\Dev\ops\time\rollup.py` — finalizes any complete day still missing
    a timesheet. A period with unfinalized days is not ready to enter.
 3. **Coverage.** `python C:\Dev\ops\time\rollup.py --check <YYYY-Www>` for each week in the period.

@@ -18,9 +18,18 @@ settings; OK returns *"Kladden har ændret status til Finished."* The journals *
 "Ikke bogført"** — Finished is an approval state, not a posting. Posting is a separate, later
 decision and is Niels's.
 
-**The consequence for reporting.** The utilisation page counts only **posted** lines. It read
-33,00 h for August while 138,75 h sat approved-but-unposted. A low utilisation figure right after a
-month close is expected and is not evidence of missing registration.
+**The consequence for reporting — and the trap in it.** The utilisation page counts only **posted**
+lines, *and it lags*. It read 33,00 h for August while 138,75 h sat approved-but-unposted; the next
+day, with everything posted, it read the full **145,00 h**. A low utilisation figure right after a
+close is expected and is not evidence of missing registration.
+
+The 33,00 h was **our own time, partially aggregated** — but on 01-09 it was reasoned about as
+evidence of *a separate source*: "that 33,00 h therefore came from lines posted outside our
+journals", raising a false alarm about August being double-registered by up to 33 h. The arithmetic
+that seemed to support it (W32 stood at 24,75 h when the page showed 33,00) only established that
+the page disagreed with the journals — which is precisely what a lag looks like. **A stale number is
+not a second number.** Before inferring a source from a total on a report, establish that the report
+is current; on this page, that means waiting until everything is posted.
 
 **August 2026 closed as** — PING `021924` W31 3,50 / `021926` W32 33,00 / `021928` W33 50,50 /
 `021953` W34 46,50 / `021954` W35 4,00 / `021975` W36 1,25 = 138,75 h, all Finished; PNO1 `004431`

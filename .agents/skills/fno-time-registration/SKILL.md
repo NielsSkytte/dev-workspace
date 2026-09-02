@@ -101,10 +101,11 @@ time, not entry hours.
 Run all four. Any of them can stop the close.
 
 1. **Is the period already registered?** Check F&O for lines already posted or entered in the period
-   **outside** the journals you are about to create. Open question as of 2026-09-01: the utilisation
-   page read 33,00 h for August from lines outside our six journals, which may mean August is
-   double-registered. Until that is settled, treat an unexplained existing line in the period as a
-   **stop**, and surface it.
+   **outside** the journals you are about to create. Treat an unexplained existing line as a **stop**,
+   and surface it. Check this by **reading journals, never the utilisation page** — that page counts
+   only posted lines *and lags behind*. In the 2026-08 close it read 33,00 h mid-posting and was
+   taken as evidence of a second source, raising a false double-registration alarm; the next day it
+   read the full 145,00 h. **A stale total is not a second total.**
 2. **Coverage and shortfall.** `python ops/time/rollup.py --check [YYYY-Www]`. A period reading short
    is a question about the **target** before it is a question about the hours.
 3. **Absence.** Any unaccounted workday goes into `ops/time/absence.md` first. On 2026-09-01 a
