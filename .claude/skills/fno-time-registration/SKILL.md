@@ -121,7 +121,8 @@ Run all four. Any of them can stop the close.
 
 ## 3. Filling a journal line - what is typed, what is not
 
-Fill **date, project id, task (or activity), hours**. Nothing else.
+Fill **date, project id, task (or activity), hours** — plus `Beskrivelse` for Element Logic only.
+Nothing else.
 
 | Field | Rule |
 |---|---|
@@ -129,6 +130,7 @@ Fill **date, project id, task (or activity), hours**. Nothing else.
 | `Kategori` | **Leave it.** It auto-fills once `Opgave` resolves. It is not a field you fill explicitly. |
 | `Aktivitet` | Only where the customer registers on activity (section 4). On a task-registering customer, **do not write one**. |
 | `Opgave` (task) | The ADO work-item id. An empty lookup means the task does not exist (Rule 0). |
+| `Beskrivelse` | **Element Logic only, and required there** — carries the engagement as `<number> <title>`, e.g. `45394 Lineage documentation`. Different work at Element Logic takes a different text; ask rather than reuse. Leave blank for every other customer. |
 | `Rolle-id` | Never touched. If a number lands here, a coordinate went stale - delete the line and re-enter it. |
 | `Linjeegenskab` | Carries the charge status. Vestforbraending books `No charge`. |
 
@@ -150,8 +152,14 @@ The two rules below are here because they were **errors**, and errors do not cha
   Carl Ras needs a task.
 - **Element Logic (`6001-01`) lives in company PNO1**, not PING. PNO1 is Pingala Norge AS. This was
   only found by noticing that no `6001-01` existed in any PING journal and then reading the posted
-  July PNO1 journal. Activity `600003` "Operations", `Opgave` blank. The `45394` in the sheet note is
-  **not** the Task field.
+  July PNO1 journal. Activity `600003` "Operations", `Opgave` blank.
+- **Element Logic is the one customer where `Beskrivelse` carries the task, and it is required**
+  (Niels, 2026-09-02). It is not a free-text note: it names the engagement, in the form
+  `<number> <title>` — for the lineage work, **`45394 Lineage documentation`**. This is where the
+  `45394` from the sheet belongs; it is **not** the Task field, which stays blank.
+  **Different work at Element Logic means a different description, so never carry one forward
+  blindly.** If the period covers Element Logic work that is not the lineage documentation, the text
+  is unknown — ask Niels for it rather than reusing the last one. No other customer needs this field.
 
 One more that is documented but not encoded anywhere: **Vestforbraending (`222`) is not billable** -
 F&O books it `No charge`, while the workspace still counts every `customers/...` project billable.

@@ -242,9 +242,18 @@ records what has been confirmed directly with Niels, which overrides the sheet w
 | **Carl Ras** | `230-02` (always) | **Task, always** — every line needs one | **Never supplied by us.** F&O derives it from the task | 2026-08-31 |
 | **Matas** | `212-01` | Task | Filled automatically by F&O | 2026-08-31 |
 | Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
-| Element Logic | `6001-01` | Activity `600003` | from the sheet | sheet |
+| Element Logic | `6001-01` | Activity `600003` | **+ `Beskrivelse` required** — see below | 2026-09-02 |
 | Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet |
 | Finansforbundet | `4053-01` | Activity `Møder` | from the sheet | sheet |
+
+**Element Logic, in full (2026-09-02):** the lines go in company **PNO1** (Pingala Norge AS), not
+PING — established by finding no `6001-01` in any PING journal and reading the posted July
+`PNO1-004271`. Project `6001-01`, activity `600003` "Operations", **`Opgave` blank**. Uniquely among
+our customers, **`Beskrivelse` is required and carries the engagement**, written as `<number> <title>`
+— for the lineage work, `45394 Lineage documentation`. That is where the `45394` from the sheet
+belongs; it is *not* the Task field. **Work at Element Logic on something other than the lineage
+documentation takes a different description — ask Niels for the text rather than carrying the last
+one forward.** No other customer uses this field.
 
 **Billable is not the same as `customers/…`.** The rollup marks every `customers/…` project billable
 (section 4). **Vestforbrænding is the known exception**: its F&O lines carry `Linjeegenskab: No charge`,

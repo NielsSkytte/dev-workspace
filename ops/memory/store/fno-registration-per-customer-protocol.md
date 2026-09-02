@@ -21,10 +21,17 @@ tasks `490 483 491 493 498 524 553 555 255 258 259`, grouped as Marketo inbound 
 255), Marketo write-back (553), Tag Manager, Operational hardening (555), and budget.
 Also recorded in `customers/Carl-Ras/datahub/CLAUDE.md`.
 
-**Element Logic (`6001-01`) — Activity only, and a different company.** Activity `600003`
-"Operations", Opgave blank, in company **PNO1** (Pingala Norge AS), not PING. Established by finding
-no `6001-01` in any PING journal and reading the posted July PNO1-004271. The `45394` that appears
-in the sheet note is not the Task field.
+**Element Logic (`6001-01`) — Activity only, a different company, and the one customer that needs
+`Beskrivelse`.** Activity `600003` "Operations", `Opgave` blank, in company **PNO1** (Pingala Norge
+AS), not PING. Established by finding no `6001-01` in any PING journal and reading the posted July
+PNO1-004271.
+
+`Beskrivelse` is **required** here and carries the engagement as `<number> <title>` — for the
+lineage work, **`45394 Lineage documentation`** (Niels, 2026-09-02). That is where the `45394` from
+the sheet belongs; it is *not* the Task field, which stays blank. **Other work at Element Logic takes
+a different description**, so never carry one forward blindly — if the period covers something other
+than the lineage documentation, the text is unknown and must be asked for. No other customer uses
+this field.
 
 **Matas (`212-01`) — ADO Task.** F&O fills the Activity automatically. `Task-65905` "Configuration
 of PoC" and `Task-65904` "Design" — but **65904 does not exist in F&O** (*"Opgaven eksisterer ikke -
