@@ -5,5 +5,5 @@
       "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'claude|npm|node' }; \"---\"; try { Get-Command node, npm -ErrorAction Stop | Format-Table Name, Source } catch { \"node/npm missing\" })"
     ]
   },
-  "outputStyle": "Concise"
+  "outputStyle": "default"
 }

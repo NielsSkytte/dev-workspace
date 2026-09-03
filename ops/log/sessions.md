@@ -1079,3 +1079,68 @@ Chronological record of workspace sessions — what was done, decided, and what'
     the scenarios.
   - **Element Logic's August lines were fixed by our controller.** The rule is now encoded, so the
     next close carries it without help.
+
+---
+
+### 2026-09-02 (second session) — Carl Ras: Dataverse write-back, new stream
+
+- **Did:**
+  - **New workstream opened and researched end to end:** write curated dimensions back to Dataverse
+    for a new app. Full design in `customers/Carl-Ras/datahub/design/DATAVERSE_WRITEBACK_DESIGN.md`.
+  - **Inspected the DEV Dataverse** (`carl-ras-dev.crm17.dynamics.com`) read-only via the Web API:
+    1 account, 2 test contacts, **no alternate keys on either table**, publisher prefix `cr`
+    (Pingala), base currency DKK only, D365 Sales + Power Pages installed.
+  - **Found the app already half-built by Patrick** — unmanaged solutions `CarlRasSales`
+    (12 tables, 27 attributes, 15 workflows, sitemap) and `CarlRasService`. Seven `cr_` columns
+    already on `account`, none on `contact`.
+  - **Built and shipped both payload views** — `viewoutboundtransform.Dataverse_Account` (3,831
+    rows) and `_Contact` (5,000 rows), live in DEV, `outbound.*` tables built by
+    `PL_Transform_Curated_Outbound`. `Fabric-ETL` `1a30a30`, workspace-normalised `dbf4098`.
+  - **Built and shipped the push** — `NB_Outbound_Dataverse` + `PL_Outbound_Dataverse`
+    (`b7f8f0b`), Web API `$batch`, one notebook serving both entities. **Dry run green in DEV**
+    on real rows; nothing written to Dataverse.
+  - **Length pre-flight against the live metadata:** all 17 mappings clear in the first-round set;
+    **58 rows exceed the 50-char `lastname` limit at full population**, fixed with `LEFT(...,50)`
+    (`aa28638`).
+  - **Measured the population:** `dim.Customer` spans 6 data areas but `cr` holds 238,606 of
+    238,639; only 4 customer numbers appear in more than one. 365-day window = 41,163 accounts.
+  - **Blocker found in the Marketo stream** (unrelated, see Tasks).
+- **Decided:**
+  - **Standard `account` / `contact`, not custom tables.** They are Dataverse's own CDM entities,
+    the app is CRM-shaped, and custom tables would forfeit row-level security and relationships.
+  - **Web API `$batch`, not `UpsertMultiple` and not the Copy activity.** `CreateMultiple` and
+    `UpdateMultiple` ARE registered for both tables here — **measured, contradicting Microsoft's
+    own documentation**, which names Account and Contact as unsupported. `$batch` still wins: it
+    returns per-record status and isolates a failure, where `UpsertMultiple` returns `204` with no
+    detail and rolls the whole request back.
+  - **The push owns only the columns it stamps.** `cr_overridecontactinterval` is a user toggle, so
+    the app is a writer too; `APP_OWNED` asserts this at notebook load time.
+  - **Company `cr` only**, which is what makes `CustomerNumber` and `ContactPersonId` valid
+    single-column alternate keys. **The WHERE clause and the key are one decision** — a Dataverse
+    alternate key cannot be altered, only dropped and recreated.
+  - **Contacts are ranked, not windowed.** A day-based window cannot hit a 5,000 cap because
+    enriched AX09 invoice data ended 2026-08-19, **14 days stale** — 30 days returns 7,370, 14 days
+    returns 875. Ranking on the contact's own latest order is immune to the lag.
+  - **Accounts are derived from the contact set** (3,831 parents of 5,000 contacts), so one knob
+    controls the whole push and every contact has a parent to bind to.
+  - **`dataverse_url` gets no default.** A default would let a TEST run write silently into DEV —
+    the `NB_Raw_GTM` failure. The notebook refuses to run without it.
+- **Tasks:**
+  - `2026-09-02-carlras-dataverse-writeback` → **created, in-progress**. Needs an ADO id in
+    `fno_task:`.
+  - `2026-08-12-carlras-marketo-writeback` → **blocker appended.** `NB_Outbound_Marketo` and
+    `PL_Outbound_Marketo` exist **only in the local working copy** — no git history, absent from
+    `Fabric-ETL-DEV` and `Fabric-ETL-TEST`, PROD unchecked. Authored 2026-08-21, never committed.
+    The transform pipeline and view DID land, so `outbound.Marketo_Lead` is built but **nothing
+    pushes it to Marketo**. Handle in a dedicated session.
+- **Next:**
+  - **Blocked on Patrick** (message drafted, he is on it): alternate keys on `account.accountnumber`
+    and on a new `contact.cr_contactpersonid`, plus `cr_pingalasyncedon` on both.
+  - **Blocked on identity:** SPN as an **application user** in Dataverse, and Key Vault secrets
+    `dataverse-client-id` / `dataverse-client-secret`. `notebookutils.credentials.getToken` has no
+    Dataverse audience, so there is no secret-free path from a notebook today — the secret-free
+    end goal is a Fabric Connection with workspace identity (preview).
+  - **First write is one row, one column** against account `20019593` with `dry_run=False`, to prove
+    key resolution before any volume.
+  - Open with Patrick: does he compute `cr_recommendedcontactdate` or do we; should push failures
+    land in his `cr_processerrorlog`.
