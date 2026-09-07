@@ -22,3 +22,4 @@ and ignored for the others. Keep the table sorted by date.
 | 2026-08-26 | vacation | | |
 | 2026-08-27 | vacation | | ferie; lidt arbejde registreret (0.50 h) |
 | 2026-08-28 | vacation | | |
+| 2026-09-04 | sick | | owner, at /log 2026-09-07 |
