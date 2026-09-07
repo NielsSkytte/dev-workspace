@@ -48,3 +48,4 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
       it either - check whether the spill ran. Two fixes: bound an individual span in the capture
       hook, and attribute a crossing span to each day it covers. Timesheet corrected by hand
       2026-08-30; the defect is still live. (found 2026-08-30)
+- [ ] Time: at the next rollup set 2026-09-07 customers/Matas/DataCompare to 8.00 h (owner, 2026-09-07: measured 3.00 h is too low for the day). Edit ops/time/timesheet/2026-09/2026-09-07.md after it is finalized; task Task-65905, activity 111953.
