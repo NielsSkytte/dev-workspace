@@ -49,3 +49,4 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
       hook, and attribute a crossing span to each day it covers. Timesheet corrected by hand
       2026-08-30; the defect is still live. (found 2026-08-30)
 - [ ] Time: at the next rollup set 2026-09-07 customers/Matas/DataCompare to 8.00 h (owner, 2026-09-07: measured 3.00 h is too low for the day). Edit ops/time/timesheet/2026-09/2026-09-07.md after it is finalized; task Task-65905, activity 111953.
+- [ ] Time: consume the Matas reclaim (14.50 h, ops/time/reclaim.md) on September DataCompare days as they are finalized (owner 2026-09-07: August cannot be changed; recover as part of building the front end; fine to communicate to Matas).
