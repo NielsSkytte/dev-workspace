@@ -1144,3 +1144,74 @@ Chronological record of workspace sessions — what was done, decided, and what'
     key resolution before any volume.
   - Open with Patrick: does he compute `cr_recommendedcontactdate` or do we; should push failures
     land in his `cr_processerrorlog`.
+
+## 2026-09-07
+
+### customers/Matas/DataCompare — first real MFO↔GFO vendor comparison, then the shared backend with writeback into Fabric
+
+- **Did:**
+  - **Tenant access restored.** `fab auth login` under the Matas profile has to run from a real
+    console window (the Claude shells have no Windows console; `! fab auth login` fails on
+    xterm-256color). The Matas account can now create Fabric items (lakehouse test in
+    `GFO_DataCompare_ETL_Dev`), so the 08-03 blocker is closed. Workspace names corrected: dev is
+    `GFO_DataCompare_ETL_Dev`, prod exists empty, the two managed lakehouses sit in `GFO_DataCompare`.
+  - **Local read path to the Link-to-Fabric tables:** OneLake → DuckDB `delta_scan` with a token from
+    fab's MSAL cache (`access_token` secret, `ACCOUNT_NAME 'onelake'`, no endpoint). The `deltalake`
+    package cannot read these tables (deletion vectors); `fab table schema` and recursive `fab cp`
+    both fail on shortcut tables. 14 tables × 2 sides pulled in ~2 min.
+  - **Probe answered from real data:** vendor account numbers survive MFO→GFO (11,264 of 11,290),
+    so [D7] closes and the F&O pair matches on (legal entity, account). Legal-entity map derived from
+    account overlap (maop→modk 6,435 shared, kise/kino/kifi unchanged, mato→mafo, maas→madk), awaiting
+    Matas confirmation. MFO `dataareaid` is mixed-case (`MAOP` + `maop`, disjoint accounts). GFO has
+    zero vendor bank accounts, 68 person names vs 11,698, 4,914 electronic addresses vs 15,782.
+  - **Prototype built** (`prototype/`): `compare.py` (DuckDB, per-legal-entity grain, aggressive
+    normalisation, recode maps derived from the data so only deviations from the dominant MFO→GFO
+    recoding count as mismatches, field metadata origin/group/scope/source), `report.py` (one
+    self-contained page: master toggle for the 2026-11-01 switch, chip chart, value pairs with
+    Accept and reason, vendor drill, missing lists, field origins, legal-entity map, headline
+    agreement %). Three agents ran the toggle / chart / rules tracks concurrently on one file with
+    Edit-only discipline; merged clean. Findings a customer will recognise: 2,497 vendors on hold in
+    MFO but not in GFO, the three coded fields recoded on nearly every vendor, 8 address
+    descriptions overwritten with "Primary address", GFO's formatted address ending in a literal `%1`.
+  - **Two configuration-derived fields dropped** (FormattedPrimaryAddress, AddressCountryRegionISOCode)
+    on the owner's rule: compare the fields a user maintains, not strings F&O renders through setup.
+  - **Static-web-app track started, shared backend in Fabric:** Fabric SQL database
+    `SQLDB_DataCompare` (schema `dc`, Rayfin-compatible keys so a Fabric App can declare the same
+    tables), `fabric_sql.py` (silent SQL token from fab's cache; the Azure PowerShell public client id
+    fab uses is accepted by the SQL scope), `load_sql.py` (compare with the database's active rules,
+    load the run: 42,989 findings), `relay.py` (FastAPI, contract in `API.md`, all counting and rule
+    application in SQL), `app/` (page + swappable adapter; `app.js` never fetches), `appinsights.py`
+    (run summary / new / resolved / accepted events from the two latest runs, dry-run until a
+    connection string exists). **Verified end to end in the browser:** accept in the page → rule row in
+    Fabric with the Matas account as author → 5,890 findings accepted by SQL → agreement 87.1 → 88.9 %
+    → retire reopens them. Three retired test rules remain as history.
+  - **Emails drafted:** `05-customer-tables.md` (CustTable + CustBankAccount + PaymTerm/PaymMode on
+    both links, "Buy from creditor" question), `06-app-registration-and-fabric-apps.md` (Entra app
+    registration for the static track, Fabric Apps (preview) tenant setting, capacity region).
+  - **Research:** Rayfin = Fabric Apps (preview): own SQL database from TypeScript entities, GraphQL,
+    Fabric SSO only, static hosting on OneLake, tenant setting required, not available in North
+    Europe (West Europe OK; Matas's visible capacities are West Europe). Fabric API for GraphQL
+    accepts browser apps with delegated `GraphQLApi.Execute.All` and SSO pass-through, mutations on
+    SQL database supported. Atomic conventions for derived columns and grouping (no per-column flag;
+    section comments + `05 Calculated Columns` folder; numbered display folders) mirrored in
+    DataCompare's field metadata.
+  - **Task binder corrected:** `2026-07-06-matas-enhance-user-stories` now `fno_task: Task-65905`,
+    `activity: 111953`.
+- **Decided:** (all in `DataCompare/CONTEXT.md` Decisions Log, 2026-09-07) prototype before the
+  Fabric engine; [D7] closed; per-legal-entity grain for the prototype; recode maps derived from
+  data; master switch dated 2026-11-01 with direction-neutral finding kinds; every field carries
+  origin (F&O field vs composite) + Atomic-style group; exclude setup-derived renderings; headline
+  status and rule application live in the data, the page renders; **two hosting tracks** (Fabric App
+  vs Azure Static Web App) on one schema, one notebook, one emitter, one page with two adapters — the
+  one non-equal: a Fabric App cannot attach an existing database, so the database moves with the app
+  in that track. Consumers are no longer Pingala-only in v1 (a Matas reviewer accepts rules with
+  identity and audit).
+- **Tasks:** none created or moved. `2026-07-06-matas-enhance-user-stories` stays the binder, now
+  with F&O task and activity filled.
+- **Next:** send emails 05 and 06; `adapter-graphql.js` (MSAL + Fabric API for GraphQL item over
+  `SQLDB_DataCompare`) the day the client id arrives; Azure Static Web App in a Matas subscription;
+  port `load_sql.py` + `appinsights.py` into a scheduled Fabric Python notebook; show Matas the app
+  and collect rulings on the big buckets. Target: accessible to people by 2026-11-01.
+- **Time:** rollup had no new days to finalize (08-28 and 09-03 already final; 09-03 = Carl-Ras
+  3.50 h). `value.py --stalls`: no new findings. Value derived 09-03: Carl-Ras 1.16 h keyboard →
+  8.50 h weighted. 2026-09-04 (Fri) unaccounted — asked. Backup mirrored (robocopy exit 1).

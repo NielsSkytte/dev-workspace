@@ -6,8 +6,8 @@ project: customers/Matas/DataCompare
 owner: self             # story enhancement = Niels judgment; content agent can draft
 priority: normal
 blocked_by:
-activity:               # none - F&O fills the Activity automatically on 212-01 (2026-08-31)
-fno_task: Task-65905    # the only 212-01 task that exists in F&O (65904 was never created)
+activity: 111953        # F&O activity for 212-01 (owner, 2026-09-07)
+fno_task: Task-65905    # opgave; the only 212-01 task that exists in F&O (65904 was never created)
 source: todo
 ---
 
