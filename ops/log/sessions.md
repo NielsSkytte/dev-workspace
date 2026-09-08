@@ -1215,3 +1215,16 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Time:** rollup had no new days to finalize (08-28 and 09-03 already final; 09-03 = Carl-Ras
   3.50 h). `value.py --stalls`: no new findings. Value derived 09-03: Carl-Ras 1.16 h keyboard →
   8.50 h weighted. 2026-09-04 (Fri) unaccounted — asked. Backup mirrored (robocopy exit 1).
+
+### customers/Matas/DataCompare (continued, same day, after the first /log) — generic pair model, rules lifecycle, reclaim decision
+- **Did:** `dc.compare_pair` and A/B columns everywhere (schema v2, `migrate_v2.py` converted the live database in place, active rule and both runs kept); `compare.py` `PAIRS` + `ADAPTERS`; README "Onboarding a new source"; API v2 with `GET /api/method` and `GET /api/rules/plain` (plain-language method and rule sentences, every number from SQL) and a collapsed top card with Print; rules register page (`app/rules.html`: filters, sort, group-by-field, expandable rows with event history); rule lifecycle retire / reactivate with `dc.rule_event`, verified live (reactivate 8 findings, retire, counters back). Owner's own rule "auto remap of codes" (sales tax group maop->modk) found in the database. Committed `4ac51f4`, `35c79e3`, `9c2bba5`.
+- **Decided:** August under-billing of the backend build (13.50 h billed vs 28.00 h weighted on the days the value model covers) is **reclaimed in September** (14.50 h) on Task-65905 / 111953 as part of the front-end build; ledger `ops/time/reclaim.md`; 2026-09-07 set to 8.00 h on the owner's word (applied at the 09-08 /log). Rules are retired and reactivated, never deleted (test flow after an F&O fix). Fields carry origin and Atomic-style groups; FormattedPrimaryAddress and ISO code excluded.
+
+## 2026-09-08
+
+### customers/Matas/DataCompare — app polish
+- **Did:** Method and rule text rewritten as flat instruction text (14 labelled lines; card renamed "Comparison method and active rules"); relay sends `Cache-Control: no-store` for page files after a cached stylesheet hid a fix; layout: "Findings per field" (chart) and "Fields" (table) as two equal cards, "Value pairs" full width below, then Vendors; fields table trimmed to Field (with composite tag), Compared, Equal, Mismatch, Recode, blank A/B, Accepted. Stale relay processes on 8080 explained two "still shows the old version" reports: kill before restart. Commits `4500d3e` .. `7842163`.
+- **Decided:** none new.
+- **Tasks:** none created or moved.
+- **Next:** send emails 05 and 06; GraphQL/MSAL adapter when the client id arrives; Fabric notebook port of `load_sql.py` + `appinsights.py` on a schedule; consume the 14.50 h reclaim on September DataCompare days.
+- **Time:** 09-07 finalized and corrected to Matas 8.00 h (owner; value model 7.50 weighted). Stalls: nothing new. Backup mirrored.
