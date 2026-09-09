@@ -104,7 +104,7 @@ Keep entries factual and actionable. Q clears entries after incorporating feedba
 
 | Date | Agent | Project | Observation |
 |------|-------|---------|-------------|
-| | | | |
+| 2026-09-09 | main session (not fabric-back) | own/MetaAtomic -> customers/Carl-Ras/datahub/Fabric-ETL | Hand-wrote `PL_UpdateLineage.DataPipeline/pipeline-content.json` with `notebookId` = the notebook's workspace item id (from the REST items API). "Update from git" failed: `Missing Dependencies [ArtifactType: 'SynapseNotebook' ...]`. Correct value is the `.platform` `logicalId`; every sibling pipeline used it and the `.platform` was on screen. Root cause: `fabric-pipeline-notebook` (the skill that fires on "pipeline with a notebook activity") had no git-serialization content; the rule lived only in `fabric-rename-entity`, whose description triggers on rename only. Junctions were intact. Fix (Q, same day): rule + required sibling cross-check added to `fabric-pipeline-notebook`, description extended to trigger on `pipeline-content.json` / `logicalId` / `Missing Dependencies`; cross-link to `fabric-rename-entity`; `fabric-back` skill table updated. |
 
 <!-- Cleared 2026-07-15 (Q, same day): (1) writing-voice — Niels rewrote a drafted DA mail before
 sending (Carl-Ras fabric, Key Vault): cut a re-thank opener, cut a "takes minutes" effort claim,

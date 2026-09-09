@@ -1,7 +1,7 @@
 ---
 name: fabric-pipeline-notebook
 bundle: custom
-description: Best practices for designing and debugging Microsoft Fabric pipelines that orchestrate notebooks. Use this skill whenever building, migrating, or troubleshooting any Fabric pipeline that includes notebook activities, JSON ingestion, Delta table writes, or REST API data extraction. Also use when diagnosing unexpected data volumes, silent data loss, or notebook behaviour that differs between interactive and pipeline-triggered runs.
+description: Best practices for designing and debugging Microsoft Fabric pipelines that orchestrate notebooks. Use this skill whenever building, migrating, or troubleshooting any Fabric pipeline that includes notebook activities, JSON ingestion, Delta table writes, or REST API data extraction. Also use when diagnosing unexpected data volumes, silent data loss, or notebook behaviour that differs between interactive and pipeline-triggered runs. Also use when hand-writing or editing a pipeline definition in a git-serialized Fabric repo (`pipeline-content.json`, a `TridentNotebook` activity, `notebookId`, `workspaceId`, a `.platform` file, `logicalId`) and when "Update from git" fails with "Missing Dependencies" on a `SynapseNotebook` / pipeline reference.
 ---
 
 # Fabric Pipeline & Notebook Integration
@@ -135,6 +135,39 @@ Never assume credentials were migrated with identical access. Silent permission 
 
 ---
 
+## Hand-Writing a Pipeline in a Git-Serialized Repo
+
+In a git-serialized Fabric repo, an item references another item by the **`logicalId`** in that
+item's `.platform` file. It never references the workspace item id (the id the REST items API or
+the portal URL shows). Fabric maps the `logicalId` to the real item in each workspace when it
+syncs. The workspace item id is different in each workspace, so a pipeline that carries it does
+not sync.
+
+- `notebookId` = the `config.logicalId` of `<Name>.Notebook/.platform`.
+- `workspaceId` = `00000000-0000-0000-0000-000000000000` for an item in the same workspace.
+- The same rule applies to every cross-item reference in a definition file (lakehouse, warehouse,
+  pipeline, semantic model).
+
+**Failure this section exists for (2026-09-09, Carl-Ras):** a new pipeline got the notebook's
+workspace item id from the REST items API. "Update from git" failed with
+`Missing Dependencies [ArtifactType: 'SynapseNotebook' DependencyId: '<item id>']`. Every other
+pipeline in the repo carried the `logicalId`, and the notebook's `.platform` was open on screen.
+Nobody cross-checked.
+
+**Required check before you commit a hand-written reference:**
+
+1. Open the target item's `.platform` and copy `config.logicalId`.
+2. Grep a sibling pipeline in the same repo for the same activity type
+   (`grep -rn notebookId --include=pipeline-content.json .`) and confirm the sibling's value is a
+   `.platform` `logicalId`, not an API item id.
+3. Match the sibling's shape exactly (`notebookId`, `workspaceId`, `policy`, `dependsOn`).
+4. If no sibling exists, say so and ask before you commit; do not guess the format.
+
+An id that came from a REST call, a portal URL, or a `fab` command is a workspace item id. Do not
+put it in a definition file.
+
+---
+
 ## PySpark vs Python Notebooks
 
 For incremental pipelines processing small-to-medium batches, Python notebooks are almost always the better choice:
@@ -152,6 +185,7 @@ Use PySpark only when batch sizes or transformation complexity genuinely justify
 
 ## Related skills
 
+- **fabric-rename-entity** — the `logicalId` identity model in full, and how to rename a git-connected item without breaking the GUID references above.
 - **timestamp-timezone-pipelines** — the watermark `>=` vs `>` rule and the UTC/DST handling for the date filters these pipelines send to APIs. Reach for it whenever a watermark drifts or records go missing in a specific time window.
 - **medallion-migration-validation** — go-live validation, tracking-table design, and the silent-failure catalogue these pipeline bugs feed into; use it when validating a migrated pipeline or backfilling a gap.
 - **spark-operations-cli** (Microsoft) — when a pipeline-triggered notebook fails at the *engine* level (OOM, data skew, stuck/dead Livy session), hand off to this diagnostic skill. This skill covers the *silent data-loss logic* bugs; that one covers *engine* failures.

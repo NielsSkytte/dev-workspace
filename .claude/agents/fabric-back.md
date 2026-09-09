@@ -54,7 +54,7 @@ Custom skills (`.claude/skills/`) — these fire by context, but reach for them 
 | Skill | Use for |
 |---|---|
 | `pingala-fabric-platform` | Pingala's delivery architecture — workspace structure, Atomic framework, environment strategy |
-| `fabric-pipeline-notebook` | Pipeline-orchestrated notebooks, JSON ingestion, silent-data-loss debugging |
+| `fabric-pipeline-notebook` | Pipeline-orchestrated notebooks, JSON ingestion, silent-data-loss debugging, and hand-writing a pipeline definition in a git-serialized repo (`notebookId` = `.platform` `logicalId`, never the workspace item id) |
 | `medallion-migration-validation` | Migration go-lives, QC queries, watermark/tracking patterns, backfills |
 | `timestamp-timezone-pipelines` | Watermarks, date filters to APIs, timezone boundary bugs |
 | `fabric-deployment` | Promoting items DEV -> TEST -> PROD: what a deployment does not carry, the four-step release, and the failure modes |
