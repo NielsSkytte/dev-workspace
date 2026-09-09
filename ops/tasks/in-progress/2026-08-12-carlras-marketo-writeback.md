@@ -51,15 +51,11 @@ Full derivation, validation and every source-column decision:
 
 ## Next
 
-> **BLOCKER FOUND 2026-09-02 (Dataverse session).** `NB_Outbound_Marketo.Notebook/` and
-> `PL_Outbound_Marketo.DataPipeline/` exist **only in the local working copy**. Verified: no git
-> history on either path in `Fabric-ETL`; absent from `Fabric-ETL-DEV` (50 items, no folders) and
-> from `Fabric-ETL-TEST`; PROD not checked (no access from this session). Local files date from
-> 2026-08-21 ~11:00 and were never committed, pushed or imported. `PL_Transform_Curated_Outbound`
-> and the view DID land, so `outbound.Marketo_Lead` is built - but nothing pushes it to Marketo.
-> Also unexplained: `PL_Outbound_Marketo` pins `notebookId 8e0fa5b3-5e13-46bb-8a72-7f2b98f414bb`,
-> which cannot be a git logicalId if the item was never committed. Resolve before assuming the
-> write-back path exists. Niels: handle in a dedicated session.
+> **RESOLVED 2026-09-09.** `NB_Outbound_Marketo` + `PL_Outbound_Marketo` are committed in
+> `Fabric-ETL` `52653d9` and pushed to `origin/main` (pre-push DacFx gate: OK). The pipeline's
+> `notebookId 8e0fa5b3-...` is the notebook's own `.platform` logicalId, so the 09-02 "cannot be a
+> git logicalId" note was wrong - it was minted locally, as git integration expects. Not yet in
+> any workspace: DEV needs Update from git (Niels), then a dry run of `PL_Outbound_Marketo`.
 
 > Two streams run in parallel and meet at `outbound.Marketo_Lead` and at the baseline.
 > **Inbound** = landing zone -> raw -> enriched, which is what makes a baseline possible.
@@ -224,6 +220,10 @@ ben+carlras@impact.dk, ~07:10 UTC daily)`.
 segmentation just starts targeting stale numbers.
 
 ## Log
+- 2026-09-09 — push committed (`52653d9`, done in the morning session) and pushed by this session;
+  POLICY in the notebook and `tools/marketo_payload.py` verified identical (20 fields). Marketo
+  secrets written to `KeyVaultDataHub` earlier today (still Impact's API user, rotation pending).
+  DEV does not hold the items yet - waiting on Update from git, then dry run.
 - 2026-08-31 (second pass) — **CORRECTION to the entry below: Next items 1-3 are DONE, and have
   been since 2026-08-21.** The earlier entry's "nothing has moved" was scoped to the Key Vault, the
   mail and the uncommitted push, and must not be read as covering the inbound chain.
