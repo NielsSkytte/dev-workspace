@@ -49,4 +49,11 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
       hook, and attribute a crossing span to each day it covers. Timesheet corrected by hand
       2026-08-30; the defect is still live. (found 2026-08-30)
 - [x] Time: at the next rollup set 2026-09-07 customers/Matas/DataCompare to 8.00 h (done 2026-09-08) (owner, 2026-09-07: measured 3.00 h is too low for the day). Edit ops/time/timesheet/2026-09/2026-09-07.md after it is finalized; task Task-65905, activity 111953.
-- [ ] Time: consume the Matas reclaim (14.50 h, ops/time/reclaim.md) on September DataCompare days as they are finalized (owner 2026-09-07: August cannot be changed; recover as part of building the front end; fine to communicate to Matas).
+- [ ] Time: place the remaining Matas reclaim (5.50 h of 26.00; 20.50 h went on 1-4 Sep) on the September DataCompare
+      days **at month end, before September is closed** (owner 2026-09-08: not drawn day by day).
+      August cannot be changed; recovered as part of building the front end; fine to communicate to
+      Matas. Books to 212-01 / activity 111953 / Task-65904.
+- [ ] Time: a billed day whose value record was never written cannot be recovered - the transcripts age
+      out (found 2026-09-08: 7 billed Matas days in July have no weighted figure and no transcript
+      left). Guard wanted: warn when a billed day has no ops/time/value/ record while its transcript is
+      still on disk.

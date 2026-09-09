@@ -7,7 +7,8 @@ owner: self             # story enhancement = Niels judgment; content agent can 
 priority: normal
 blocked_by:
 activity: 111953        # F&O activity for 212-01 (owner, 2026-09-07)
-fno_task: Task-65905    # opgave; the only 212-01 task that exists in F&O (65904 was never created)
+fno_task: Task-65905    # opgave = the configuration work (Link to Fabric, access, setup); 65904 is the
+                        # engine and app work (owner, 2026-09-08)
 source: todo
 ---
 
