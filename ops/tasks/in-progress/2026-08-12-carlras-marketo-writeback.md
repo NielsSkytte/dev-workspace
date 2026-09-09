@@ -220,6 +220,18 @@ ben+carlras@impact.dk, ~07:10 UTC daily)`.
 segmentation just starts targeting stale numbers.
 
 ## Log
+- 2026-09-09 (later) — **DEV dry run Completed** (`PL_Outbound_Marketo`, 101 s, job `1a1c01a0`): 218,490
+  sendable, 141 non-ASCII emails rejected. Benno (Impact): Fivetran keeps a change-tracking table and
+  pushes deltas, never the full population. Ours was a full push — `changed()`/`push_state()` existed
+  in `tools/marketo_payload.py` since `f8cdd1c` but nothing used them. **Delta push built** (`Fabric-ETL`
+  `f1fe9f2`): `Lakehouse_Util.MarketoPushState`, append-only, one row per accepted (`updated`) write
+  holding the payload as sent, newest row per email wins; round-trip tested locally. Needs Update
+  from git in DEV, then the dry run again. **First-run estimate vs Marketo's 2026-08-20 snapshot:**
+  of 30,807 leads on both sides, 29,617 differ on at least one asserted field (1,190 identical);
+  `accountDiscountGroup` would be cleared on 1,158 leads where Marketo holds a value — those also
+  disagree on order counts, so inference: a different account resolution for that email, not the
+  CLEAR policy. Only 30,807 of 218,490 sendable rows exist in Marketo; the other ~188k are
+  `updateOnly` skips that still cost ~627 calls per run until the push is limited to known leads.
 - 2026-09-09 — push committed (`52653d9`, done in the morning session) and pushed by this session;
   POLICY in the notebook and `tools/marketo_payload.py` verified identical (20 fields). Marketo
   secrets written to `KeyVaultDataHub` earlier today (still Impact's API user, rotation pending).
