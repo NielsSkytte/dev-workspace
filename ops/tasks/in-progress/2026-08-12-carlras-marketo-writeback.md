@@ -115,6 +115,11 @@ section 17.4. In short:
 schemas being untracked locally, which `5642f32` settled.)*
 
 - **Raise with Impact:** the incumbent zeroes ~1,650 Marketo leads a day via `coalesce(...,0)`.
+- **The shared 500 MB/day bulk-extract allocation** (Benno 2026-09-09: "reached a few times recently").
+  Our `export_log` has two candidate days, 08-09 (1,735 MB) and 08-20 (500 MB), nothing since; inference,
+  not measured. `NB_Ingest_Marketo` budgets 450 of the 500 as if we owned it. Fix the budget and the
+  activities guard before re-enabling the inbound schedule, which Next 4 and 5b depend on. Detail:
+  `design/MARKETO_INGEST_DESIGN.md` section 10.
 - Missing inputs, both still unsupplied: `lookup_tables.cr_segment` (blocks the five segment flags
   and `Top20PctRevenue`) and `inriver_productdata` (blocks brand fields).
 - ~~Census sync behaviour and null handling~~ **Answered 2026-08-21** from Impact's screenshots:
