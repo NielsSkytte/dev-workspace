@@ -57,3 +57,4 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
       out (found 2026-09-08: 7 billed Matas days in July have no weighted figure and no transcript
       left). Guard wanted: warn when a billed day has no ops/time/value/ record while its transcript is
       still on disk.
+- [ ] 2026-09-09 — at the next /log, correct ops/time/timesheet/2026-09/2026-09-09.md: session f0ca3d4e (91 min, heartbeats say own/MetaAtomic) is Carl Ras 230-02: 39 min (0.75 h) to task 2026-09-09-carlras-metaatomic-implementation, 52 min (0.75 h) to 2026-08-11-carlras-operation-hardening (CarlRData-555). Decided by Niels 2026-09-09. Also: the new task needs a CarlRData work item id in fno_task.

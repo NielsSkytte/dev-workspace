@@ -84,6 +84,15 @@ through `notebookutils.data.connect_to_artifact` is undocumented and unproven
 (`design/MARKETO_INGEST_DESIGN.md` §5, open item 2).
 
 ## Log
+- 2026-09-09 — **PROD deploy unblocked.** `Warehouse_Enriched_GTM` failed to deploy to PROD
+  (`DmsImportDatabaseException`, `Invalid object name 'Lakehouse_Raw_GTM.dbo.events'`): the
+  deployment copies the lakehouse item without tables. Ran `PL_Ingest_Lakehouse_Raw_GTM` in PROD
+  (`cf1a5ca2…`) with `backfill_from=2026-09-08`; Completed in ~2 min, `Tables/events` now exists.
+  Niels redeploys the warehouse. Pre-flight of all four warehouses' cross-db references done from
+  git: AX09 (70 Raw tables, present), CVR (present), Curated (Enriched tables from DDL + `dates`,
+  present). PROD warehouse object counts NOT verified (query blocked locally). Side work in the
+  same session: Marketo credentials moved to `KeyVaultDataHub`, notebooks read them when blank
+  (LZ `061de96`, ETL `e5a9318`); rotation pending before real production.
 - 2026-08-31 — **VERIFIED: half of Part 2's "missing" list was closed on 2026-08-11 and never
   written back**, by `Fabric-ETL` commits `f3be10b` + `44e6b33` ("GTM Raw: give the stream a
   pipeline and register it in PL_Execute_Raw").

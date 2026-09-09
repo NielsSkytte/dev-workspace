@@ -161,3 +161,4 @@ classes will keep recurring until they are closed deliberately.
     `fa075892-6394-415c-b0a9-a25105e2f1a8` (Fabric-ETL / PROD). A plain `/members` call returns
     empty for a guest account; the `microsoft.graph.servicePrincipal` cast reveals them. TEST is
     still absent, so step (2) stands unchanged.
+- 2026-09-09 — time: 52 min of session f0ca3d4e (08:00-11:42 UTC, rooted in own/MetaAtomic: MetaAtomic deployment, pipeline, schedule, PAT, stream matrix diagnosis) attributed here by Niels; the first 39 min go to 2026-09-09-carlras-metaatomic-implementation. Apply when 2026-09-09 is rolled up.
