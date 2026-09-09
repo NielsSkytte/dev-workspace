@@ -81,16 +81,21 @@ Full derivation, validation and every source-column decision:
    SCD2 version, and "what we would push versus what is already there" becomes a query instead of
    archaeology. Blocked until 1-3, or the schedule just records corrupted history.
 
-**Outbound**
+**Outbound** - built; the ordered queue with each step's test is `design/MARKETO_WRITEBACK_GOAL.md`
+section 17.4. In short:
 
-5. **Build the push** — `PL_Outbound_Marketo` / `NB_Outbound_Marketo` on Marketo Bulk Import Lead
-   (`importLead`), the endpoint Census uses. `tools/marketo_payload.py` already implements the
-   three-state omission policy and the `-05:00` offset, so the notebook consumes that rather than
-   re-deriving it.
+5. ~~Build the push~~ **DONE** (`52653d9`), delta state **DONE** (`f1fe9f2`), DEV dry run Completed
+   2026-09-09. Remaining: Update from git in DEV -> dry run (state read path) -> first live run on
+   three real leads whose account fields already equal Marketo's -> dry run again (three counted
+   unchanged).
+5b. **Seed `MarketoPushState` from Marketo's own values** before the first sweep (needs
+   `PL_Ingest_Marketo` scheduled again), and **filter the push to emails Marketo has** (drops ~627
+   wasted calls a run). Both recommended, both still decisions.
 6. **Build the comparison objects** — `outbound.Marketo_Lead_Delta` (one row per lead per field:
-   our value, Marketo's value, verdict) plus a per-field summary. This is the artefact Niels asked
-   for: it answers "what changes when we take over" without anyone reading SQL, and it is what
-   says when we are ready to ask Impact to stop writing. Needs 1-4 first.
+   our value, Marketo's value, verdict) plus a per-field summary. First cut measured 2026-09-09
+   (17.3): 29,617 of 30,807 shared leads differ; `HasWebLogin` 19,840 by design, 1,158
+   `accountDiscountGroup` clears on an account-resolution disagreement. Needs 1-4 first.
+6b. **Own LaunchPoint API user, then rotate Impact's pair** before any scheduled run.
 
 **Cross-cutting**
 
