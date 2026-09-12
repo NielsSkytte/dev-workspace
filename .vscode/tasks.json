@@ -324,6 +324,23 @@
       "problemMatcher": []
     }
 
+    ,{
+      "label": "Claude · customers/Aeven/AtomicServiceNow",
+      "detail": "Aeven — ServiceNow add-on to Pingala Atomic: REST API extract to raw, curated layer, semantic model (Fabric POC)",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Aeven/AtomicServiceNow"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    }
+
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────
     // Template to copy:
     //
