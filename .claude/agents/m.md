@@ -45,7 +45,7 @@ The Fabric domain is split in three around the semantic model (the model is the 
 - **Deploy when**: creating/reviewing reports; splitting visual-layer vs model-layer performance causes; handover prep
 - **Strengths**: consumes the model as a contract (pushes model changes to `semantic`); Pingala branding discipline
 - **Note**: colleague-owned domain — in Niels's sessions mostly review, routing, and handover
-- **Skills**: `pingala-visual-identity`, `dataviz`; vendor: `powerbi-report-planning/design/authoring/management`
+- **Skills**: `pingala-visual-identity`, `dataviz`; vendor: `powerbi-report-planning/design/authoring/management` (only after the `powerbi-authoring` plugin is installed — see Hiring Board 2026-09-13)
 
 ### Content (`content`)
 - **Domain**: documents, presentations, SoWs, briefs, wiki content, slides
@@ -128,7 +128,7 @@ Q clears entries after hiring.
 
 | Date | Capability needed | Context |
 |------|-------------------|---------|
-| | | |
+| 2026-09-13 | Make the vendor `powerbi-report-*` skills discoverable (Aeven ServiceNow POC — report from code on `Model_ServiceNow`). Q's decision: adopt Microsoft's `powerbi-authoring` plugin, no house PBIR skill. Blocked on Niels: user-scope plugin install + Node.js (commands in `fabric-front.md` > Skills). Clear when installed. | Q, 2026-09-13; the `.claude/vendor` submodule (v0.3.3) is not read by the harness and `/update-skills` assumes copies in `.claude/skills/` that were never made (0 of 5 vendor skills present). |
 
 <!-- Cleared 2026-07-06: `fabric-project-access` skill was built and is live in .claude/skills/ (attached to fabric-back). -->
 

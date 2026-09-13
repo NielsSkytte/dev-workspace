@@ -27,3 +27,4 @@ a landing-zone workspace or directly into fabric-etl.
 
 ## Log
 - 2026-09-12 — created at project scaffold; started (session task)
+- 2026-09-13 — POC value chain complete in NielsWorkspace_Dev (landing -> raw shortcuts -> enriched -> curated -> Direct Lake model) and a first PBIR report deployed; commits through 3378408

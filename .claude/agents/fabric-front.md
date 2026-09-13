@@ -34,12 +34,31 @@ Custom skills (`.claude/skills/`):
 | `pingala-visual-identity` | Pingala colors, fonts, Fabric icons — mandatory for customer-facing visuals |
 | `dataviz` | Chart-type selection, color systems, dashboard layout principles |
 
-Vendor library (`.claude/vendor/skills-for-fabric/`):
+Vendor library — Microsoft `powerbi-authoring` plugin (github.com/microsoft/skills-for-fabric, MIT):
 
 - `powerbi-report-planning` — plan and orchestrate report delivery
 - `powerbi-report-design` — generate report designs and layouts
-- `powerbi-report-authoring` — create and modify reports
-- `powerbi-report-management` — report lifecycle
+- `powerbi-report-authoring` — create and modify reports as code (PBIR/PBIP files)
+- `powerbi-report-management` — report lifecycle; publishes PBIR to Fabric via `az rest` (createItem / updateDefinition, LRO)
+
+**Discoverability (verified 2026-09-13, Q):** these four are NOT auto-invokable until the plugin is
+installed — the submodule at `.claude/vendor/skills-for-fabric/` (pinned v0.3.3, 2026-06-07; upstream
+v0.3.16) is never read by the harness, and none of its skills were ever copied into `.claude/skills/`.
+Install once at user scope: `/plugin marketplace add microsoft/skills-for-fabric` then
+`/plugin install powerbi-authoring@fabric-collection`. Prerequisite: Node.js 20+ (`winget install
+OpenJS.NodeJS.LTS`) for `npm i -g @microsoft/powerbi-report-authoring-cli` (`powerbi-report-author
+validate` — the skill treats it as mandatory) and for the plugin's `powerbi-modeling-mcp` (starts via
+`npx`; without Node it logs an MCP connect failure each session, non-fatal).
+
+**Report-as-code house rules (sources: MS Learn `projects-report`, REST `report-definition`, both read 2026-09-13):**
+- Deploying via Fabric REST requires `definition.pbir` with `byConnection` and only
+  `"connectionString": "semanticmodelid=<id>"`; `byPath` is refused by the API (Git-integration exports use `byPath`).
+- Minimal PBIR part set: `definition.pbir`, `definition/version.json`, `definition/report.json`,
+  `definition/pages/pages.json`, `definition/pages/<page>/page.json`, `definition/pages/<page>/visuals/<visual>/visual.json`.
+  Every part base64 (`payloadType: InlineBase64`); `updateDefinition` replaces the whole definition — omit a part and it is deleted.
+- Never bump or invent `$schema` versions; copy the URL from a file of the same type in the same report (or the CLI's scaffold). `card`/`table`/`matrix` are legacy — use `cardVisual`/`tableEx`/`pivotTable`.
+- The binding is independent of storage mode: a Direct Lake model binds exactly like Import.
+- Direct semantic-link (`sempy.fabric.report`) helpers are PBIR-Legacy only; do not use them for PBIR reports.
 
 ## When to invoke me
 
