@@ -7,7 +7,10 @@ owner: architect
 priority: high
 blocked_by: (unblocked 2026-08-04 — v1 delivered; steps 0-3 and 6 done, step 1 commit awaiting owner)
 activity:
-fno_task:
+fno_task: none
+customer_ask: none
+waiting_on:
+resume_on:
 source: direct
 ---
 
@@ -47,6 +50,30 @@ MetaAtomic, not built in LineageDocumentation and migrated afterwards.
 Step 3's reproduction of the Element Logic run (19,996 / 18,279 / 0 failures) is the move's pass/fail
 and the safety net for doing it mid-engagement.
 
+## Progress
+
+**Now (2026-09-16):** the consolidation itself is done — the engine moved into `own/MetaAtomic`
+(subtree, history kept, 08-04), Element Logic imports it and reproduces, the Carl Ras portability gate
+passed with zero engine changes, and MetaAtomic has since become the product (ADR 0009) with four
+packages and live deployments at Carl Ras (daily since 09-09) and Element Logic (pack awaiting Lars,
+09-16). Of the task's sequence, step 4 (Tystofte source side) is not started and step 1's Element Logic
+`git rm` of `lineage_engine/` is staged, not committed. Import mechanism still the interim `.pth`.
+
+**Tried and dropped:** copying the engine -> `git subtree` (kept the history); the retired `meta.*`
+island (`framework/`, `adapters/`) deleted 09-09 rather than migrated.
+
+**Next:**
+1. Decide whether this task closes as delivered (the consolidation) with the Tystofte source side
+   and the import mechanism as new tasks, or stays open for them.
+2. Commit the staged Element Logic `git rm` (customer repo, owner commits).
+3. Fold in the Tystofte source side (`nb_A_build_metadata`, `nb_C_profile_timestamps`) and extend
+   `Node`/`Edge` per `docs/capability-map.md`.
+4. Give MetaAtomic its own `.venv` and settle the import mechanism.
+
+## Needs from customer
+
+- none (internal project)
+
 ## Why
 
 Three projects each hold a piece: MetaAtomic has the name and the concept but no working code,
@@ -72,3 +99,4 @@ unless deliberately preserved. Undecided whether deployments import via path, su
 - 2026-08-03 — created
 - 2026-08-04 - v1 delivered to Element Logic and tagged `v1-elementlogic`. Steps 2-3 DONE: engine moved via subtree (history preserved), EL re-pointed via a `.pth`, run reproduces exactly (23,396 / 22,453 / 531). Step 6 DONE EARLY and PASSED: Carl Ras `Fabric-ETL` parsed with zero engine changes (7,687 / 6,650 / 122, 0 DDL failures), one edge set hand-verified against raw SQL. Step 1 partially open: the EL `git rm` is staged, not committed (customer repo). Step 4 (Tystofte source side) not started.
 - 2026-08-05 - Carl Ras semantic model added by owner and run. Auto-discovery misses a nested `*.SemanticModel` (cli.py:66-67 searches root/parent/grandparent only) - use `--semantic-model`. Engine defect found and fixed: `_database_name` read only the shared `DatabaseName` expression, so Carl Ras's inlined `Sql.Database(...)` partitions left the semantic layer unbound (source `?`, 0/0). Now bound 27 tables / 715 columns, edges 7,106 -> 7,848; EL re-verified with no regression. Carl Ras output persists at `customers/Carl-Ras/datahub/out/lineage/`.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task none, customer_ask none); no facts changed. Card: CONTEXT.md converted to the resume card.
