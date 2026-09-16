@@ -60,7 +60,7 @@ ownership problem as GEN-002/003/005 (`design/ATOMIC_GENERATOR_CHANGES.md`, owne
 
 ## Progress
 
-**Now (2026-09-16):** `viewfacttransform.GeneralLedgerTransactions` carries a 13-month rolling window, in
+**Now (2026-09-07):** `viewfacttransform.GeneralLedgerTransactions` carries a 13-month rolling window, in
 git and live in DEV (verified identical 09-07, 66 of 66 objects). TEST (558,529 rows, current month) and
 PROD (353 rows of July) were last measured 08-31 with the original bug. Items 4 and 5 are closed: no second
 window in the model, and nothing compares Curated to Enriched.

@@ -29,7 +29,7 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
 
 ## Progress
 
-**Now (2026-09-16):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
+**Now (2026-09-14):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
 44,526 contacts, every contact parent-bound); the delta push is proven (50 sent, immediate rerun 0);
 token-expiry (`e852ac4`) and percent-encoded parent key (`54ffbda`) fixes are in git and await one sync.
 

@@ -206,7 +206,8 @@ Workflow: working in Project A, you discover something relevant to Project B →
 The workspace remembers across sessions through three plain-markdown artifacts in `ops/`, plus a routine M follows:
 
 - `ops/TODO.md` — raw action capture (ICOR **Input**). Anything to act on later. (`/todo`)
-- `ops/tasks/` — tracked work, state-by-folder: `open/ → in-progress/ → done/ | cancelled/` (ICOR **Output**). (`/task`)
+- `ops/tasks/` — tracked work, state-by-folder: `open/ → in-progress/ → done/ | cancelled/` (ICOR **Output**). (`/task`) A task can be **parked** in place — `waiting_on: customer|<name>` or
+  `resume_on: YYYY-MM-DD` (`/task wait` / `/task postpone` / `/task resume`) — and leaves the daily view until due or cleared.
   **No double-engineering with Azure DevOps (decided 2026-07-06):** for customer projects, *DevOps is the delivery backlog* — Niels is assigned to work items there, and this store never mirrors them. A workspace task for customer work is only the **thin binder** that carries `activity:`/`fno_task:` (the DevOps work-item id) so time bills to the right F&O line, plus private context DevOps shouldn't hold. Pre-DevOps motions (offers, access requests, follow-ups) and `own/`/workspace work live fully here.
 - `ops/log/sessions.md` — chronological record of what happened/decided each session (ICOR **Refine**). (`/log`)
 
@@ -215,6 +216,25 @@ The workspace remembers across sessions through three plain-markdown artifacts i
 - **Workspace root (`C:\Dev`)** → the *workspace walk*: read `ops/tasks/in-progress` and `ops/tasks/open`, the unchecked items in `ops/TODO.md`, and the latest `ops/log/sessions.md` entry; surface open work and suggest a focus.
 - **Customer root (`customers/<client>/`, no project selected)** → the *customer walk*: read the customer node's `CONTEXT.md` and the project index in its `CLAUDE.md`; surface the customer's projects and their statuses. Because work always attaches to a project, **prompt which project this session is for**, then hand off to that project's *project walk* (below). If the customer has exactly one project, name it and confirm rather than listing.
 - **Inside a project (`customers/…/<project>` or `own/…`)** → the *project walk*: read that project's `CONTEXT.md` (plus any "Related contexts" it names) and surface unread `INBOX.md` entries before the first request. The workspace store is not re-walked here — the project is the frame. **For a `customers/…` project that has any open/in-progress task (matched by the task's `project:` field), also ask which of those tasks this session's time bills to and set it active (the `/switch-task` routine) — customer work is registered per task. `own/…` projects skip this; they have no task-level detail and bill to the project.**
+
+**Day start — the brief (added 2026-09-16):** a working day starts at **05:00 local**. The first session of
+a day, a resumed session, and a session that continues after an idle stretch that crosses 05:00 all begin
+with the **day brief** for where the session sits. Inside a project: the card's goal and the date of its
+*Where we stand*, the open and in-progress tasks with **progress age** (today minus the task's `Now (date)`),
+parked tasks (`waiting_on` / `resume_on`), unsent customer asks (`customer_ask: open`), who blocks what, and
+the project's own memory records. At the workspace root: one line per active project (last worked, standing
+date, task counts, stalled, unsent asks), the workspace-level tasks and the TODO count. Once a day the
+dashboard is opened as the entry point to the day. **By hand:** `python ops/bin/daybrief.py --text --scope
+<project>`; the same script regenerates every card's *Active tasks* section (`--write-cards`) and feeds the
+dashboard (`--json`) — the task files are the single source, the card and the brief are views. The Claude
+harness accelerates this with the `SessionStart` hook (startup **and** resume, every scope) and a new-day
+check on the first prompt of a turn (`daybrief_hook.py`, called from `track_time.py`); the brief replaces the
+file-by-file walk, so a session starts with no reads.
+
+**Project card (CONTEXT.md) since 2026-09-16:** a bounded *resume card*, rewritten at every handoff and never
+appended — Goal with a done-when, *Where we stand — date*, *Active tasks — progress* (generated), *Blocked on
+others*, *Open threads*, pointers. History moves to `ops/log/sessions.md` and `CONTEXT_ARCHIVE*.md`, decisions
+to `CONTEXT_DECISIONS.md`. Template: `_templates/CONTEXT.md`. Task shape: `ops/tasks/README.md`.
 
 **Session end — the log:** append a dated entry to `ops/log/sessions.md` — what was done, decided (link ADRs), tasks created/moved, and next focus — and distill the day's raw memory stream (`ops/memory/daily/`) into curated records (`ops/memory/store/`). See *Memory*.
 

@@ -22,7 +22,7 @@ Full derivation, validation and every source-column decision:
 
 ## Progress
 
-**Now (2026-09-16):** the push (`NB_Outbound_Marketo` + `PL_Outbound_Marketo`) and the delta state
+**Now (2026-09-09):** the push (`NB_Outbound_Marketo` + `PL_Outbound_Marketo`) and the delta state
 (`Lakehouse_Util.MarketoPushState`) are in git (`52653d9`, `f1fe9f2`); DEV dry runs Completed 2026-09-09
 (218,490 sendable, 141 non-ASCII e-mails rejected). Nothing has been written to Marketo from Fabric.
 Inbound chain proven once end to end (08-21); the daily `PL_Ingest_Marketo` schedule is disabled, so no

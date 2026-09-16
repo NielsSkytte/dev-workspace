@@ -223,6 +223,18 @@ def now_z():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _daybrief(sid, project):
+    """Day brief on the first turn of a new day -- AGENTS.md > Continuity loop > Day start.
+    The decision (05:00 boundary, once per session per day, dashboard once a day) lives in
+    daybrief_hook.py; the brief itself is ops/bin/daybrief.py. Fail-silent."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from daybrief_hook import maybe_brief
+        maybe_brief(sid, project)
+    except Exception:
+        pass
+
+
 IDLE_TIMEOUT_MIN = 15   # matches ops/time/README.md section 3 -- one rule, both levels
 
 # Tools that block on the USER. The turn stays open while one is pending, so its wait is
@@ -286,6 +298,7 @@ def main():
                       "project": project, "task": task,
                       "last_stop": None, "waits": []}
         save_state(state)
+        _daybrief(sid, project)   # prints only on the first turn of a new day
         return
 
     # PreToolUse/PostToolUse are registered for BLOCKING_TOOLS only, so this costs one

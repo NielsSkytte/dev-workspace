@@ -18,7 +18,7 @@ using the existing python script.
 
 ## Progress
 
-**Now (2026-09-16):** the regional CU quota was raised 16 -> 32 between 08-12 and 08-19; the scale-up runs
+**Now (2026-08-31):** the regional CU quota was raised 16 -> 32 between 08-12 and 08-19; the scale-up runs
 inline in `PL_MainExecution` in DEV and TEST (08-20) and has succeeded repeatedly. The CapacityManager auth
 chain is proven. Open: an F64 request failed 08-19 against the 32 ceiling — nothing records whether F64 is a
 goal or a probe; `PL_ScaleProcess_SP` still carries a redundant refresh step; PROD has none of the capacity

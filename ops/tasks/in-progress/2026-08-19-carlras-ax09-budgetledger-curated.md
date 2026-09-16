@@ -61,7 +61,7 @@ all 21 would double-count everything.
 
 ## Progress
 
-**Now (2026-09-16):** BudgetLedger is through enriched (1,596,773 rows) and curated (842,590) in DEV and
+**Now (2026-08-31):** BudgetLedger is through enriched (1,596,773 rows) and curated (842,590) in DEV and
 TEST, in `Model_OneLake` in DEV, TEST's row check clean (08-31). Budget model `2010` is confirmed by the
 customer as the live budget. None of the four objects exist in PROD; TEST has no `Model_OneLake`.
 

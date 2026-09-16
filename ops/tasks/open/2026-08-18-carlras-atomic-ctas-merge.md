@@ -28,7 +28,7 @@ least the large facts, so the files survive the load.
 
 ## Progress
 
-**Now (2026-09-16):** all five CTAS procedures still drop-then-create, byte-identical to the repo in the
+**Now (2026-08-31):** all five CTAS procedures still drop-then-create, byte-identical to the repo in the
 live warehouses (08-31). The trigger condition ("rebuilt during working hours") has fired only by manual
 runs with no production report traffic, so `blocked_by` holds: nothing until Direct Lake is committed to.
 

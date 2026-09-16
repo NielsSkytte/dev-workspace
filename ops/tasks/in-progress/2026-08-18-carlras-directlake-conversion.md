@@ -24,7 +24,7 @@ they carry the two calculated columns and the Power Query timestamp), 6 calculat
 
 ## Progress
 
-**Now (2026-09-16):** `Model_OneLake` is pure Direct Lake in DEV — 38 tables, 177 measures, 60
+**Now (2026-08-31):** `Model_OneLake` is pure Direct Lake in DEV — 38 tables, 177 measures, 60
 relationships, one `AzureStorage.DataLake` source, Budget Ledger answering queries (verified 08-31).
 TEST prerequisites 1-3 are done (GEN-008/009 columns live, both dims populated, Contributor grant).
 `Model_OneLake` has never been paired to TEST; DEV's Import `Model` has 42 tables against TEST's 38, so

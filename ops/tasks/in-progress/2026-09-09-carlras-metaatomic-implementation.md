@@ -21,7 +21,7 @@ document lives in `Fabric-ETL/MetaAtomic/design/`.
 
 ## Progress
 
-**Now (2026-09-16):** `PL_UpdateLineage` runs `NB_MetaAtomic` daily 05:30 since 2026-09-09; engine
+**Now (2026-09-15):** `PL_UpdateLineage` runs `NB_MetaAtomic` daily 05:30 since 2026-09-09; engine
 0.5.1+20260915 verified in the store 09-15 (13,505 nodes, online). The notebook is generic since 09-15 —
 every Carl Ras value is a pipeline parameter. The clone runs on Niels's read-only PAT
 (`metaatomic-ado-pat`, expires in a year) because `Fabric_Datahub` is not in the DevOps organization.

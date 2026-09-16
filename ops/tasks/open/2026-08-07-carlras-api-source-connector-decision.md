@@ -18,7 +18,7 @@ or stay hand-shaped per source.
 
 ## Progress
 
-**Now (2026-09-16):** the gate is met once — the Marketo chain ran end to end 08-20/21 by hand, not yet
+**Now (2026-08-31):** the gate is met once — the Marketo chain ran end to end 08-20/21 by hand, not yet
 unattended. The landing contract has generalised on its own (`rawtablekeymap_*`, `AutoLoader_*` on one
 pattern); the extraction has not (CVR still has no pipeline, GTM keeps its bespoke notebook). Whether a
 separate metadata-driven Atomic ingest effort exists elsewhere is unverified.

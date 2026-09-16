@@ -75,7 +75,7 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
-**Now (2026-09-16):** TEST's Raw stage ran green 2026-09-09 (`PL_Execute_Raw` `66b7792f`, all four
+**Now (2026-09-09):** TEST's Raw stage ran green 2026-09-09 (`PL_Execute_Raw` `66b7792f`, all four
 streams) after `PL_Ingest_Lakehouse_Raw_Marketo` was re-stamped to the SPN. Scale Up/Down in TEST now fails
 at `getSecret` until TEST's workspace identity is in `Fabric_Key_Vault_Users`; the run degrades to the idle
 SKU and still builds the data. TEST's schedule is owned by `EXT_NSKC` again since 08-30 (hardening

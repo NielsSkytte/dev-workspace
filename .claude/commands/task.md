@@ -34,4 +34,24 @@ This is the Control step: the user gives raw intent; **you** add the structure. 
 4. **Time tagging (task-level tracking):** on `start`, set the task by **running the merge-safe one-liner in `/switch-task` step 4** — never hand-write `C:\Dev\ops\time\active-task`, which holds one entry *per session*; overwriting it whole wipes other open sessions' tags. On `done`/`cancel`, delete that file if it holds this slug. The entry is left unclaimed and adopted by the next turn of the session you typed in; each session reads only its **own** entry, so a tag set in another session — earlier or concurrent — never applies here (ADR-003), and a forgotten tag cannot bill tomorrow's work. Since ADR-003 the active task **decides** the project, capped to the same customer; `Dev`/`own/` sessions are never re-attributed. For picking among several tasks of the *same* customer project mid-session, use `/switch-task`. See `AGENTS.md` > Time tracking.
 5. Confirm in one line.
 
+### `/task postpone|wait|resume <slug> ...` — park and unpark (added 2026-09-16)
+
+Parked is a property of an open or in-progress task, not a fifth folder. A parked task leaves the day
+brief and the card's active list until it is due or cleared.
+
+- `/task postpone <slug> <YYYY-MM-DD|+Nd>` — set `resume_on:` (`+Nd` = N days from today). When the date
+  passes the task shows as **due back** until you resume or postpone it again.
+- `/task wait <slug> customer|<name>` — set `waiting_on:`. If we still have to send the ask, set
+  `customer_ask: open`; once sent, `customer_ask: sent YYYY-MM-DD`; when answered, `answered` and resume.
+- `/task resume <slug>` — clear `waiting_on:` and `resume_on:`.
+
+Each transition: edit the frontmatter field, append a dated Log line with the reason, then run
+`python C:\Dev\ops\bin\daybrief.py --write-cards --project <project>` so the project's card follows.
+
+### Listing shows parked and progress
+
+`/task` with no arguments is `python C:\Dev\ops\bin\daybrief.py --text --scope <project|Dev>`: every
+task with its DevOps id, progress age (days since its `**Now (date):**`), next step, ask status and parked
+state. Read the task file for the rest.
+
 Keep this command mechanical and fast. Routing judgment happens at create; everything else is bookkeeping.

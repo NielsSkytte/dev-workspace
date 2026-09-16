@@ -11,6 +11,7 @@
 # Per-turn capture hook state (harness runtime, not portable substrate)
 .claude/hooks/.capture_state.json
 .claude/hooks/.track_time_state.json
+.claude/hooks/.daybrief_state.json
 __pycache__/
 
 # This repo HAS a remote (github.com/NielsSkytte/dev-workspace) — so unlike the local-only

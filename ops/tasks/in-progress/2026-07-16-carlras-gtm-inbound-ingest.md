@@ -20,7 +20,7 @@ Fabric platform: new GTM source in the LandingZone (shortcut + ingest notebook â
 
 ## Progress
 
-**Now (2026-09-16):** Part 1 (landing) is live: `PL_Ingest_GTM` hourly, SPN-owned, 337,599,587 events on
+**Now (2026-09-09):** Part 1 (landing) is live: `PL_Ingest_GTM` hourly, SPN-owned, 337,599,587 events on
 08-31. Part 2 is half done: `PL_Ingest_Lakehouse_Raw_GTM` exists and is registered in `PL_Execute_Raw`
 (08-11); PROD raw loaded 09-09. Still missing: `PL_Transform_Enriched_GTM`, its `PL_Execute_Enriched`
 entry, `NB_Table_PrimaryKeyMap_GTM` / `rawtablekeymap_gtm`, and GTM names in the variable libraries.

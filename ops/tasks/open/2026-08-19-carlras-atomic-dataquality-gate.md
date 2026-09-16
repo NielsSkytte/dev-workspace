@@ -29,7 +29,7 @@ Three parts, in the order they matter:
 
 ## Progress
 
-**Now (2026-09-16):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
+**Now (2026-08-31):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
 activity; `transform.sp_RowCheck` logs only). The triggering AX09 row was still uncorrected on 08-31. The
 model-side retype is live in DEV's and TEST's `Model`; `Model_OneLake`'s copy of `Forecast Quantity` is still
 `decimal` and must be fixed before that model is promoted. TEST's row-check log shows six red and nobody acts

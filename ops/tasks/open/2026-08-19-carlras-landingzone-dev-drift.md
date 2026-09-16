@@ -73,7 +73,7 @@ lineage work hit (`2026-08-03-metaatomic-consolidation`) and solved by querying 
 
 ## Progress
 
-**Now (2026-09-16):** to-dos 1-3 are closed — 88 tables agree in repo, DEV, TEST and PROD (08-31), and
+**Now (2026-08-31):** to-dos 1-3 are closed — 88 tables agree in repo, DEV, TEST and PROD (08-31), and
 `PL_ScaleProcess_SP` is committed. The class recurred: `Warehouse_Enriched_AX09` was Modified/uncommitted
 in `Fabric-ETL-DEV` on 08-31. `Fabric-TEST` is invisible to `EXT_NSKC`, so that repo is unchecked. Five
 orphan landing-zone tables are still ingested nightly and served as current, 63 to 116 days stale.

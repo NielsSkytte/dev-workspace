@@ -118,6 +118,13 @@ def main():
 
     nudge()
 
+    # Day brief (AGENTS.md > Continuity loop > Day start): first session of a day key, any scope.
+    try:
+        from daybrief_hook import maybe_brief
+        maybe_brief(hook.get("session_id", "unknown"), project)
+    except Exception:
+        pass
+
     if not customer_of(project):
         return  # Dev or own/ -- no task level there
 

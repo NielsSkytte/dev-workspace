@@ -130,7 +130,7 @@ Full write-up: `design/ATOMIC_GENERATOR_CHANGES.md` > GEN-005.
 
 ## Progress
 
-**Now (2026-09-16):** the join fan-outs are fixed (`0a7f826`, `3a72fca`, `4328657`, 08-14). But on 08-31
+**Now (2026-08-31):** the join fan-outs are fixed (`0a7f826`, `3a72fca`, `4328657`, 08-14). But on 08-31
 DEV's row check was 11 days stale (last run 08-20) and read `SalesInvoiceTransactions` **-1,871** and GL +4;
 TEST ran daily at 23 of 29 passing, six red (GL +58, `CustomerAccounts` -253, `Items` -312, `OutputOrders`
 -14,684, `PickingRoutes` -12,849, `SalesChannel` -2), five of them never recorded. Part 3 (`SQLDICTIONARY`
