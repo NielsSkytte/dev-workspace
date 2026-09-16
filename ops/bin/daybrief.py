@@ -216,6 +216,8 @@ def load_projects():
             continue
         key = os.path.relpath(d, ROOT).replace("\\", "/")
         ident = identity(read(clau))
+        if not ident:
+            continue  # a CLAUDE.md without an Identity block declares a non-project (a wiki mirror)
         card = parse_card(os.path.join(d, "CONTEXT.md"))
         out.append({"key": key, "status": ident.get("status", ""), "fno_code": ident.get("fno_code", ""),
                     "type": ident.get("type", ""), "card": card})

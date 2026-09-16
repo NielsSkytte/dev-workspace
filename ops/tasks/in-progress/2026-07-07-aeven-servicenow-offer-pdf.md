@@ -7,12 +7,31 @@ owner: content
 priority: normal
 blocked_by: signed SoW returned from Aeven
 activity:
-fno_task:
+fno_task: none
+customer_ask: none
+waiting_on:
+resume_on:
 source: todo
 ---
 
 ## What
 Produce the formal Aeven ServiceNow POC offer as a PDF.
+
+## Progress
+
+**Now (2026-09-12):** the offer went out as SoW v1.1 on 2026-07-28 (work-order template, General
+Terms, new-customer appendix) and the engagement is signed: the build runs as
+`customers/Aeven/AtomicServiceNow` under F&O 4058-1 since 2026-09-12. Nothing remains here.
+
+**Tried and dropped:** none.
+
+**Next:**
+1. Close this task as done (owner confirms); the 09-13 hours tagged to it are corrected at the
+   next rollup.
+
+## Needs from customer
+
+- none
 
 ## Why
 The offer is the gate to the Q3 engagement; `fno_code:` is created only after signature.
@@ -33,3 +52,4 @@ The offer is the gate to the Q3 engagement; `fno_code:` is created only after si
 - 2026-07-28 — Aeven contact obtained; SoW re-issued as v1.1 (Pingala work-order template,
   content unchanged from v1.0) packaged with General Terms and Conditions + new-customer
   appendix, sent to Aeven. Now awaiting signed SoW returned from Aeven.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task none, customer_ask none); no facts changed. Card: CONTEXT.md converted to the resume card.
