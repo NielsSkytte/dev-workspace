@@ -16,6 +16,8 @@ Modes:
   python ops/dashboard.py --json     print the collected payload; write nothing
   python ops/dashboard.py --no-open  serve without opening a browser
 
+Two pages: / (today.html -- the day's entry point, from /api/today = ops/bin/daybrief.py) and
+/overview (dashboard.html -- the original cross-project view, from /api/data).
 The served page re-fetches /api/data on every load and on Refresh, so it is never stale.
 POST /api/launch starts a new Claude Code session (or VS Code window) rooted at a project --
 which is also what makes that session's time attribute to the right project.
@@ -50,6 +52,15 @@ def _load_rollup():
 
 
 rollup = _load_rollup()
+
+
+def _daybrief():
+    """ops/bin/daybrief.py, loaded on demand so a fault there never stops the server."""
+    path = os.path.join(ROOT, "ops", "bin", "daybrief.py")
+    spec = importlib.util.spec_from_file_location("daybrief", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 # ---------- small parsers ----------
@@ -1161,10 +1172,18 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self._send(500, json.dumps({"error": str(exc)}))
             return
-        if path in ("/", "/index.html"):
-            html = read(os.path.join(HERE, "dashboard.html"))
+        if path == "/api/today":
+            try:
+                self._send(200, json.dumps(_daybrief().build()))
+            except Exception as exc:
+                self._send(500, json.dumps({"error": str(exc)}))
+            return
+        pages = {"/": "today.html", "/index.html": "today.html", "/today": "today.html",
+                 "/overview": "dashboard.html", "/overview.html": "dashboard.html"}
+        if path in pages:
+            html = read(os.path.join(HERE, pages[path]))
             if not html:
-                self._send(500, "dashboard.html not found", "text/plain")
+                self._send(500, pages[path] + " not found", "text/plain")
                 return
             self._send(200, html, "text/html; charset=utf-8")
             return

@@ -356,6 +356,19 @@ One thing it does write to the outside world: **launching a session.** `POST /ap
 session's time attribute to that project. Paths outside `C:\Dev` are rejected. The launch may carry an
 opening instruction, which is how the two one-click routines below start.
 
+### Today — the day's entry point (added 2026-09-16)
+
+The dashboard lands on **Today** (`/`; the original view moved to `/overview`). It is `ops/bin/daybrief.py`
+rendered: per project, active first, the card's goal and standing date, every open and in-progress task
+with **progress age** (days since its `Now (date)`, coloured on the one warm-neutral ladder, terracotta
+past 14 days), DevOps id or none, next step, customer-ask status (unsent in terracotta), parked tasks with
+their date or who they wait on; totals across projects on top. Projects still on the old CONTEXT.md shape
+are flagged with a one-click conversion. **It writes nothing**: every button opens a session at that
+project seeded with the command that makes the change (`/switch-task <slug>`, `/task postpone|wait|resume`,
+`/handoff`), so the write happens in a session with the owner in it. The first session of a working day
+opens it (see *Continuity loop* > *Day start*). By hand: `python ops/dashboard.py`, or
+`python ops/bin/daybrief.py --text` for the same content as text.
+
 ### Check-in — the interview that keeps CONTEXT.md honest
 
 `/checkin` (the dashboard's **Status check-in** button) is the counterpart to `/handoff`, split by

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today</title>
+<style>
+:root{
+  color-scheme: light;
+  --plane:#EEE4DE; --surface:#F7F2EE; --surface-2:#E7DCD4;
+  --ink:#241F1B; --ink-2:#5B5249; --muted:#8B8074;
+  --grid:#DDD1C8; --axis:#C2B4A7; --ring:rgba(36,31,27,0.13);
+  --brand:#4D7878; --brand-2:#60756E; --brand-ink:#F2EAE4;
+  --accent:#B5442A; --cta:#4D7878;
+  --f1:#BBA998; --f2:#A1947F; --f3:#827560; --f4:#5C513F;
+  --shadow:0 1px 2px rgba(36,31,27,.05), 0 10px 26px rgba(36,31,27,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 Aptos,Calibri,system-ui,sans-serif}
+h1,h2,h3{font-family:"Aptos Display",Aptos,Calibri,system-ui,sans-serif;font-weight:600;margin:0}
+a{color:var(--brand)}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+header{background:var(--brand);color:var(--brand-ink);padding:14px 20px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+header h1{font-size:22px}
+header .sub{opacity:.85}
+header nav{margin-left:auto;display:flex;gap:14px;align-items:center}
+header nav a,header nav button{color:var(--brand-ink);background:transparent;border:1px solid rgba(242,234,228,.5);border-radius:6px;padding:4px 10px;font:inherit;cursor:pointer;text-decoration:none}
+header nav button.on{background:rgba(242,234,228,.18)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 20px 4px}
+.tile{background:var(--surface);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+.tile .n{font-family:"Aptos Display",Aptos,sans-serif;font-size:26px;line-height:1.1}
+.tile .l{color:var(--ink-2);font-size:12px}
+.tile.hot .n{color:var(--accent)}
+main{padding:10px 20px 40px;display:grid;gap:14px}
+article{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px}
+article.quiet{padding:8px 16px}
+.phead{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.phead h2{font-size:17px}
+.phead .meta{color:var(--ink-2);font-size:12px}
+.badge{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11px;border:1px solid var(--grid);color:var(--ink-2);background:var(--surface-2)}
+.badge.legacy{border-color:var(--accent);color:var(--accent);background:transparent}
+.goal{margin:6px 0 8px;color:var(--ink-2)}
+.actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+button.act{font:inherit;font-size:12px;border:1px solid var(--axis);background:var(--surface-2);color:var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer}
+button.act.primary{background:var(--cta);color:var(--brand-ink);border-color:var(--cta)}
+button.act:hover{filter:brightness(.97)}
+table{width:100%;border-collapse:collapse;margin-top:6px}
+th{font-size:11px;color:var(--muted);text-align:left;font-weight:600;padding:4px 6px;border-bottom:1px solid var(--grid)}
+td{padding:6px 6px;border-bottom:1px solid var(--grid);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.age{white-space:nowrap;width:64px}
+.chip{display:inline-block;min-width:44px;text-align:center;border-radius:6px;padding:1px 6px;font-size:12px;color:#fff;background:var(--f1)}
+.chip.a2{background:var(--f2)} .chip.a3{background:var(--f3)} .chip.a4{background:var(--f4)}
+.chip.stalled{background:var(--accent)}
+.chip.parked{background:transparent;color:var(--ink-2);border:1px dashed var(--axis)}
+td.slug{max-width:260px;word-break:break-word}
+td.slug .t{color:var(--ink-2);font-size:12px}
+td.next{color:var(--ink-2)}
+.dev{white-space:nowrap}
+.dev.none{color:var(--accent)}
+.ask.unsent{color:var(--accent);font-weight:600}
+.ask.sent,.ask.answered{color:var(--brand)}
+td.rowact{white-space:nowrap;text-align:right}
+td.rowact button{margin-left:4px}
+.parkedrow td{color:var(--ink-2);background:rgba(231,220,212,.35)}
+.blocked{margin-top:8px;font-size:12px;color:var(--ink-2)}
+.note{font-size:12px;color:var(--ink-2);margin-top:6px}
+.legacybox{border:1px solid var(--accent);border-radius:8px;padding:8px 10px;margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.legacybox .w{color:var(--accent);font-weight:600}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:80vw}
+#toast.show{opacity:1}
+.popover{position:absolute;background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:8px;box-shadow:var(--shadow);display:flex;gap:6px;align-items:center;z-index:5}
+.popover input{font:inherit;padding:3px 6px;border:1px solid var(--axis);border-radius:6px;background:#fff}
+details summary{cursor:pointer;color:var(--ink-2);font-size:13px;margin-top:6px}
+.wsrow{display:flex;gap:16px;flex-wrap:wrap;color:var(--ink-2);font-size:13px}
+@media (max-width:800px){ td.next{display:none} th.next{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Today</h1>
+  <span class="sub" id="subtitle">loading the day brief...</span>
+  <nav>
+    <span class="sub" id="stamp"></span>
+    <button id="auto" class="on" title="re-fetch every 60 s">Auto</button>
+    <button id="refresh">Refresh</button>
+    <a href="/overview">Overview</a>
+  </nav>
+</header>
+<section class="tiles" id="tiles"></section>
+<main id="main"></main>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let AUTO = true, timer = null, DATA = null;
+
+function ageClass(t){
+  if (t.parked) return 'chip parked';
+  const a = t.progress_age;
+  if (a == null) return 'chip a2';
+  if (t.stalled) return 'chip stalled';
+  if (a <= 3) return 'chip';
+  if (a <= 7) return 'chip a2';
+  if (a <= 14) return 'chip a3';
+  return 'chip a4';
+}
+function ageText(t){
+  if (t.parked) return t.waiting ? 'waiting' : ('until ' + t.resume_on);
+  return t.progress_age == null ? '?' : (t.progress_age + ' d');
+}
+function isCustomer(key){ return key.toLowerCase().startsWith('customers/'); }
+function workPrompt(p, t){
+  return isCustomer(p.key) ? ('/switch-task ' + t.slug)
+    : ('Work on task ' + t.slug + ' (ops/tasks/' + t.state + '/' + t.slug + '.md): read its Progress block and start on Next 1.');
+}
+const CONVERT_PROMPT = 'Convert this project\'s CONTEXT.md to the resume card in _templates/CONTEXT.md: git mv CONTEXT.md CONTEXT_ARCHIVE.md, move the Decisions Log table verbatim into CONTEXT_DECISIONS.md, draft Goal (with a done-when marked proposed), Where we stand and Open threads from the archive and the log, then run python C:/Dev/ops/bin/daybrief.py --write-cards --project <this project>. Show the card before writing it.';
+
+async function launch(path, prompt, mode){
+  try{
+    const r = await fetch('/api/launch', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({path, mode: mode || 'claude', prompt: prompt || ''})});
+    const j = await r.json();
+    toast(j.message || (j.ok ? 'started' : 'failed'));
+  }catch(e){ toast('Launch failed: ' + e.message); }
+}
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3600); }
+
+function postponePopover(btn, p, t){
+  closePopovers();
+  const pop = document.createElement('div'); pop.className = 'popover';
+  const d = new Date(); d.setDate(d.getDate() + 7);
+  const inp = document.createElement('input'); inp.type = 'date'; inp.value = d.toISOString().slice(0,10);
+  const ok = document.createElement('button'); ok.className = 'act primary'; ok.textContent = 'Postpone';
+  const no = document.createElement('button'); no.className = 'act'; no.textContent = 'Cancel';
+  ok.onclick = () => { launch(p.key, '/task postpone ' + t.slug + ' ' + inp.value); pop.remove(); };
+  no.onclick = () => pop.remove();
+  pop.append(inp, ok, no);
+  const r = btn.getBoundingClientRect();
+  pop.style.left = (window.scrollX + r.left - 120) + 'px'; pop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  document.body.appendChild(pop);
+}
+function closePopovers(){ document.querySelectorAll('.popover').forEach(e => e.remove()); }
+document.addEventListener('click', e => { if (!e.target.closest('.popover') && !e.target.closest('button[data-pop]')) closePopovers(); });
+
+function taskRow(p, t){
+  const dev = t.devops === 'none' ? '<span class="dev none">none</span>' : '<span class="dev"><code>' + esc(t.devops) + '</code></span>';
+  let state = t.state === 'in-progress' ? 'in progress' : t.state;
+  if (t.parked) state = 'parked' + (t.waiting ? ' (waiting on ' + esc(t.waiting) + ')' : ' (resumes ' + esc(t.resume_on) + ')');
+  else if (t.due_back) state += ' &middot; <b>due back</b>';
+  const ask = t.customer_ask && t.customer_ask !== 'none'
+    ? '<span class="ask ' + esc(t.customer_ask.split(' ')[0]) + '">' + (t.ask_unsent ? 'UNSENT' : esc(t.customer_ask)) + '</span>'
+      + (t.needs && t.needs.length ? '<div class="t">' + esc(t.needs[0].slice(0, 110)) + (t.needs[0].length > 110 ? '...' : '') + '</div>' : '')
+    : '<span class="ask">none</span>';
+  const next = t.next && t.next.length ? esc(t.next[0]) : (t.has_progress ? '<i>no next step</i>' : '<i>no Progress block; last activity ' + esc(t.progress_date || '?') + '</i>');
+  const title = t.title ? '<div class="t">' + esc(t.title.replace(/^.*?—\s*/, '').slice(0, 120)) + '</div>' : '';
+  const acts = t.parked
+    ? '<button class="act" data-act="resume">Resume</button>'
+    : '<button class="act primary" data-act="work">Work</button>'
+      + '<button class="act" data-act="postpone" data-pop="1">Postpone</button>'
+      + '<button class="act" data-act="wait">Wait on customer</button>';
+  return '<tr class="' + (t.parked ? 'parkedrow' : '') + '" data-slug="' + esc(t.slug) + '">'
+    + '<td class="age"><span class="' + ageClass(t) + '" title="days since the task\'s Now date (' + esc(t.progress_date || 'unknown') + ')">' + ageText(t) + '</span></td>'
+    + '<td class="slug"><code>' + esc(t.slug) + '</code>' + title + '</td>'
+    + '<td>' + dev + '</td>'
+    + '<td>' + state + '</td>'
+    + '<td class="next">' + next + '</td>'
+    + '<td>' + ask + '</td>'
+    + '<td class="rowact">' + acts + '</td></tr>';
+}
+
+function projectCard(p){
+  const c = p.card || {}; const k = p.counts || {};
+  const standAge = c.standing_date ? Math.round((new Date(DATA.today) - new Date(c.standing_date)) / 86400000) : null;
+  const meta = [
+    'last worked ' + (p.last_worked || 'never'),
+    c.standing_date ? ('standing ' + c.standing_date + (standAge > 0 ? ' (' + standAge + ' d old)' : '')) : 'no standing date',
+    p.fno_code ? ('F&amp;O ' + esc(p.fno_code)) : ''
+  ].filter(Boolean).join(' &middot; ');
+  const legacy = c.shape !== 'card';
+  const active = p.tasks.filter(t => !t.parked), parked = p.tasks.filter(t => t.parked);
+  let html = '<article data-key="' + esc(p.key) + '"><div class="phead"><h2>' + esc(p.key) + '</h2>'
+    + '<span class="badge">' + esc(p.status || 'no status') + '</span>'
+    + (legacy ? '<span class="badge legacy">old CONTEXT.md</span>' : '')
+    + '<span class="meta">' + meta + '</span>'
+    + '<span class="actions"><button class="act" data-pact="open">Open session</button>'
+    + (legacy ? '' : '<button class="act" data-pact="handoff">Handoff</button>')
+    + '</span></div>';
+  if (c.goal) html += '<div class="goal">' + esc(c.goal) + '</div>';
+  if (legacy) html += '<div class="legacybox"><span class="w">CONTEXT.md is the old shape' + (c.bytes ? ' (' + Math.round(c.bytes/1024) + ' KB)' : '') + '.</span>'
+    + '<span>Goal, standing and open threads are not readable until it is converted.</span>'
+    + '<button class="act primary" data-pact="convert">Convert to the card</button></div>';
+  if (p.tasks.length){
+    html += '<div class="note">' + esc(k.in_progress) + ' in progress, ' + esc(k.open) + ' open, ' + esc(k.parked) + ' parked'
+      + (k.stalled ? ', <b>' + k.stalled + ' stalled over 14 days</b>' : '')
+      + (k.asks_unsent ? ', <b>' + k.asks_unsent + ' customer ask' + (k.asks_unsent === 1 ? '' : 's') + ' unsent</b>' : '')
+      + ' &middot; DevOps id on ' + esc(k.devops) + ' of ' + esc(k.total) + '</div>';
+    html += '<table><thead><tr><th>progress</th><th>task</th><th>DevOps</th><th>state</th><th class="next">next step</th><th>customer ask</th><th></th></tr></thead><tbody>'
+      + active.map(t => taskRow(p, t)).join('') + parked.map(t => taskRow(p, t)).join('') + '</tbody></table>';
+  } else {
+    html += '<div class="note">No open or in-progress task carries this project.</div>';
+  }
+  if (c.blocked_on && c.blocked_on.length) html += '<div class="blocked">Blocked on others: ' + esc(c.blocked_on.join(', ')) + (c.open_threads ? ' &middot; ' + c.open_threads + ' open thread' + (c.open_threads === 1 ? '' : 's') : '') + '</div>';
+  html += '</article>';
+  return html;
+}
+
+function render(){
+  const m = DATA;
+  $('#title').textContent = 'Today \u2014 ' + m.weekday + ' ' + m.today;
+  const ps = m.projects.slice();
+  const live = ps.filter(p => p.tasks.length || p.status === 'active' || p.status === 'planned');
+  const quiet = ps.filter(p => !live.includes(p));
+  live.sort((a, b) => (b.last_worked || '').localeCompare(a.last_worked || ''));
+  const all = ps.flatMap(p => p.tasks);
+  const tiles = [
+    ['In progress', all.filter(t => t.state === 'in-progress' && !t.parked).length, false],
+    ['Stalled > 14 d', all.filter(t => t.stalled).length, true],
+    ['Asks unsent', all.filter(t => t.ask_unsent).length, true],
+    ['Parked', all.filter(t => t.parked).length, false],
+    ['Due back', all.filter(t => t.due_back).length, true],
+    ['Old cards', ps.filter(p => (p.card || {}).shape !== 'card').length, false],
+    ['TODO open', m.todo.count, false],
+  ];
+  $('#tiles').innerHTML = tiles.map(([l, n, hot]) => '<div class="tile' + (hot && n ? ' hot' : '') + '"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>').join('');
+  $('#subtitle').textContent = live.length + ' projects in play, ' + quiet.length + ' quiet';
+  let html = live.map(projectCard).join('');
+  html += '<article class="quiet"><details><summary>Quiet projects (' + quiet.length + ') and workspace-level work</summary><div class="wsrow" style="margin-top:8px">'
+    + quiet.map(p => '<span>' + esc(p.key) + ' <span class="badge">' + esc(p.status || '-') + '</span></span>').join('') + '</div>'
+    + (m.workspace_tasks.length ? '<div class="note">Workspace tasks: ' + m.workspace_tasks.map(t => '<code>' + esc(t.slug) + '</code> (' + esc(t.state) + ')').join(', ') + '</div>' : '')
+    + '<div class="note">TODO: ' + m.todo.count + ' unchecked' + (m.todo.oldest ? ', oldest ' + esc(m.todo.oldest) : '') + ' &middot; derived by ops/bin/daybrief.py; every button opens a session that makes the change, this page writes nothing.</div>'
+    + '</details></article>';
+  $('#main').innerHTML = html;
+  $('#stamp').textContent = 'fetched ' + new Date().toLocaleTimeString();
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-act],button[data-pact]');
+  if (!b) return;
+  const art = b.closest('article'); const key = art && art.dataset.key; if (!key) return;
+  const p = DATA.projects.find(x => x.key === key); if (!p) return;
+  if (b.dataset.pact){
+    if (b.dataset.pact === 'open') launch(p.key, '');
+    if (b.dataset.pact === 'handoff') launch(p.key, '/handoff');
+    if (b.dataset.pact === 'convert') launch(p.key, CONVERT_PROMPT.replace('<this project>', p.key));
+    return;
+  }
+  const slug = b.closest('tr').dataset.slug; const t = p.tasks.find(x => x.slug === slug); if (!t) return;
+  if (b.dataset.act === 'work') launch(p.key, workPrompt(p, t));
+  if (b.dataset.act === 'wait') launch(p.key, '/task wait ' + slug + ' customer');
+  if (b.dataset.act === 'resume') launch(p.key, '/task resume ' + slug);
+  if (b.dataset.act === 'postpone') postponePopover(b, p, t);
+});
+
+async function load(){
+  try{
+    const r = await fetch('/api/today'); DATA = await r.json();
+    if (DATA.error) throw new Error(DATA.error);
+    render();
+  }catch(e){ $('#subtitle').textContent = 'could not load: ' + e.message; }
+}
+function schedule(){ clearInterval(timer); if (AUTO) timer = setInterval(() => { if (!document.hidden && !document.querySelector('.popover')) load(); }, 60000); }
+$('#refresh').onclick = load;
+$('#auto').onclick = () => { AUTO = !AUTO; $('#auto').classList.toggle('on', AUTO); schedule(); };
+load(); schedule();
+</script>
+</body>
+</html>
