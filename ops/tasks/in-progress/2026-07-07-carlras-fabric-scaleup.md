@@ -7,13 +7,39 @@ owner: fabric-back
 priority: normal
 blocked_by:
 activity:
-fno_task:
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: none
 source: todo
 ---
 
 ## What
 Implement scale-up of the Fabric capacity and processing of the semantic model at Carl Ras,
 using the existing python script.
+
+## Progress
+
+**Now (2026-09-16):** the regional CU quota was raised 16 -> 32 between 08-12 and 08-19; the scale-up runs
+inline in `PL_MainExecution` in DEV and TEST (08-20) and has succeeded repeatedly. The CapacityManager auth
+chain is proven. Open: an F64 request failed 08-19 against the 32 ceiling — nothing records whether F64 is a
+goal or a probe; `PL_ScaleProcess_SP` still carries a redundant refresh step; PROD has none of the capacity
+items (a promotion gap, not a latent failure).
+
+**Tried and dropped:** a fixed 180 s wait after the scale -> the scale between Enriched and Curated inside
+the main run (08-20); the model as the thing to shrink first -> Direct Lake removes the refresh memory
+pressure in DEV (`2026-08-18-carlras-directlake-conversion`).
+
+**Next:**
+1. Niels decides F64: goal (then a quota ask to 64) or probe (drop it).
+2. Strip `PL_ScaleProcess_SP`'s refresh step or retire the pipeline.
+3. Promote the capacity items when PROD comes into scope.
+
+**Proposal:** fold this task into `2026-08-11-carlras-operation-hardening`; every remaining item is a
+hardening item.
+
+## Needs from customer
+
+- None recorded. A further quota increase (32 -> 64) only if F64 is confirmed as a goal.
+
 
 ## Why
 Standing TODO from 2026-07-06; the platform work the Datahub implementation needs.
@@ -47,3 +73,4 @@ Standing TODO from 2026-07-06; the platform work the Datahub implementation need
     rationale survives there until Direct Lake is promoted.
 - 2026-07-07 — created (promoted from TODO 2026-07-06 at the day-start routing pass)
 - 2026-07-23 — open → in-progress (work ran 07-17): CapacityManager deployed to the Carl Ras workspace; auth chain (WI → AKV → SP → ARM) verified end-to-end through three debug iterations (KV firewall disabled by customer, wrong app id in `scale-sp-id` fixed, error-body surfacing added to the notebook). Scale-up now blocked on the subscription's regional Fabric CU quota (16/16 used, F32 requested) — quota increase with the Carl Ras admin is the next step. Note: the "existing python script" became the CapacityManager asset (own/CapacityManager); session forgot /switch-task at start — time for 07-17 attributed by the hooks but not task-tagged.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

@@ -6,14 +6,33 @@ project: customers/Carl-Ras/datahub
 owner: architect
 priority: normal
 blocked_by:
-activity: MarketoImport
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: none
 source: handoff
 ---
 
 ## What
 Decide whether API-based sources get a shared **connector** abstraction that plugs into Atomic,
 or stay hand-shaped per source.
+
+## Progress
+
+**Now (2026-09-16):** the gate is met once — the Marketo chain ran end to end 08-20/21 by hand, not yet
+unattended. The landing contract has generalised on its own (`rawtablekeymap_*`, `AutoLoader_*` on one
+pattern); the extraction has not (CVR still has no pipeline, GTM keeps its bespoke notebook). Whether a
+separate metadata-driven Atomic ingest effort exists elsewhere is unverified.
+
+**Tried and dropped:** nothing yet; a decision task.
+
+**Next:**
+1. Niels decides whether to take the landing-contract half now and leave extraction per source.
+2. Ask Simon whether the metadata-driven ingest effort exists; it could make this decision moot.
+
+## Needs from customer
+
+- None (internal: Simon).
+
 
 ## Why
 Niels, 2026-08-07: "the ideal setup will be one where we create a 'connector' for things like
@@ -72,3 +91,4 @@ something proven, not from a design.
     ingest effort said to be underway elsewhere. That is a search-scope gap, not proof of absence —
     and if it lands it could make this decision moot. Worth a direct ask before committing.
 - 2026-08-07 — created (handoff from the Marketo ingest build)
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

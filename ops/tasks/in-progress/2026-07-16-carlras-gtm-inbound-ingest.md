@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by:
-activity: TagManager
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: open
 source: session
 ---
 
@@ -16,6 +17,32 @@ Build the inbound import of the GA4/Stape event data from the Carl Ras-owned lan
 storage account (`stcrdatabricksweprod/landing`, Event Hubs Capture Avro) into the
 Fabric platform: new GTM source in the LandingZone (shortcut + ingest notebook →
 `Lakehouse_Landingzone_GTM`), then the Raw layer per the house pattern.
+
+## Progress
+
+**Now (2026-09-16):** Part 1 (landing) is live: `PL_Ingest_GTM` hourly, SPN-owned, 337,599,587 events on
+08-31. Part 2 is half done: `PL_Ingest_Lakehouse_Raw_GTM` exists and is registered in `PL_Execute_Raw`
+(08-11); PROD raw loaded 09-09. Still missing: `PL_Transform_Enriched_GTM`, its `PL_Execute_Enriched`
+entry, `NB_Table_PrimaryKeyMap_GTM` / `rawtablekeymap_gtm`, and GTM names in the variable libraries.
+`enriched.Events` has never been built — `Warehouse_Enriched_GTM` holds 0 rows in every environment.
+Part 3 (generated views) is not started.
+
+**Tried and dropped:** GA4 -> BigQuery export as the source -> the Carl Ras-owned Event Hub landing, because
+the account-segment enrichment exists only there (07-03); moving GTM Raw onto the AutoLoader shell -> the
+bespoke polars notebook kept, wrapped in a pipeline (decided by 08-11).
+
+**Next:**
+1. Build `PL_Transform_Enriched_GTM` (CTAS `enriched.Events`), register it in `PL_Execute_Enriched`, add the
+   key map and the variable-library names.
+2. Part 3 once the Marketo view generator has run for real (its DDL path is unproven).
+3. Later: curated `fact.GtmEvents` / `dim.GtmEvent` (13-month window), `Model_GTM` Direct Lake, freshness
+   report; swap the shortcut connection from Niels's guest account to WI/SPN.
+
+## Needs from customer
+
+- **Carl Ras: durable, non-personal access to the landing storage** (`stcrdatabricksweprod/landing`) for the
+  OneLake shortcut — today it rides Niels's guest-account connection. **Not raised since 07-16.**
+
 
 ## Why
 The decided inbound architecture (2026-07-03): OneLake shortcut on the landing
@@ -122,3 +149,4 @@ through `notebookutils.data.connect_to_artifact` is undocumented and unproven
   `2026-08-07-carlras-gtm-generated-viewtransform` (part 3). One GTM workstream: land it, register
   it, then generate its views. Both were handoffs from the Marketo ingest build and neither has
   been started.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

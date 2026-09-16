@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: medium
 blocked_by:
-activity: AX09Import
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: answered
 source: direct
 ---
 
@@ -57,6 +58,26 @@ all 21 would double-count everything.
    `ledgerbudget`, uncommitted. Tracked in `2026-08-19-carlras-landingzone-dev-drift` — **do not run
    Update from git on `Landingzone-Code-DEV` until that is committed**, or the source for this fact
    stops being ingested.
+
+## Progress
+
+**Now (2026-09-16):** BudgetLedger is through enriched (1,596,773 rows) and curated (842,590) in DEV and
+TEST, in `Model_OneLake` in DEV, TEST's row check clean (08-31). Budget model `2010` is confirmed by the
+customer as the live budget. None of the four objects exist in PROD; TEST has no `Model_OneLake`.
+
+**Tried and dropped:** "no source exists" from a git-only first pass -> `ledgerbudget` was in raw all along
+(Niels, 08-19); one cross-warehouse commit -> split producer-first after a failed sync (`7d393a0`,
+`3c98cde`, 08-21).
+
+**Next:**
+1. Promote with the rest of the curated layer to PROD (the general release, not a separate deploy).
+2. GEN log entry in `design/ATOMIC_GENERATOR_CHANGES.md` if not yet written.
+3. To-do 4 (dims rebuilding empty after a DacFx warehouse rebuild) is watch-only; not manifesting 08-31.
+
+## Needs from customer
+
+- **Carl Ras (Finance): which budget model is the live one** — answered: model `2010`.
+
 
 ## Built 2026-08-20 — `Fabric-ETL` `995f187` (pushed, not yet in the service)
 
@@ -226,3 +247,4 @@ for us yet.
   dependency order — `Warehouse_Enriched_AX09` first, then `Warehouse_Curated` — for the same reason
   the git sync needed two commits. Both in one selection reproduces the failure, and a failed
   warehouse import leaves an orphan that makes the retry fail with "already exists".
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

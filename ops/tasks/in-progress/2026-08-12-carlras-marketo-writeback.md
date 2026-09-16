@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity: MarketoImport
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
 fno_task: CarlRData-553
+customer_ask: open
 source: session
 ---
 
@@ -18,6 +19,40 @@ it.
 
 Full derivation, validation and every source-column decision:
 `customers/Carl-Ras/datahub/design/MARKETO_WRITEBACK_GOAL.md` (sections 9-14).
+
+## Progress
+
+**Now (2026-09-16):** the push (`NB_Outbound_Marketo` + `PL_Outbound_Marketo`) and the delta state
+(`Lakehouse_Util.MarketoPushState`) are in git (`52653d9`, `f1fe9f2`); DEV dry runs Completed 2026-09-09
+(218,490 sendable, 141 non-ASCII e-mails rejected). Nothing has been written to Marketo from Fabric.
+Inbound chain proven once end to end (08-21); the daily `PL_Ingest_Marketo` schedule is disabled, so no
+fresh Marketo data lands anywhere.
+
+**Tried and dropped:** full push -> delta push (Fivetran keeps a change table; Benno, 09-09); Bulk Lead
+Import -> `syncLead updateOnly` (Bulk is upsert and returns no per-record result); "emit NULL, never a
+coalesced 0" -> three states with omission, because a null on a numeric/boolean field coerces to 0/false
+(measured live 08-20); the two synthetic test leads for the first live run -> three real leads whose
+account fields already equal Marketo's (they are not AX09 contacts).
+
+**Next:**
+1. First live run on three real leads (Niels runs the command; the auto-mode classifier blocked it 09-09),
+   then read back `MarketoOutboundLog` / `MarketoPushState` and check the leads' activities by `RequestId`.
+2. Decide: seed `MarketoPushState` from Marketo's own values, and filter the push to e-mails Marketo has
+   (drops ~627 wasted calls a run). Both recommended, both undecided.
+3. Our own LaunchPoint API user, then rotate Impact's pair, before any scheduled run.
+4. Send the Impact mail (below). Then goal doc section 17.4 items 4-8.
+
+## Needs from customer
+
+- **Impact (Benno): a LaunchPoint API user of our own** — the only credentials we hold are
+  `ben+carlras@impact.dk`'s pair, so no production write is possible without stopping them too. **Not asked.**
+- **Impact (Benno): three questions** — which integration creates the leads (Census only updates); what
+  `Inferred_Country` is sourced from; confirm the four unseen mapping rows. **Not sent** (a Danish draft from
+  08-21 was never saved).
+- **Impact (Benno): the 500 MB/day extract allocation** — which dates the limit was hit, Fivetran's daily
+  extract size, whose Logic App failed 9/7 and its error text. **Not sent** (raised by Benno 09-09).
+- **Carl Ras (Kasper):** none current.
+
 
 ## Done
 - **Source mapping derived from data alone**, no Impact involvement — `silver_order` =
@@ -313,3 +348,4 @@ segmentation just starts targeting stale numbers.
   the delivery vehicle for those questions). Note the 08-14 entry above: the mail task was about
   API access rather than the build — that item survives as question 8 and should be checked against
   the now-running ingest before it is asked.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

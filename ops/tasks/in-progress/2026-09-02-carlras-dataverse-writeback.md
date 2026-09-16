@@ -7,6 +7,7 @@ owner: fabric-back
 priority: medium
 blocked_by:
 fno_task: CarlRData-557
+customer_ask: none
 source: session
 ---
 
@@ -26,6 +27,29 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
 `outbound` schema in `Warehouse_Curated`, `viewoutboundtransform` holds the logic,
 `PL_Transform_Curated_Outbound` materialises every view in that schema automatically.
 
+## Progress
+
+**Now (2026-09-16):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
+44,526 contacts, every contact parent-bound); the delta push is proven (50 sent, immediate rerun 0);
+token-expiry (`e852ac4`) and percent-encoded parent key (`54ffbda`) fixes are in git and await one sync.
+
+**Tried and dropped:** `TOP (5000)` as the selection cap -> a 365-day window on the contact's own order
+(`c23022f`, 09-14); `UpsertMultiple` and the Copy activity -> Web API `$batch`, which returns per-record
+status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-02).
+
+**Next:**
+1. `dataverse_url` into a variable library with per-stage value sets (today a run-time parameter, no default).
+2. Least-privilege application-user role (design section 10) before any TEST/PROD environment.
+3. Schedule `PL_Outbound_Dataverse` after `PL_Transform_Curated_Outbound` in `PL_MainExecution` once
+   Patrick confirms the app takes a daily delta.
+
+## Needs from customer
+
+- **Carl Ras:** none.
+- **Patrick (Pingala, internal):** confirm the app is ready for a daily delta and whether push failures
+  should land in his `cr_processerrorlog` — status not recorded.
+
+
 ## Done
 - Research complete and written up: `design/DATAVERSE_WRITEBACK_DESIGN.md` (2026-09-02) — the write
   paths and why `$batch` wins, the filter, the alternate keys, ordering, limits, retirement, the
@@ -34,6 +58,12 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
   `https://carl-ras-dev.crm17.dynamics.com/`.
 
 ## Next
+0. ~~Delta push~~ **shipped and proven 2026-09-14** (`22c157e`): rerun of 50 accounts sent 0.
+   New environment `org8a074fed.crm4` fully loaded (3,831 / 5,000, 0 failed). Tables serialised
+   in git (`abf775a`). Window shipped (`c23022f`) and fully pushed 2026-09-14: 34,913 accounts /
+   44,526 contacts in `org8a074fed.crm4`, all parent-bound. Two defects found and fixed on the way:
+   token expiry mid-run (`e852ac4`), percent-encoded parent key in the bind body (`54ffbda`).
+   Remaining: `dataverse_url` to a variable library, least-privilege role, schedule the daily delta.
 1. **Decide physical tables vs Fabric-sourced virtual tables** with the app team — the one
    question that changes everything downstream. Test: does the app need to write its own state on
    the row, relate the rows to other Dataverse tables, or use row-level security, auditing,
@@ -61,3 +91,6 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
   `"<lookup>@odata.bind": "cr_accounts(cr_accountnumber='NNNN')"`, which needs the parent to exist.
 - Virtual tables require a **GUID primary key** on the source, so an outbound view feeding one
   would have to generate a deterministic GUID column.
+
+## Log
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

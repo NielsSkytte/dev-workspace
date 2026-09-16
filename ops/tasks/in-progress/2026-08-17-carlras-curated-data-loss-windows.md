@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity: AX09Import
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: open
 source: direct
 ---
 
@@ -56,6 +57,29 @@ The line arrived in `Fabric-ETL` `c860a50` (2026-06-24, a workspace commit); the
 earlier commit is `a6b1a33`. The file carries the `-- Auto Generated (Do not modify)` header, so
 the window comes from the Atomic generator's metadata for this entity — the same generator-
 ownership problem as GEN-002/003/005 (`design/ATOMIC_GENERATOR_CHANGES.md`, owner: Simon).
+
+## Progress
+
+**Now (2026-09-16):** `viewfacttransform.GeneralLedgerTransactions` carries a 13-month rolling window, in
+git and live in DEV (verified identical 09-07, 66 of 66 objects). TEST (558,529 rows, current month) and
+PROD (353 rows of July) were last measured 08-31 with the original bug. Items 4 and 5 are closed: no second
+window in the model, and nothing compares Curated to Enriched.
+
+**Tried and dropped:** "DEV `Warehouse_Curated` diverges from git" -> falsified 09-07 by direct comparison;
+the 2026-09-03 recommendation to commit from the workspace before syncing was withdrawn with it.
+
+**Next:**
+1. Confirm the intended GL history window with the business; 13 months is ad hoc, not a requirement.
+2. Audit every curated window against a stated need: Sales/Inventory -3 years, Forecasts -5, SalesOrder and
+   SalesToCampaigns -5, four facts with no filter at all.
+3. Let the fix reach TEST and PROD through the normal release, then re-measure.
+4. A Curated-vs-Enriched row check belongs to `2026-08-19-carlras-atomic-dataquality-gate`.
+
+## Needs from customer
+
+- **Carl Ras (Finance / business): the intended history window for General Ledger in curated** — 3 years
+  like Sales, 5 like Forecasts, or full (113M rows). **Not asked.**
+
 
 ## To do
 
@@ -134,3 +158,4 @@ SELECT YEAR(TransDate) y, COUNT(*) FROM enriched.GeneralLedgerTransactions GROUP
   the GL fact's current-month filter) belongs here. From the Direct Lake assessment onward the work is
   `2026-08-18-carlras-directlake-conversion`; the tag was switched there on 08-19 17:25Z. Reassign the
   08-18 and 08-19 hours at the review gate.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

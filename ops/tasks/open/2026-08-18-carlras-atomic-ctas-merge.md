@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by: only worth doing once the Direct Lake conversion is committed to
-activity: SemanticModel
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: none
 source: session
 ---
 
@@ -24,6 +25,23 @@ CREATE TABLE fact.<T> AS SELECT * FROM viewfacttransform.<T>;
 A Direct Lake semantic model reads the **actual parquet files**. The DROP deletes them, so the model
 is left framed on files that no longer exist. Replace drop-create with a MERGE/append pattern for at
 least the large facts, so the files survive the load.
+
+## Progress
+
+**Now (2026-09-16):** all five CTAS procedures still drop-then-create, byte-identical to the repo in the
+live warehouses (08-31). The trigger condition ("rebuilt during working hours") has fired only by manual
+runs with no production report traffic, so `blocked_by` holds: nothing until Direct Lake is committed to.
+
+**Tried and dropped:** nothing yet; not started.
+
+**Next:**
+1. Wait for `2026-08-18-carlras-directlake-conversion` to reach TEST.
+2. Then design MERGE/append for the large facts; a framework change, Simon's generator.
+
+## Needs from customer
+
+- None.
+
 
 ## The measured effect (DEV, 2026-08-18)
 
@@ -95,3 +113,4 @@ the drop-create, and nothing else.
     mechanism from the routine drop-create examined here. It belongs on
     `2026-08-19-carlras-ax09-budgetledger-curated` to-do 4, not on this task.
 - 2026-08-18 — created from the drop-create test during the Direct Lake trial.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

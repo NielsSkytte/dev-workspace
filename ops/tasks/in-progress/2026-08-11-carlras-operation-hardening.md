@@ -8,6 +8,7 @@ priority: normal
 blocked_by:
 activity:
 fno_task: CarlRData-555
+customer_ask: open
 source: direct
 ---
 
@@ -71,6 +72,36 @@ individual value, so unlikely, but both findings sit in the same fact lineage.
 **Blocked on: consult the semantic model developer first** (Niels's call, 2026-08-14). The fix may
 belong in the model (column data type — Fixed Decimal vs Decimal) rather than in Curated, and that
 is the model owner's decision. Do not change Curated column types unilaterally.
+
+## Progress
+
+**Now (2026-09-16):** TEST's Raw stage ran green 2026-09-09 (`PL_Execute_Raw` `66b7792f`, all four
+streams) after `PL_Ingest_Lakehouse_Raw_Marketo` was re-stamped to the SPN. Scale Up/Down in TEST now fails
+at `getSecret` until TEST's workspace identity is in `Fabric_Key_Vault_Users`; the run degrades to the idle
+SKU and still builds the data. TEST's schedule is owned by `EXT_NSKC` again since 08-30 (hardening
+regression). Every PROD lakehouse SQL endpoint refuses queries (MWC token), so enriched cannot run in PROD;
+PROD's chain is disabled deliberately (09-09).
+
+**Tried and dropped:** model ownership (`TakeOver`) as the cause of the refresh 403 -> disproved 08-11, the
+cause is the Fabric-minted notebook token; sempy / semantic-link-labs in the refresh -> REST enhanced refresh
+with a Key Vault-minted token; a fixed wait after the scale -> the scale inside `PL_MainExecution` (08-20).
+
+**Next:**
+1. Carl Ras adds TEST's identity to the Key Vault group, then verify the 06:30 run end to end
+   (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
+2. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (no step recorded yet; `tools/fabric_release.py`
+   runs as the SPN and is the documented route).
+3. Raise the PROD lakehouse endpoint failure with Carl Ras (not investigated on our side).
+4. Decide `PL_ScaleProcess_SP`: strip its refresh step or retire it.
+
+## Needs from customer
+
+- **Carl Ras: add object id `85553fa2-1343-4d6e-89e4-433fd51ba6a6` (Fabric-ETL-TEST workspace identity)
+  to `Fabric_Key_Vault_Users`.** Asked 08-27; DEV and PROD identities were added instead (measured 08-31).
+  Whether the correction was sent is not recorded.
+- **Carl Ras: PROD lakehouse SQL endpoints** (`Raw_AX09`, `Raw_CVR`, `Raw_Marketo`, `Util`) refuse every
+  query with "Retrieval of MWC token used for accessing storage failed 0xa" (09-09). **Not raised.**
+
 
 ## Why
 The chain is the platform's daily heartbeat. Raw/Enriched/Curated are current but the TEST
@@ -164,3 +195,4 @@ classes will keep recurring until they are closed deliberately.
 - 2026-09-09 — time: 52 min of session f0ca3d4e (08:00-11:42 UTC, rooted in own/MetaAtomic: MetaAtomic deployment, pipeline, schedule, PAT, stream matrix diagnosis) attributed here by Niels; the first 39 min go to 2026-09-09-carlras-metaatomic-implementation. Apply when 2026-09-09 is rolled up.
 - 2026-09-09 — TEST Raw failure root-caused: PL_Ingest_Lakehouse_Raw_Marketo ran on a person's refresh token that Conditional Access rejects (AADSTS530036, since 09-04). Re-stamped to the SPN with fabric_identity.py, ran clean in TEST (a2764ae3, 3 min). Scale Up/Down: CON-WI-Notebook filled by the 10:09 DEV->TEST deployment; next failure moves to getSecret until TEST's workspace identity 85553fa2 joins Fabric_Key_Vault_Users (Carl Ras). New: PROD lakehouse SQL endpoints refuse every query (MWC token); first PROD raw load of AX09 completed 16:59 UTC.
 - 2026-09-09 evening — PL_Execute_Raw ran green in TEST (66b7792f, 24 min, all four streams incl. GTM). Fail GTM added to the chain (8fae15f). PROD: all four raw layers loaded by hand (AX09 50 min, CVR, GTM, Marketo after NB_Table_PrimaryKeyMap_Marketo). Gate for enriched in PROD: lakehouse SQL endpoints refuse every query (MWC token).
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

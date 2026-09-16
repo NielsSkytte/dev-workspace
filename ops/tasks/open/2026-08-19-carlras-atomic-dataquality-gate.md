@@ -7,7 +7,8 @@ owner: fabric-back
 priority: normal
 blocked_by:
 activity:
-fno_task:
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: open
 source: session
 ---
 
@@ -25,6 +26,30 @@ Three parts, in the order they matter:
    because one source row is wrong.**
 3. **Notification.** The rows that were held back go to a named stakeholder — the person who owns
    the data in the source system — with enough identity to find and correct the record.
+
+## Progress
+
+**Now (2026-09-16):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
+activity; `transform.sp_RowCheck` logs only). The triggering AX09 row was still uncorrected on 08-31. The
+model-side retype is live in DEV's and TEST's `Model`; `Model_OneLake`'s copy of `Forecast Quantity` is still
+`decimal` and must be fixed before that model is promoted. TEST's row-check log shows six red and nobody acts
+on it.
+
+**Tried and dropped:** nothing yet; not started.
+
+**Next:**
+1. Settle the shape: where rules are evaluated, what "held back" means per layer, `reject.<Table>` tables,
+   one digest notification per run.
+2. This is an Atomic framework change — align with Simon before building.
+3. Fix `Model_OneLake`'s `Forecast Quantity` type before promotion.
+
+## Needs from customer
+
+- **Carl Ras: correct `crcampaignforecast.RecId 5638443880`** (`FORECASTQTY = 2222222222222222`, user
+  `SOUR`, 2026-08-18). Correction initiated by Niels 08-19; still uncorrected 08-31; follow-up not recorded.
+- **Carl Ras: a plausibility limit on forecast quantity in AX09** — the right place for the check.
+  **Not raised.**
+
 
 ## Why — the incident that triggered it (2026-08-19)
 
@@ -123,3 +148,4 @@ not the answer here either. Notification is part of the feature, not a follow-up
     row. `fact.InventoryTransactions.CostAmountPostedMST` sits at 484,633,785,324,405 = **52.5%** of
     the ceiling — unchanged, no new risk.
 - 2026-08-19 — created after the Currency overflow took down the TEST model refresh.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

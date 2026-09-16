@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: normal
 blocked_by:
-activity: AX09Import
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: none
 source: direct
 ---
 
@@ -126,6 +127,30 @@ Run it with `tools/wh_query.py` against `Warehouse_Enriched_AX09` (cross-databas
 This is **not** an Atomic generator issue. The generated view is reasonable; the raw layer is
 breaking the one-current-row-per-key contract the view assumes. Do not hand it to Simon.
 Full write-up: `design/ATOMIC_GENERATOR_CHANGES.md` > GEN-005.
+
+## Progress
+
+**Now (2026-09-16):** the join fan-outs are fixed (`0a7f826`, `3a72fca`, `4328657`, 08-14). But on 08-31
+DEV's row check was 11 days stale (last run 08-20) and read `SalesInvoiceTransactions` **-1,871** and GL +4;
+TEST ran daily at 23 of 29 passing, six red (GL +58, `CustomerAccounts` -253, `Items` -312, `OutputOrders`
+-14,684, `PickingRoutes` -12,849, `SalesChannel` -2), five of them never recorded. Part 3 (`SQLDICTIONARY`
+and `DATAAREA` keyed on bare `RECID`) is unshipped; TEST's sqldictionary duplicates stand at 903 keys /
+1,336 surplus rows and grow.
+
+**Tried and dropped:** finding the duplicates from curated -> impossible, `fact.SalesTransactions` carries
+no `RecId` (229,097 false candidates against 42,717 real); a correlated `OUTER APPLY` keyed on a `CASE` ->
+rejected by admission control, a pre-aggregated derived table is admitted.
+
+**Next:**
+1. Run DEV's row check fresh; re-close or reopen `SalesInvoiceTransactions` on the result.
+2. Triage TEST's six red tables; none is diagnosed.
+3. Ship Part 3 after deciding `inventtrans`'s true business key (`INVENTTRANSID` may be one-to-many by design).
+4. Re-establish Part 2's citation; the quoted comment exists nowhere in the repo today.
+
+## Needs from customer
+
+- None.
+
 
 ## Why
 
@@ -293,4 +318,5 @@ Grouped as the join actually compares, `inventsumdim` has zero duplicated keys a
 2026-08-17 — MERGED: 2026-08-14-carlras-raw-scd-key-sqldictionary folded back in as part 3
              (same investigation, same fix window). Open work is now: GeneralLedgerTransactions
              +4, the 28-expectation audit, and the raw key-map re-key + repair + audit.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
 

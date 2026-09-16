@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity: AX09Import
-fno_task:
+activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+customer_ask: none
 source: direct
 ---
 
@@ -69,6 +70,28 @@ Every landing-zone table carrying a `RECID` is ingested. So Raw holds whatever t
 holds and no artefact in the repo lists it. That is Atomic working as intended, but it means **the
 repo cannot answer "what data do we have"** — only the lakehouse can. Same boundary the MetaAtomic
 lineage work hit (`2026-08-03-metaatomic-consolidation`) and solved by querying the lakehouse.
+
+## Progress
+
+**Now (2026-09-16):** to-dos 1-3 are closed — 88 tables agree in repo, DEV, TEST and PROD (08-31), and
+`PL_ScaleProcess_SP` is committed. The class recurred: `Warehouse_Enriched_AX09` was Modified/uncommitted
+in `Fabric-ETL-DEV` on 08-31. `Fabric-TEST` is invisible to `EXT_NSKC`, so that repo is unchecked. Five
+orphan landing-zone tables are still ingested nightly and served as current, 63 to 116 days stale.
+
+**Tried and dropped:** a `git/status` gate as a sufficient drift check -> not sufficient; `Warehouse_Curated`
+reported clean while three views differed from git (08-31). Build it anyway for item-level drift and pair
+it with `tools/wh_drift.py` for warehouses.
+
+**Next:**
+1. Add the `git/status` gate to `tools/fabric_release.py`, plus the warehouse comparison.
+2. Niels decides the five orphan tables: add them to the 88-table list or drop them from the landing zone.
+3. Commit or discard `Warehouse_Enriched_AX09` deliberately (check whether it still shows Modified).
+
+## Needs from customer
+
+- **Carl Ras: read access to the `fabric-test` repo for `EXT_NSKC@carl-ras.dk`** — an access gap, not an
+  API error (08-31). **Not raised.**
+
 
 ## To do
 
@@ -149,3 +172,4 @@ to restore the rule — Update from git — is what would destroy the running co
   observation still holds that `TableMetaData_AX09` is `OverwriteSchema`-refreshed and therefore
   cannot host a load/skip flag — declared intent needs its own table, seeded from git, the way
   `Lakehouse_Util.rawtablekeymap_<source>` already is.
+- 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
