@@ -12,6 +12,7 @@ Behaviour, by what the session's cwd resolves to:
   ... no open tasks                                       -> offer: create one, or project level
   Dev / own/                                              -> no task level; nudge only
   outside the workspace                                   -> silent
+  source=compact (context just summarized), any scope     -> progress nudge only (see compact_nudge)
 
 Every workspace session also gets the **unfinalized-days nudge**: days with tracked time
 whose /log never ran. Sessions left open for days cost nothing (the 15+5 model discards
@@ -25,7 +26,7 @@ Schema + rules live in ops/time/README.md (non-load-bearing accelerator).
 Robust by design: reads hook JSON from stdin, always exits 0, never blocks a session.
 ASCII-only (Windows PowerShell 5.1 convention).
 """
-import sys, os, json, glob, datetime
+import sys, os, json, glob, datetime, re
 
 TIME_ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
@@ -107,6 +108,33 @@ def nudge():
         "are already captured." % (len(days), shown))
 
 
+def compact_nudge(sid, project):
+    """SessionStart source=compact: the context was just summarized, which is where progress gets
+    lost in a long session. Name this session's task and how old its Progress block is, so the
+    session writes progress now (the /handoff task step) rather than at the end -- or never."""
+    slug, now = "", ""
+    try:
+        from track_time import load_marker
+        slug = (load_marker().get("sessions", {}).get(str(sid)) or {}).get("slug", "")
+    except Exception:
+        pass
+    if slug:
+        try:
+            path = glob.glob(os.path.join(TASKS_ROOT, "*", slug + ".md"))[0]
+            with open(path, encoding="utf-8") as f:
+                m = re.search(r"\*\*Now \((\d{4}-\d{2}-\d{2})\):\*\*", f.read())
+            now = m.group(1) if m else ""
+        except Exception:
+            pass
+    line = "[Progress] Context was just compacted."
+    if slug:
+        line += " This session's task: %s (Progress Now dated %s)." % (slug, now or "none -- no Progress block")
+    line += (" If the session moved the work, write it down now, the way the /handoff task step does: "
+             "the task's Progress block (Now / Tried and dropped / Next)%s. A compacted session "
+             "forgets what it did not write." % ("" if customer_of(project) else ", or the card's Where we stand"))
+    say(line)
+
+
 def main():
     try:
         hook = json.loads(sys.stdin.read())
@@ -115,6 +143,10 @@ def main():
     project = project_from_cwd(hook.get("cwd", ""))
     if project is None:
         return  # outside the workspace
+
+    if hook.get("source") == "compact":
+        compact_nudge(hook.get("session_id", "unknown"), project)
+        return
 
     nudge()
 

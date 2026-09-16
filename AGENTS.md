@@ -236,6 +236,19 @@ appended — Goal with a done-when, *Where we stand — date*, *Active tasks —
 others*, *Open threads*, pointers. History moves to `ops/log/sessions.md` and `CONTEXT_ARCHIVE*.md`, decisions
 to `CONTEXT_DECISIONS.md`. Template: `_templates/CONTEXT.md`. Task shape: `ops/tasks/README.md`.
 
+**Handoff — the card rewrite (since 2026-09-16):** at the end of a working session, or before switching
+project, the session is written into the record in this order. First the tasks it moved: each task file's
+`## Progress` block is rewritten in place — *Now (date)* replaced, *Tried and dropped* extended only where it
+changes the next step, *Next* reordered with landed steps removed — plus `## Needs from customer` and
+`customer_ask:` when an ask arose, was sent or was answered, a dated Log line, and the folder move if the
+state changed. Work on a customer project that has no task gets one first, so progress never lives only in
+the card. Then the card's hand-written sections are rewritten, never appended: *Where we stand — today*,
+*Blocked on others*, *Open threads*, and *Goal* only when it changed or a proposed done-when was confirmed.
+Decisions become rows in `CONTEXT_DECISIONS.md`. Then `daybrief.py --write-cards` regenerates the task
+section. Everything is shown before it is written and confirmed once; what the session did not establish
+stays as it was. Progress is written when it happens: a long session writes its task's Progress block after
+every context compaction, not at the end. The Claude harness wraps this as `/handoff`.
+
 **Session end — the log:** append a dated entry to `ops/log/sessions.md` — what was done, decided (link ADRs), tasks created/moved, and next focus — and distill the day's raw memory stream (`ops/memory/daily/`) into curated records (`ops/memory/store/`). See *Memory*.
 
 This routine is tool-neutral: any LLM pointed at this folder can run it by reading the files — the scope is just "which folder did the session start in." The Claude harness only *accelerates* it: a `SessionStart` hook in `C:\Dev\.claude` fires the workspace walk automatically at root and emits the memory snapshot (it does not cascade, so it is naturally root-only), the cascading `CLAUDE.md` carries the project-walk rule into every project session, and `/todo` / `/task` / `/log` wrap the file edits. Remove the harness and the walk is still fully described here for any LLM to do by hand. Owned by M.
@@ -365,25 +378,34 @@ past 14 days), DevOps id or none, next step, customer-ask status (unsent in terr
 their date or who they wait on; totals across projects on top. Projects still on the old CONTEXT.md shape
 are flagged with a one-click conversion. **It writes nothing**: every button opens a session at that
 project seeded with the command that makes the change (`/switch-task <slug>`, `/task postpone|wait|resume`,
-`/handoff`), so the write happens in a session with the owner in it. The first session of a working day
+`/handoff`, `/checkin`, `/checkin convert`), so the write happens in a session with the owner in it. The first session of a working day
 opens it (see *Continuity loop* > *Day start*). By hand: `python ops/dashboard.py`, or
 `python ops/bin/daybrief.py --text` for the same content as text.
 
-### Check-in — the interview that keeps CONTEXT.md honest
+### Check-in — the interview that keeps the card honest
 
-`/checkin` (the dashboard's **Status check-in** button) is the counterpart to `/handoff`, split by
-**where the truth comes from**: `/handoff` reads the session and reports what happened; `/checkin`
-asks the owner, because arriving at a project cold from the dashboard means the session has nothing to
-report. It walks **Blocked on → In progress → Next Actions → Open Threads → Tasks**, one category at a
-time, presenting what is currently recorded and offering *still accurate / resolved / changed / skip* —
-one question per turn, never a batched list. Skipping is first-class: a skipped category is left
+`/checkin` (Today's **Check-in** button, the overview drawer's **Status check-in**) is the counterpart to
+`/handoff`, split by **where the truth comes from**: `/handoff` reads the session and reports what
+happened; `/checkin` asks the owner, because arriving at a project cold means the session has nothing to
+report. Since 2026-09-16 it walks the card in the order the day brief ranks it: **each open task, most
+stale first** — its *Now (date)*, *Next* and ask status in the question; *still accurate / changed /
+done / skip*, where a typed answer rewrites the task's Progress block dated today, marks an ask sent or
+answered, or parks the task as `/task postpone|wait` does — then **Blocked on others** and **Open
+threads** line by line, then **Where we stand**, and **Done when** while it is still marked proposed.
+One question per turn, never a batched list. Skipping is first-class: a skipped item is left
 byte-identical, never restated as confirmed, and skipping everything writes nothing. Nothing is
 inferred from the repo or the transcript — only answers are written, after a shown diff and one
-confirmation. Task state changes move the file between `ops/tasks/<state>/` and append a dated Log line.
+confirmation, and then `daybrief.py --write-cards` regenerates the task section. `/checkin quick` asks
+only about what the brief flags (stalled, due back, ask unsent, blocked). `/checkin convert` is the
+one-time move of a project from the old CONTEXT.md shape onto the card: the old file becomes
+`CONTEXT_ARCHIVE.md`, its decisions table `CONTEXT_DECISIONS.md`, the card is drafted from the archive
+and the session log with *Where we stand* dated by the latest evidence, tasks without a Progress block
+get one from their Log, and nothing is written before the owner has seen it. Today's **Convert to the
+card** button seeds it.
 
-The routine is tool-neutral: any LLM can run it by reading the section list above out of `CONTEXT.md`
-and asking. The command file only accelerates it, and is registered at **both** workspace and user level
-since project-rooted sessions never see workspace commands.
+The routine is tool-neutral: any LLM can run it by reading the section list out of
+`_templates/CONTEXT.md` and asking. The command file only accelerates it, and is registered at **both**
+workspace and user level since project-rooted sessions never see workspace commands.
 
 **Its look follows the two guides by splitting their jobs** (settled 2026-07-28, resolving the
 standing conflict in memory record `pingala-palette-dataviz-conflict`): `pingala-visual-identity` owns

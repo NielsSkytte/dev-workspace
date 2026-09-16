@@ -1,69 +1,104 @@
-Walk the current project's status one category at a time and write the answers back to its `CONTEXT.md`. An **interview**, not a summariser — you ask, Niels answers, nothing is inferred from the session.
+Walk the project's resume card with its owner, one item at a time, and write the answers back —
+into the task files' `## Progress` blocks and the card's hand-written sections. An **interview**, not
+a summariser: you ask, Niels answers, nothing is inferred from the session.
 
 Usage:
-  /checkin           <- interview the project you are sitting in
-  /checkin quick     <- only the categories that currently hold something
+  /checkin           <- the whole card: every open task, blocked on others, open threads, where we stand
+  /checkin quick     <- only what the day brief flags: stalled, due back, ask unsent, blocked
+  /checkin convert   <- one-time: move a project from the old CONTEXT.md shape onto the card
 
-This is the routine the dashboard's **Status check-in** button launches (`AGENTS.md` > *Dashboard*).
+This is what Today's **Check-in** and **Convert to the card** buttons and the overview drawer's
+**Status check-in** launch (`AGENTS.md` > *Dashboard* > *Check-in*). Card shape:
+`_templates/CONTEXT.md`; task shape: `ops/tasks/_TEMPLATE.md`.
 
 ## When to use which
 
-- **`/checkin`** — you arrived at a project cold (e.g. from the dashboard) and want its recorded state
-  to match reality. The **user** is the source.
-- **`/handoff`** — a real working session just happened and CONTEXT.md should reflect *what you did*.
+- **`/checkin`** — you arrived at a project cold (from Today, after days away) and its recorded state
+  should match reality. The **owner** is the source.
+- **`/handoff`** — a real working session just happened and the record should reflect *what you did*.
   The **session** is the source.
 
-They write the same sections. Never run both on one sitting: run `/checkin` when you have nothing to
-report from the session, `/handoff` when you do.
+They write the same files. Never run both on one sitting.
 
 ## Instructions
 
-1. **Locate and read `CONTEXT.md`** in the current working directory. If there is none, say so and stop
-   — the session is not rooted in a project. Also read the project's open/in-progress tasks from
-   `C:\Dev\ops\tasks\` (matched on the task's `project:` field).
+1. **Resolve the project** as `/handoff` does (this session's active task, else the cwd). Read its
+   card and run `python C:\Dev\ops\bin\daybrief.py --text --scope <project>` — that lists every
+   open task with its DevOps id, progress age, next step and ask status without reading the files.
+   No card: say so and stop. A card without `## Active tasks — progress` is the old shape: offer
+   *"Convert now"* (the `convert` routine below) / *"Skip"*, and stop unless converting.
 
-2. **Interview, one category at a time, in this order.** Blocked on → In progress → Next Actions →
-   Open Threads → Tasks.
+2. **Interview, one item at a time, in this order.** **One `AskUserQuestion` card per item. Never
+   batch, never send a list of questions** (memory record `feedback-interview-one-question`). Put
+   the recorded state in the question text so the answer is about something concrete.
 
-   **One `AskUserQuestion` card per category. Never batch them, never send a list of questions**
-   (memory record `feedback-interview-one-question`). For each category:
+   a. **Tasks, most stale first** — stalled, then due back, then the rest by progress age; parked
+      tasks last and only in the full mode. Question text: `slug — DevOps <id|none>. Now (<date>):
+      <text>. Next: <step 1>. Ask: <status, first line>`. Options: *"Still accurate"* /
+      *"Changed — I'll describe"* / *"Done"* / *"Skip"*. A typed answer is the new state: rewrite
+      `**Now (today):**` and `**Next:**` from the owner's words; "sent 09-15" or "answered" updates
+      `customer_ask:` and `## Needs from customer`; "wait on customer" or "postpone to <date>" parks
+      it as `/task wait|postpone` does; "done" moves the file as `/task done` does.
+   b. **Blocked on others**, per line: *"Still owed"* / *"Received / resolved"* / *"Changed — I'll
+      describe"* / *"Skip"*. Empty section: ask whether anyone owes anything, *"Nobody"* first.
+   c. **Open threads**, per line: *"Still open"* / *"Resolved — drop it"* / *"Changed — I'll
+      describe"* / *"Skip"*. Empty: ask whether anything is pending, *"Nothing"* first.
+   d. **Where we stand**, one card for the section: *"Still accurate — date it today"* /
+      *"Changed — I'll describe"* / *"Skip"*. A typed answer replaces the lines (at most six).
+   e. **Done when**, only while it is marked *(proposed, confirm)*: *"Confirmed — drop the marker"* /
+      *"Changed — I'll describe"* / *"Skip"*.
 
-   - Put the **current recorded items in the question text**, numbered, so the answer is about
-     something concrete rather than a blank page.
-   - Offer options shaped to that category. Good defaults:
-     - *"Still accurate"* — carry it forward untouched.
-     - *"Resolved / done"* — drop it, and note the resolution in the write-up.
-     - *"Changed — I'll describe it"* — the user types the new state in Other.
-     - *"Skip this category"* — leave it exactly as it is.
-   - When a category holds several items and they have moved differently, ask about the **item**, not
-     the category — one card each — rather than forcing one answer onto all of them.
-   - Empty category: ask whether anything belongs there now, with *"Nothing"* as the first option.
-   - `/checkin quick`: skip categories that are currently empty.
+   `/checkin quick` asks (a) only for tasks the brief flags (stalled, due back, ask unsent) and (b).
 
-3. **Never block on the whole interview.** Every card carries a skip. If the user skips everything,
-   say so plainly and write nothing.
+3. **Never block on the whole interview.** Every card carries a skip. If everything is skipped, say
+   so plainly and write nothing.
 
-4. **For Tasks**, ask per open/in-progress task whether it is still open, now in progress, done, or
-   blocked. A state change means **moving the file** between `ops/tasks/<state>/` and appending a dated
-   Log line — do that only after the confirmation step below.
+4. **Show the full proposed change before writing** — per task the new Progress block, per card
+   section added / changed / dropped lines, any file moves. One confirmation: *"Write it" / "Let me
+   adjust" / "Discard"*.
 
-5. **Show the full proposed change before writing** — a compact per-section diff of what is added,
-   changed, dropped and left alone, including any task moves. Then one confirmation:
-   *"Write it" / "Let me adjust" / "Discard"*.
+5. **On confirmation, write**: the task files (Progress dated today in the owner's words, a dated Log
+   line `check-in: …`, field changes, moves), the card sections, then
 
-6. **On confirmation, write**: update `CONTEXT.md` (`**Last worked:**` to today, plus the answered
-   sections), move any task files, append their Log lines. Preserve file structure and leave untouched
-   sections byte-identical.
+   ```
+   python C:\Dev\ops\bin\daybrief.py --write-cards --project <project>
+   ```
 
-7. **Close with one line** naming what changed and what the next action now is.
+   Keep line endings; leave skipped items byte-identical.
+
+6. **Close with one line** naming what changed and what the next action now is.
+
+## `/checkin convert` — old CONTEXT.md onto the card (one time per project)
+
+1. Confirm the card is the old shape (no `## Active tasks — progress`). Already a card: say so, stop.
+2. Read the old `CONTEXT.md` (in slices if large), the project's recent sections in
+   `ops/log/sessions.md`, the brief for its tasks, and `CLAUDE.md` > Identity.
+3. Draft the card from `_templates/CONTEXT.md`: the header blockquote; **Goal** in the customer's
+   terms with **Done when (proposed, confirm)**; **Where we stand — <date of the latest evidence,
+   not today>**, at most six lines; the `## Active tasks — progress` heading alone (generated);
+   **Blocked on others**; **Open threads** (live ones only, at most eight); **Where the detail
+   lives**. A paused, delivered or planned project gets the minimal card: Goal, one standing line
+   saying the status and why, the rest `-`.
+4. A *Decisions Log* table moves verbatim into `CONTEXT_DECISIONS.md` (header as Carl Ras's:
+   append-only, date / decision / rationale).
+5. **Tasks without a `## Progress` block** (the brief shows "no Progress block"): insert `## Progress`
+   and `## Needs from customer` after `## What` — *Now* dated from the last dated Log line, in its
+   words; *Next* from *What* and the Log; set `fno_task:` to the DevOps id or `none` and add
+   `customer_ask: none`; a dated Log line "brought onto the Progress shape; no facts changed".
+6. Show the draft card and the task inserts. One confirmation: *"Write it" / "Let me adjust" /
+   *"Discard"*.
+7. On confirmation: `git mv CONTEXT.md CONTEXT_ARCHIVE.md` in the project's repo (plain rename if it
+   is not one), write `CONTEXT.md` and `CONTEXT_DECISIONS.md`, write the task files, then run
+   `--write-cards --project <project>`. Commit the unit repo at wrap-up with `/log`, or now if asked.
 
 ## Guardrails
 
-- **Only the user's answers go in.** Do not infer status from the repo, from git, or from the
-  transcript — that is `/handoff`'s job, and mixing them puts unverified claims into the record.
-- **Skipped means untouched**, not "still accurate" — never rewrite a section the user skipped, and
-  never restate a skipped section as confirmed.
-- **Never remove a user-written line** unless the user said it is resolved.
-- **Append to the Decisions Log, never edit it.** A check-in rarely produces decisions; if one comes up
-  in conversation, add it dated, and say you did.
+- **Only the owner's answers go in.** Do not infer status from the repo, git or the transcript —
+  that is `/handoff`'s job, and mixing them puts unverified claims into the record. `convert`
+  drafts from the written record and is confirmed before it is written.
+- **Skipped means untouched**, not "still accurate" — never rewrite a skipped item, never restate it
+  as confirmed. *Where we stand* is re-dated only when the owner confirmed it today.
+- **Never remove a line** the owner did not resolve. **Rewrite, never append** — no history in the
+  card.
+- **Decisions are append-only.** A check-in rarely produces one; if it does, add it dated and say so.
 - Facts only. If an answer is ambiguous, ask one more card rather than guessing.

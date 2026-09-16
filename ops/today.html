@@ -115,7 +115,6 @@ function workPrompt(p, t){
   return isCustomer(p.key) ? ('/switch-task ' + t.slug)
     : ('Work on task ' + t.slug + ' (ops/tasks/' + t.state + '/' + t.slug + '.md): read its Progress block and start on Next 1.');
 }
-const CONVERT_PROMPT = 'Convert this project\'s CONTEXT.md to the resume card in _templates/CONTEXT.md: git mv CONTEXT.md CONTEXT_ARCHIVE.md, move the Decisions Log table verbatim into CONTEXT_DECISIONS.md, draft Goal (with a done-when marked proposed), Where we stand and Open threads from the archive and the log, then run python C:/Dev/ops/bin/daybrief.py --write-cards --project <this project>. Show the card before writing it.';
 
 async function launch(path, prompt, mode){
   try{
@@ -187,7 +186,7 @@ function projectCard(p){
     + (legacy ? '<span class="badge legacy">old CONTEXT.md</span>' : '')
     + '<span class="meta">' + meta + '</span>'
     + '<span class="actions"><button class="act" data-pact="open">Open session</button>'
-    + (legacy ? '' : '<button class="act" data-pact="handoff">Handoff</button>')
+    + (legacy ? '' : '<button class="act" data-pact="checkin">Check-in</button><button class="act" data-pact="handoff">Handoff</button>')
     + '</span></div>';
   if (c.goal) html += '<div class="goal">' + esc(c.goal) + '</div>';
   if (legacy) html += '<div class="legacybox"><span class="w">CONTEXT.md is the old shape' + (c.bytes ? ' (' + Math.round(c.bytes/1024) + ' KB)' : '') + '.</span>'
@@ -245,7 +244,8 @@ document.addEventListener('click', e => {
   if (b.dataset.pact){
     if (b.dataset.pact === 'open') launch(p.key, '');
     if (b.dataset.pact === 'handoff') launch(p.key, '/handoff');
-    if (b.dataset.pact === 'convert') launch(p.key, CONVERT_PROMPT.replace('<this project>', p.key));
+    if (b.dataset.pact === 'checkin') launch(p.key, '/checkin');
+    if (b.dataset.pact === 'convert') launch(p.key, '/checkin convert');
     return;
   }
   const slug = b.closest('tr').dataset.slug; const t = p.tasks.find(x => x.slug === slug); if (!t) return;
