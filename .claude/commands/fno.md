@@ -66,9 +66,12 @@ takes.
 
 Three traps, all load-bearing:
 
-- **Pick a week, never Whole month.** The same buttons yield the scaled **F&O entry** figure on a
-  week and plain **work time** on the whole month. F&O entry is the source of truth for
-  registration.
+- **A week and Whole month now mean the same thing** (changed 2026-09-21). Both carry the
+  scaled **F&O entry** figure, with **Measured** and **Work** beside it on every line, so
+  either can be copied. Take the week when you are cutting week journals — which is the
+  journal grain — and the month when you are reconciling. Before 2026-09-21 the month gave
+  plain work time and copying from it under-registered; if you are reading an older note
+  that says "never copy from the month", that is why, and it no longer applies.
 - **Reconcile the copied row count against the block total, every time.** *Copy rows* used to filter
   on company alone while the table filtered on company *and* the customer chips, so copying with a
   customer deselected silently put extra rows on the clipboard — an over-registration into a

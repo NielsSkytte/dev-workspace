@@ -88,9 +88,11 @@ Never let the browser path become the happy path in a plan, a report, or a rewri
 Verified 2026-09-01, re-verified on the rebuilt page 2026-09-21 (`ops/web/time.js`). Full detail and
 the code references: `ops/memory/store/dashboard-copy-rows-transport`.
 
-- **A week and Whole month mean different things.** With a week selected the hours are the scaled
-  **F&O entry** figure; on Whole month they are plain **work time**. Registration uses F&O entry, so
-  **always pick a week first**.
+- **A week and Whole month mean the same thing** (changed 2026-09-21). Both carry the scaled
+  **F&O entry** figure, with **Measured** and **Work** beside it per line. Until then the month gave
+  plain **work time**, and the same *Copy rows* button therefore meant two different numbers
+  depending on which chip was lit — an under-registration waiting to happen. Cut journals from the
+  week, because a journal is one ISO week per company; use the month to reconcile.
 - **What you take away is what you see.** Both buttons apply the company chips *and* the customer
   chips. The 2026-09-01 defect was Copy rows filtering on company alone, which put deselected
   customers on the clipboard invisibly -- an over-registration straight into a production ERP. It is

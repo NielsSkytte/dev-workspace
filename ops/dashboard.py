@@ -265,6 +265,142 @@ def _fold(a, v):
     return a
 
 
+def _scale_agg(a, f):
+    """A fraction of an aggregate. Hours divide; so do the counts, on purpose -- keeping the
+    same turns-per-hour density across a split is the most neutral thing to do with them,
+    and that density is what decides where in the band the line sits."""
+    return {"keyboard": a["keyboard"] * f, "weighted": a["weighted"] * f,
+            "turns": int(round(a["turns"] * f)), "stretches": int(round(a["stretches"] * f)),
+            "t5": int(round(a["t5"] * f)),
+            "tiers": {k: round(v * f, 1) for k, v in a["tiers"].items()},
+            "files": a["files"]}
+
+
+def _merge_agg(a, b):
+    a["keyboard"] += b["keyboard"]
+    a["weighted"] += b["weighted"]
+    a["turns"] += b["turns"]
+    a["stretches"] += b["stretches"]
+    a["t5"] += b["t5"]
+    for k, v in b["tiers"].items():
+        a["tiers"][k] = round(a["tiers"].get(k, 0.0) + v, 1)
+    a["files"] = set(a["files"]) | set(b["files"])
+    return a
+
+
+def _weights(slots, keys):
+    """How to split something across a project's lines for one date: by registered hours,
+    equally when none of them registered any."""
+    tot = sum(slots[k]["row"]["hours"] for k in keys)
+    if tot > 0:
+        return [(k, slots[k]["row"]["hours"] / tot) for k in keys]
+    return [(k, 1.0 / len(keys)) for k in keys]
+
+
+def line_rows(date, sheet, measured_rows, values):
+    """One date's F&O lines: the timesheet row, with the measurement and the evidence.
+
+    Three sources, keyed three ways:
+
+      `sheet`          the finalized timesheet -- authoritative, because it is what gets
+                       typed into F&O and because /log corrects it BY HAND. None when the
+                       day is not finalized, in which case `measured_rows` stands in.
+      `measured_rows`  the 15+5 model recomputed from the heartbeats, keyed on the task
+                       file's dimensions as they are NOW.
+      `values`         the value records, keyed on the dimensions as they were derived.
+
+    A correction at /log moves the timesheet's key and leaves the other two behind. That
+    showed as two half-lines -- one with hours and no measurement, one with the measurement
+    and no hours -- which is what made a line read `Measured 0` beside a real F&O entry
+    (2026-09-07 Matas: Task-65904 on the sheet, Task-65905 everywhere else).
+
+    So: match on the exact key; attach what is left over to the same PROJECT on that date,
+    split across its lines in proportion to their registered hours -- the same rule the
+    entry page uses to spread a dimension's hours -- and mark those lines `shared`, because
+    the number is then a share of the project's day and not the line's own. Evidence for a
+    project with NO registered line that date keeps a line of its own: that is work measured
+    and registered somewhere else, and inventing an owner for it would be worse than showing
+    it.
+
+    Hours are conserved: every measured hour lands on exactly one line."""
+    sheet_rows = sheet if sheet is not None else measured_rows
+    slots = {}
+    for r in sheet_rows:
+        slots[_dimkey(r["project"], r["activity"], r["fno_task"])] = {
+            "row": r, "meas": 0.0, "agg": _blank_agg(), "shared": False}
+
+    meas_by = {}
+    for r in measured_rows:
+        k = _dimkey(r["project"], r["activity"], r["fno_task"])
+        meas_by[k] = round(meas_by.get(k, 0.0) + r["hours"], 2)
+    agg_by = {}
+    for v in values:
+        _fold(agg_by.setdefault(_dimkey(v["project"], v.get("activity"), v.get("fno_task")),
+                                _blank_agg()), v)
+
+    for k in list(meas_by):
+        if k in slots:
+            slots[k]["meas"] = meas_by.pop(k)
+    for k in list(agg_by):
+        if k in slots:
+            _merge_agg(slots[k]["agg"], agg_by.pop(k))
+
+    by_proj = {}
+    for k in slots:
+        by_proj.setdefault(k.split("|", 1)[0], []).append(k)
+    for k in list(meas_by):
+        keys = by_proj.get(k.split("|", 1)[0])
+        if not keys:
+            continue
+        for kk, f in _weights(slots, keys):
+            slots[kk]["meas"] = round(slots[kk]["meas"] + meas_by[k] * f, 2)
+            slots[kk]["shared"] = True
+        meas_by.pop(k)
+    for k in list(agg_by):
+        keys = by_proj.get(k.split("|", 1)[0])
+        if not keys:
+            continue
+        for kk, f in _weights(slots, keys):
+            _merge_agg(slots[kk]["agg"], _scale_agg(agg_by[k], f))
+            slots[kk]["shared"] = True
+        agg_by.pop(k)
+
+    # Whatever is still homeless is work measured on a project with no registered line that
+    # date -- reassigned at /log, usually. There is no timesheet dimension to preserve, so
+    # one line per project says it once instead of once per stale key.
+    left = {}
+    for k in sorted(set(meas_by) | set(agg_by)):
+        home = left.setdefault(k.split("|", 1)[0],
+                               {"key": k, "meas": 0.0, "agg": _blank_agg(), "best": -1.0})
+        home["meas"] = round(home["meas"] + meas_by.get(k, 0.0), 2)
+        _merge_agg(home["agg"], agg_by.get(k) or _blank_agg())
+        if meas_by.get(k, 0.0) > home["best"]:
+            home["best"], home["key"] = meas_by.get(k, 0.0), k
+    for home in left.values():
+        slots[home["key"]] = {"row": None, "meas": home["meas"], "agg": home["agg"],
+                              "shared": False}
+
+    out = []
+    for k in sorted(slots):
+        s = slots[k]
+        r, a = s["row"], s["agg"]
+        project, activity, fno_task = k.split("|", 2)
+        out.append({
+            "date": date, "project": project, "activity": activity, "fno_task": fno_task,
+            "proj_id": r["proj_id"] if r else rollup.project_id(project),
+            "billable": r["billable"] if r else project.startswith("customers/"),
+            "claimed": r["hours"] if r else 0.0,
+            "measured": round(s["meas"], 2),
+            "keyboard": round(a["keyboard"], 2), "weighted": round(a["weighted"], 2),
+            "turns": a["turns"], "stretches": a["stretches"], "t5": a["t5"],
+            "tiers": a["tiers"], "files": len(a["files"]),
+            "topFiles": [os.path.basename(x) for x in sorted(a["files"])[:4]],
+            "shared": s["shared"],
+            "live": sheet is None,
+        })
+    return out
+
+
 def audit_mondays(today):
     """Mondays of the ISO weeks the week page offers, newest first.
 
@@ -344,33 +480,8 @@ def _audit_week(wk, hbs_by_date, absence, today):
             "short": round(max(0.0, day_target - claimed), 2),
         })
 
-        # per F&O line: the timesheet row is the claim, the value record is the evidence beside it
-        sheet = rollup.parse_daily_file(d)
-        claim_by, meas_by = {}, {}
-        for r in (sheet if sheet is not None else rollup.rows_for(dh)):
-            claim_by[_dimkey(r["project"], r["activity"], r["fno_task"])] = r
-        for r in rollup.rows_for(dh):
-            meas_by[_dimkey(r["project"], r["activity"], r["fno_task"])] = r["hours"]
-        agg = {}
-        for v in vals:
-            _fold(agg.setdefault(_dimkey(v["project"], v.get("activity"), v.get("fno_task")),
-                                 _blank_agg()), v)
-        for k in sorted(set(claim_by) | set(agg)):
-            r = claim_by.get(k)
-            a = agg.get(k) or _blank_agg()
-            project, activity, fno_task = k.split("|", 2)
-            lines.append({
-                "date": d, "project": project, "activity": activity, "fno_task": fno_task,
-                "proj_id": r["proj_id"] if r else rollup.project_id(project),
-                "billable": r["billable"] if r else project.startswith("customers/"),
-                "claimed": r["hours"] if r else 0.0,
-                "measured": meas_by.get(k, 0.0),
-                "keyboard": round(a["keyboard"], 2), "weighted": round(a["weighted"], 2),
-                "turns": a["turns"], "stretches": a["stretches"], "t5": a["t5"],
-                "tiers": a["tiers"], "files": len(a["files"]),
-                "topFiles": [os.path.basename(p) for p in sorted(a["files"])[:4]],
-                "live": sheet is None,
-            })
+        # One date's F&O lines, joined from the three sources (see line_rows).
+        lines.extend(line_rows(d, rollup.parse_daily_file(d), rollup.rows_for(dh), vals))
 
     tot = lambda f: round(sum(x[f] for x in days), 2)
     claimed = tot("claimed")

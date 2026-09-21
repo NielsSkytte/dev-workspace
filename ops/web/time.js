@@ -62,10 +62,11 @@ const normCust = s => (s || '').toLowerCase()
 /* UNSET, PENDING, `none`, a bare `?` -- the server blanks these on an entry row, but a
    project's fno_code and a task's fno_task are shown raw, and a placeholder in an input
    invites saving it back. */
-const blankIfPlaceholder = v => {
+const isPlaceholder = v => {
   const s = (v || '').trim();
-  return (!s || /\?/.test(s) || /^(unset|none)$/i.test(s) || /^pending/i.test(s)) ? '' : s;
+  return !s || /\?/.test(s) || /^(unset|none)$/i.test(s) || /^pending/i.test(s);
 };
+const blankIfPlaceholder = v => (isPlaceholder(v) ? '' : (v || '').trim());
 
 /* ---------- the F&O entry figure ----------
    Work time is the floor, value time the ceiling, and turns+files decide how far up the band
@@ -170,6 +171,34 @@ function scaleRows(rows, scale) {
   return out;
 }
 
+/* Every audit line in one calendar month. The weeks do not overlap, and a line is per
+   date, so a week straddling the boundary contributes only its own days -- which is what
+   makes a month total exact rather than clipped. */
+function linesInMonth(D, monthKey) {
+  const out = [];
+  ((D.audit || {}).weeks || []).forEach(k => {
+    (((D.audit.byWeek || {})[k] || {}).lines || []).forEach(l => {
+      if (l.date.slice(0, 7) === monthKey) out.push(l);
+    });
+  });
+  return out;
+}
+
+/* Per F&O dimension: what was measured, what is registered, what the value model supports,
+   and what goes into F&O. The entry blocks distribute these across their rows. */
+function scaleFrom(lines) {
+  const scale = {};
+  lines.forEach(l => {
+    const k = `${l.project}|${l.activity || ''}|${l.fno_task || ''}`;
+    const s = scale[k] || (scale[k] = { work: 0, entry: 0, measured: 0, value: 0 });
+    s.work += l.claimed || 0;
+    s.entry += entryOf(l);
+    s.measured += l.measured || 0;
+    s.value += l.weighted || 0;
+  });
+  return scale;
+}
+
 /* ---------- readiness ---------- */
 
 /* The sessions behind one line.
@@ -241,8 +270,9 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
   short.forEach(r => (r.missing || []).forEach(m => {
     const k = r.project + '\u0000' + m.label;
     const g = byWhat[k] || (byWhat[k] = { id: k, project: r.project, label: m.label,
-                                          why: m.why, hours: 0, rows: [] });
+                                          why: m.why, hours: 0, entry: 0, rows: [] });
     g.hours = Math.round((g.hours + hoursOf(r)) * 100) / 100;
+    g.entry = Math.round((g.entry + r.hours) * 100) / 100;
     g.rows.push(r);
   }));
   const groups = Object.values(byWhat).sort((a, b) => b.hours - a.hours);
@@ -261,8 +291,9 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
         Open a group to see its lines, then pick the one to fix.</p>
       <div style="overflow-x:auto"><table class="autable">
         <thead><tr><th></th><th>Project</th><th>Missing</th>
-          <th class="r">${scaled ? 'Work' : 'Hours'}</th><th class="r">Lines</th>
-          <th>Why</th></tr></thead>
+          <th class="r">${scaled ? 'Work' : 'Hours'}</th>
+          <th class="r">${scaled ? 'F&O entry' : 'Lines'}</th>
+          <th class="r">Lines</th><th>Why</th></tr></thead>
         <tbody>${groups.map(g => html`
           <${Fragment} key=${g.id}>
             <tr class="clickable augrp" onClick=${() => toggle(g.id)}>
@@ -270,6 +301,7 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
               <td>${shortProject(g.project)}</td>
               <td><b class="accentink">${g.label}</b></td>
               <td class="r">${hrs(g.hours)}</td>
+              <td class="r">${scaled ? hrs(g.entry) : ''}</td>
               <td class="r muted">${g.rows.length}</td>
               <td class="sub">${g.why}</td>
             </tr>
@@ -285,7 +317,8 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
                     <td class="muted">${r.fno_task || r.activity
                       || html`<span class="muted">nothing tagged</span>`}</td>
                     <td class="r">${hrs(hoursOf(r))}</td>
-                    <td class="r muted">${hrs(r.hours)}</td>
+                    <td class="r">${scaled ? hrs(r.hours) : ''}</td>
+                    <td class="r"></td>
                     <td class=${'sub gist' + (r.summary ? '' : ' verbatim')}>${gist
                       || html`<span class="muted">no description and no session evidence</span>`}</td>
                   </tr>`;
@@ -380,6 +413,10 @@ function SourceFixes({ row, D, onDone }) {
 
   const needs = new Set((row.missing || []).map(m => m.field));
   const onTask = (row.requires || []).includes('task');
+  /* When none of the project's tasks is this line's, the list is reference material, not
+     the thing to do -- so it folds. It is still here, because editing a task's dimensions
+     from the line that made you notice them is the point of having it. */
+  const foldOthers = !onThisLine.length && others.length > 1;
 
   return html`
     <div class="block">
@@ -421,18 +458,19 @@ function SourceFixes({ row, D, onDone }) {
 
       <div class="srchead">${onThisLine.length
         ? `The task${onThisLine.length === 1 ? '' : 's'} behind this line`
-        : 'Tasks on this project'}</div>
+        : 'A task\u2019s own dimensions'}</div>
       ${onThisLine.length ? null : html`
         <p class="sub" style="margin:0 0 6px">
           ${tasks.length
             ? html`<b>No task was tagged on this line's sessions</b>, so none of these is
-                   "the" one — the work was done without a task selected. Setting a task
-                   below will not reach this line; it reaches the next session tagged with
-                   it. To give <i>this</i> line a task, correct its day above.`
+                   "the" one — the work was done without a task selected. Editing a task
+                   here changes what <i>future</i> sessions tagged with it carry; to put a
+                   task on <i>this</i> line, use <b>Tag it</b> above.`
             : html`No open task on ${shortProject(row.project)}.${onTask
                 ? ' This customer registers on task, so the work needs one before its time can be entered — open one in Azure DevOps and put the id on a task file.'
                 : ''}`}</p>`}
-      ${(onThisLine.length ? onThisLine : others).map(x => html`
+      ${(onThisLine.length ? onThisLine : others.slice(0, foldOthers ? 0 : others.length))
+        .map(x => html`
           <div key=${x.slug} class=${'srctask' + (tagged.has(x.slug) ? ' on' : '')}>
             <div class="srctitle">${x.title || x.slug}
               <span class="sub">${x.state}${tagged.has(x.slug)
@@ -455,9 +493,10 @@ function SourceFixes({ row, D, onDone }) {
               }, '/api/task')}>Save</button>
             </div>
           </div>`)}
-      ${onThisLine.length && others.length ? html`
+      ${others.length && (foldOthers || onThisLine.length) ? html`
         <details class="srcmore">
-          <summary>${others.length} other open task${others.length === 1 ? '' : 's'} on
+          <summary>${onThisLine.length ? `${others.length} other open task` : `all
+            ${others.length} open task`}${others.length === 1 ? '' : 's'} on
             ${shortProject(row.project)}</summary>
           ${others.map(x => html`
             <div key=${x.slug} class="srctask">
@@ -507,6 +546,46 @@ function LineEditor({ row, raw, D, onDone }) {
   const proj = (D.projects || []).find(p => p.key === row.project);
   const missing = row.missing || [];
   const scaled = row.work !== undefined && row.work !== row.hours;
+  /* What to offer for a dimension this line is missing.
+   *
+   * Not the project's open task files: every open Carl Ras task carries `fno_task: none`,
+   * because the convention is id-or-none and the ids are opened in Azure DevOps as the work
+   * goes. The ids actually in use are on the lines already entered, so that is where the
+   * list comes from -- the same customer's lines, ranked by how much time is on them, with
+   * the most recent date beside each. An open task file that does carry an id joins them.
+   */
+  const usedValues = field => {
+    const seen = {};
+    (D.entry.rows || []).forEach(r => {
+      if (r.customer !== row.customer || !r.customer) return;
+      const v = blankIfPlaceholder(r[field]);
+      if (!v) return;
+      const s = seen[v] || (seen[v] = { value: v, hours: 0, n: 0, last: '', mine: false });
+      s.hours = Math.round((s.hours + r.hours) * 100) / 100;
+      s.n += 1;
+      if (r.date > s.last) s.last = r.date;
+      if (r.project === row.project) s.mine = true;
+    });
+    return Object.values(seen)
+      .sort((a, b) => (b.mine - a.mine) || (b.hours - a.hours));
+  };
+
+  const knownTasks = (() => {
+    const used = usedValues('fno_task');
+    const have = new Set(used.map(u => u.value));
+    (D.targets || []).forEach(x => {
+      const id = blankIfPlaceholder(x.fno_task);
+      if (x.project === row.project && id && !have.has(id)) {
+        used.push({ value: id, hours: 0, n: 0, last: '', mine: true, title: x.title });
+      }
+    });
+    return used;
+  })();
+  const knownActs = usedValues('activity');
+
+  const optLabel = u => u.n
+    ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
+    : `${u.value} — ${u.title || 'from a task file'}`;
 
   const changed = raw && (pid !== (raw.ws_proj_id || '') || act !== (raw.ws_activity || '')
     || task !== (raw.ws_fno_task || '') || String(raw.hours) !== hours.trim());
@@ -563,9 +642,12 @@ function LineEditor({ row, raw, D, onDone }) {
       : !raw ? html`
       <div class="block">
         <h4>Correct the day</h4>
-        <p class="sub" style="margin:0">This line has been consolidated onto another date, so
-          there is no single timesheet row behind it. Turn <b>Consolidated</b> off to correct
-          it.</p>
+        <p class="sub" style="margin:0">${row.merged
+          ? html`This line has been consolidated onto another date, so there is no single
+                 timesheet row behind it. Turn <b>Consolidated</b> off to correct it — or
+                 open the same line from <b>Not ready to enter</b>, which never consolidates.`
+          : html`No timesheet row on ${row.date} matches this line any more — the day has
+                 moved under the page. Refresh.`}</p>
       </div>`
       : raw.ambiguous ? html`
       <div class="block">
@@ -579,6 +661,28 @@ function LineEditor({ row, raw, D, onDone }) {
         <p class="sub" style="margin:0 0 8px">Writes
           <code>ops/time/timesheet/${raw.date.slice(0, 7)}/${raw.date}.md</code> and records the
           correction underneath, the way the file says to.</p>
+        ${knownTasks.length ? html`
+          <div class="actrow">
+            <span class="flabel" style="min-width:64px">Task</span>
+            <select class="mini" value="" onChange=${e => { setTask(e.target.value); e.target.value = ''; }}>
+              <option value="">tag it with a task already in use…</option>
+              ${knownTasks.map(u => html`
+                <option key=${u.value} value=${u.value}>${optLabel(u)}</option>`)}
+            </select>
+          </div>` : null}
+        ${knownActs.length ? html`
+          <div class="actrow">
+            <span class="flabel" style="min-width:64px">Activity</span>
+            <select class="mini" value="" onChange=${e => { setAct(e.target.value); e.target.value = ''; }}>
+              <option value="">…or an activity already in use</option>
+              ${knownActs.map(u => html`
+                <option key=${u.value} value=${u.value}>${optLabel(u)}</option>`)}
+            </select>
+          </div>` : null}
+        ${knownTasks.length || knownActs.length ? html`
+          <p class="sub" style="margin:2px 0 8px 72px">Every value ${row.customer} already
+            registers on, most-used first. Picking one fills the field below; nothing is
+            written until you press Correct.</p>` : null}
         <div class="actrow"><span class="flabel" style="min-width:64px">Proj ID</span>
           <input type="text" value=${pid} onInput=${e => setPid(e.target.value)}
                  placeholder="e.g. 230-02" aria-label="Proj ID"/></div>
@@ -885,7 +989,10 @@ function Evidence({ D, w, onReassign }) {
       <td>${l.activity || html`<span class="muted">–</span>`}</td>
       <td>${l.fno_task || html`<span class="muted">–</span>`}</td>
       <td class="r">${auN(l.keyboard)}${ofEntry(l.keyboard, entryOf(l))}</td>
-      <td class="r">${auN(l.measured)}</td>
+      <td class="r">${auN(l.measured)}${l.shared
+        ? html` <span class="muted"
+                title="a correction moved this line after the day was written, so the evidence was recorded against another dimension of the same project. It is split across that project's lines in proportion to their hours -- a share of the day, not this line's own measurement.">\u2248</span>`
+        : null}</td>
       <td class="r">${auN(l.claimed)}${ctrl(l)}</td>
       <td class="r"><b>${auN(entryOf(l))}</b>${ofValue(entryOf(l), l.weighted)}</td>
       <td class="r">${auN(l.weighted)}${ofEntry(l.weighted, entryOf(l))}</td>
@@ -944,7 +1051,9 @@ function Evidence({ D, w, onReassign }) {
       <div class="card ausec"><h3>1 · F&O lines</h3>
         <p class="sub">One row per date and F&O dimension. <b>Measured</b> is the 15+5
           model's own figure, sitting between what was typed and what is registered — the
-          control that says the rules and the meter have not drifted apart.
+          control that says the rules and the meter have not drifted apart. A
+          <b>\u2248</b> beside it means a correction moved this line after the day was written,
+          so its evidence is a share of the project's day rather than the line's own.
           Every other hours column carries a %:
           <b>keyboard</b> and <b>value time</b> read against F&O entry, so the row scans as one
           scale — what was typed, what is billed, and how much ceiling is left. <b>Work time</b>
@@ -1369,41 +1478,45 @@ function App() {
     if (!D) return null;
     const E = D.entry;
     if (!week) {
+      /* The month carries the same F&O entry figure as a week. It used to show plain work
+         time, which meant the same Copy rows button meant two different things depending
+         on which chip was lit -- and getting that wrong is an over- or under-registration
+         into a live financial system. */
       const rkey = 'month' + back;
-      return { rkey, label: per.label, w: null, scale: null,
-               file: 'fno-' + per.key, split: false };
+      return { rkey, label: per.label, w: null, split: false, file: 'fno-' + per.key,
+               scale: scaleFrom(linesInMonth(D, per.key)) };
     }
     const raw = (D.audit.byWeek || {})[week];
     const rkey = auKey(D, week, per.key) || week;
     const split = rkey !== week;
     const w = split ? clipWeek(raw, new Set((E.ranges || {})[rkey] || []), D.today) : raw;
-    /* The blocks carry the F&O ENTRY figure, derived per dimension from the same lines
-       section 1 shows. */
-    const scale = {};
-    w.lines.forEach(l => {
-      const k = `${l.project}|${l.activity || ''}|${l.fno_task || ''}`;
-      const s = scale[k] || (scale[k] = { work: 0, entry: 0, measured: 0, value: 0 });
-      s.work += l.claimed || 0;
-      s.entry += entryOf(l);
-      s.measured += l.measured || 0;
-      s.value += l.weighted || 0;
-    });
-    return { rkey, w, scale, split, file: 'fno-' + week,
+    return { rkey, w, scale: scaleFrom(w.lines), split, file: 'fno-' + week,
              label: split ? `${week} in ${per.label}` : `${week} · ${auRange(w)}` };
   }, [D, week, per, back]);
 
-  /* The rows the page is showing, and the raw timesheet row behind each one. Consolidation
-     moves a line to another date, so a consolidated row has no single row behind it and
-     cannot be corrected — the editor says so rather than writing to the wrong day. */
-  const { rows, rawByKey } = useMemo(() => {
-    if (!D || !view) return { rows: [], rawByKey: {} };
+  /* Three sets, from one range.
+   *
+   * `rows` is what the blocks show: consolidated when the toggle is on, which packs the
+   * hours onto as few days as possible so there are fewer lines to type. A consolidated row
+   * is marked, because its date has moved and there is no single timesheet row behind it to
+   * correct -- writing to the date it now shows would correct a different day.
+   *
+   * `gateRows` is what the readiness gate reads, and it is never consolidated. The gate
+   * exists to fix lines, and a line you cannot correct is not one you can fix. It carries
+   * the same scale, so its hours agree with the blocks even though its rows do not.
+   */
+  const { rows, gateRows, rawByKey } = useMemo(() => {
+    if (!D || !view) return { rows: [], gateRows: [], rawByKey: {} };
     const E = D.entry;
     const inR = new Set((E.ranges || {})[view.rkey] || []);
-    const base = merge ? ((E.merged || {})[view.rkey] || [])
-      : (E.rows || []).filter(r => inR.has(r.date));
+    const raw = (E.rows || []).filter(r => inR.has(r.date));
+    const base = merge
+      ? ((E.merged || {})[view.rkey] || []).map(r => Object.assign({}, r, { merged: true }))
+      : raw;
     const raws = {};
-    (E.rows || []).forEach(r => { raws[rowKey(r)] = r; });
-    return { rows: scaleRows(base, view.scale), rawByKey: merge ? {} : raws };
+    raw.forEach(r => { raws[rowKey(r)] = r; });
+    return { rows: scaleRows(base, view.scale), rawByKey: raws,
+             gateRows: merge ? scaleRows(raw, view.scale) : null };
   }, [D, view, merge]);
 
   const toggle = (setter) => v => setter(s => {
@@ -1438,7 +1551,7 @@ function App() {
           <span class="fsep"></span>
           <span class="flabel">Week</span>
           <button class=${'chip' + (week ? '' : ' on')}
-                  title="the timesheet as it stands; a week shows the F&O entry figure instead"
+                  title="the whole month at the same F&O entry figure a week gives; pick a week for the evidence behind it"
                   onClick=${() => setWeek('')}>Whole month</button>
           ${weeks.map(k => {
             const b = D.audit.byWeek[k];
@@ -1460,7 +1573,7 @@ function App() {
         <//>`}
     <//>`;
 
-  const shortNow = rows.filter(r => (r.missing || []).length).length;
+  const shortNow = (gateRows || rows).filter(r => (r.missing || []).length).length;
   const tiles = D ? [
     html`<${Tile} key="1" label="Billable this month" value=${hrs(D.totals.month_billable)} foot="h"/>`,
     html`<${Tile} key="2" label="Internal this month" value=${hrs(D.totals.month_internal)} foot="Dev and own/"/>`,
@@ -1486,7 +1599,8 @@ function App() {
             : html`
               <${Fragment}>
                 <${EntryBlocks} D=${D} rows=${rows} lead=${lead}
-                                gate=${html`<${Ready} rows=${rows} periodLabel=${view.label}
+                                gate=${html`<${Ready} rows=${gateRows || rows}
+                                                      periodLabel=${view.label}
                                                       scaled=${!!view.scale} D=${D}
                                                       onPick=${setSel}/>`}
                                 periodLabel=${view.label} fileName=${view.file}
@@ -1501,9 +1615,9 @@ function App() {
                     within that stretch, so no hours cross the month.</p>` : null}
                 ${!view.w ? html`
                   <div class="card ausec"><h3>The week behind the numbers</h3>
-                    <p class="sub" style="margin:0">Pick a week above. The month view shows the
-                      timesheet as it stands; a week shows the F&O entry figure and the evidence
-                      each line rests on.</p></div>`
+                    <p class="sub" style="margin:0">The month and a week carry the same three
+                      figures. Pick a week above to see the evidence each line rests on — the
+                      funnel per day, the effort profile, and what is still open.</p></div>`
                   : html`
                     <${Fragment}>
                       <h2 class="ausplit">The week behind the numbers</h2>
@@ -1513,8 +1627,8 @@ function App() {
         <//>`}
 
       <${Drawer} open=${!!sel} onClose=${() => setSel(null)}>
-        <${LineEditor} row=${sel} raw=${sel ? rawByKey[rowKey(sel)] : null} D=${D}
-                       onDone=${reloadAll}/>
+        <${LineEditor} row=${sel} D=${D} onDone=${reloadAll}
+                       raw=${sel && !sel.merged ? rawByKey[rowKey(sel)] : null}/>
       <//>
       <${Drawer} open=${!!dev} onClose=${() => setDev(null)}>
         <${Reassign} line=${dev} projects=${(D && D.projects) || []} onDone=${reloadAll}/>
