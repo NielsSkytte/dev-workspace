@@ -1,0 +1,321 @@
+/* Projects -- where everything stands.
+ *
+ * One row per project, worst attention first, in three bands. The band rule lives on the
+ * server (dashboard.project_band) so the page cannot drift from it: gone quiet, in
+ * flight, dormant. The workspace bucket is not a project and is not listed.
+ *
+ * This replaces the old "Not working on -- active projects gone quiet" panel, which
+ * stated the problem without stating the position.
+ */
+import {
+  html, render, useState, useMemo, useEffect,
+  Shell, Tile, Drawer, Empty, Fragment, useData, launch, hrs, ago, fresh, label, plural,
+} from './app.js';
+
+const BANDS = [
+  ['quiet', 'Gone quiet', 'active, and nobody has touched it in 14 days'],
+  ['inflight', 'In flight', 'worked in the last 14 days'],
+  ['dormant', 'Dormant', 'the context reads complete, delivered or archived'],
+];
+
+const worst = (a, b) => (b === null ? 1e9 : b) - (a === null ? 1e9 : a);
+
+function sortBand(band, rows) {
+  if (band === 'inflight') {
+    return rows.slice().sort((a, b) =>
+      (a.days_idle - b.days_idle) || (b.hours_30d - a.hours_30d));
+  }
+  return rows.slice().sort((a, b) => worst(a.days_idle, b.days_idle));
+}
+
+const statusOf = p => (p.ctx_status || p.status || '').trim().toLowerCase() || 'no status';
+
+/* -> [{key, title, hint, rows}] in the order they should appear.
+   Activity is the default because it answers "what is slipping"; status answers
+   "what did I say this project is", which is a different question and sometimes the
+   one being asked. */
+function groupRows(mode, projects) {
+  if (mode === 'status') {
+    const by = {};
+    projects.forEach(p => { (by[statusOf(p)] = by[statusOf(p)] || []).push(p); });
+    return Object.keys(by)
+      .sort((a, b) => by[b].length - by[a].length || a.localeCompare(b))
+      .map(key => ({
+        key,
+        title: key.charAt(0).toUpperCase() + key.slice(1),
+        hint: 'as the context declares it',
+        rows: sortBand('quiet', by[key]),
+      }));
+  }
+  return BANDS
+    .map(([key, title, hint]) => ({
+      key, title, hint, rows: sortBand(key, projects.filter(p => p.band === key)),
+    }))
+    .filter(b => b.rows.length);
+}
+
+/* Which groups are folded away, remembered per viewer. A private window or blocked
+   site data just means the page opens with everything expanded. */
+const FOLD_KEY = 'dev-dashboard-projects-folded';
+
+function useFolded() {
+  const [folded, setFolded] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || '[]')); }
+    catch (e) { return new Set(); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify([...folded])); } catch (e) { /* ignore */ }
+  }, [folded]);
+  const toggle = id => setFolded(f => {
+    const next = new Set(f);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  return [folded, toggle, () => setFolded(new Set())];
+}
+
+/* ---------- row ---------- */
+
+function Row({ p, th, onOpen }) {
+  const f = fresh(p.days_idle, th);
+  const c = p.counts;
+  const standAge = p.standing_date ? daysBetween(p.standing_date) : null;
+  return html`
+    <tr class="clickable" onClick=${() => onOpen(p)}>
+      <td>
+        <b>${label(p)}</b>
+        <div class="sub">${p.fno_code}</div>
+      </td>
+      <td class="ink2">${p.ctx_status || p.status || '—'}</td>
+      <td>
+        <span style=${'color:' + f.c}>${f.i}</span> ${f.w}
+        <div class="sub">${ago(p.days_idle)}</div>
+      </td>
+      <td>
+        ${p.standing_date || html`<span class="muted">no card</span>`}
+        ${standAge === null ? null : html`<div class="sub">${ago(standAge)}</div>`}
+      </td>
+      <td class="num">
+        ${c.in_progress || c.open
+          ? html`${c.in_progress} ip / ${c.open} op`
+          : html`<span class="muted">—</span>`}
+        ${c.parked ? html`<div class="sub">${c.parked} parked</div>` : null}
+      </td>
+      <td class="ink2 opt">${p.blocked_people.length
+        ? p.blocked_people.join(', ')
+        : html`<span class="muted">—</span>`}</td>
+      <td class="num">${c.asks_unsent
+        ? html`<span style="color:var(--accent);font-weight:600">${c.asks_unsent}</span>`
+        : html`<span class="muted">—</span>`}</td>
+      <td class="num">${p.hours_month ? hrs(p.hours_month) : html`<span class="muted">—</span>`}</td>
+    </tr>`;
+}
+
+function daysBetween(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return null;
+  const now = new Date();
+  return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - d) / 86400000);
+}
+
+/* ---------- table ---------- */
+
+function Table({ projects, th, onOpen, mode, folded, onToggle }) {
+  const bands = groupRows(mode, projects).filter(b => b.rows.length);
+  const n = bands.reduce((s, b) => s + b.rows.length, 0);
+
+  return html`
+    <section>
+      <h2>Projects${n ? ' — ' + n : ''}</h2>
+      ${!bands.length ? html`<div class="card"><${Empty}>No project matches.<//></div>` : html`
+      <div class="card">
+      <table>
+        <tr>
+          <th>Project</th><th>Status</th><th>Last worked</th><th>Standing</th>
+          <th class="num">Tasks</th><th class="opt">Blocked on</th><th class="num">Asks</th>
+          <th class="num">Hours MTD</th>
+        </tr>
+        ${bands.map(b => {
+          const id = mode + ':' + b.key;
+          const shut = folded.has(id);
+          return html`
+          <${Fragment} key=${b.key}>
+            <tr class=${'band band-' + b.key}>
+              <td class="bandhead" colspan="8">
+                <button class="fold" onClick=${() => onToggle(id)}
+                        aria-expanded=${shut ? 'false' : 'true'}>
+                  <span class="caret">${shut ? '▸' : '▾'}</span>
+                  ${b.title} — ${b.rows.length}
+                  <span class="muted">· ${shut ? 'hidden' : b.hint}</span>
+                </button>
+              </td>
+            </tr>
+            ${shut ? null
+              : b.rows.map(p => html`<${Row} key=${p.key} p=${p} th=${th} onOpen=${onOpen}/>`)}
+          <//>`;
+        })}
+      </table>
+      </div>`}
+    </section>`;
+}
+
+/* ---------- detail ---------- */
+
+function List({ title, items }) {
+  if (!items || !items.length) return null;
+  return html`
+    <div class="block"><h4>${title}</h4>
+      <ul class="tight">${items.map((x, i) => html`<li key=${i}>${x}</li>`)}</ul></div>`;
+}
+
+function Detail({ p, tasks }) {
+  if (!p) return null;
+  const mine = tasks.filter(t => t.project === p.key && t.state !== 'done' && t.state !== 'cancelled');
+  return html`
+    <h3>${label(p)}</h3>
+    <p class="sub">${p.key}</p>
+    <dl class="kv">
+      <dt>F&O</dt><dd>${p.fno_code}</dd>
+      <dt>Status</dt><dd>${p.ctx_status || p.status || '—'}</dd>
+      <dt>Last worked</dt><dd>${ago(p.days_idle)}${p.last_activity ? ' · ' + p.last_activity : ''}</dd>
+      <dt>Card</dt><dd>${p.card_shape === 'card' ? 'resume card' : p.card_shape === 'legacy' ? 'legacy CONTEXT.md' : 'none'}</dd>
+      ${p.standing_date ? html`<dt>Where we stand</dt><dd>${p.standing_date}</dd>` : null}
+      <dt>Hours</dt><dd>${hrs(p.hours_month)} this month · ${hrs(p.hours)} all time</dd>
+    </dl>
+    ${p.goal ? html`<div class="block"><h4>Goal</h4><p class="ink2">${p.goal}</p></div>` : null}
+    ${p.focus ? html`<div class="block"><h4>Current focus</h4><p class="ink2">${p.focus}</p></div>` : null}
+    <${List} title="Blocked on others" items=${p.blocked_people}/>
+    <${List} title="In progress" items=${p.in_progress}/>
+    <${List} title="Blocked on" items=${p.blocked_on}/>
+    <${List} title="Next actions" items=${p.next_actions}/>
+    <${List} title="Open threads" items=${p.open_threads}/>
+    ${mine.length ? html`
+      <div class="block"><h4>${plural(mine.length, 'task')}</h4>
+        ${mine.map(t => html`
+          <div class="tcard" key=${t.slug}>
+            <b>${t.title || t.slug}</b>
+            <div class="sub">${t.state}${t.fno_task ? ' · ' + t.fno_task : ''}</div>
+          </div>`)}
+      </div>` : null}
+    <div class="block" style="display:flex;gap:8px">
+      <button class="primary" onClick=${() => launch(p.path, 'claude')}>Start a session</button>
+      <button onClick=${() => launch(p.path, 'code')}>VS Code</button>
+    </div>
+    <div class="block"><code>${p.path}</code></div>`;
+}
+
+/* ---------- customers ---------- */
+
+function Customers({ customers, th, picked, onPick }) {
+  if (!customers.length) return null;
+  return html`
+    <section>
+      <h2>Customers${picked ? ' \u2014 filtering on ' + picked : ''}</h2>
+      <div class="card">
+        <table>
+          <tr><th>Customer</th><th>Last activity</th>
+            <th class="num">Proj</th><th class="num">Tasks</th><th class="num">Hours</th></tr>
+          ${customers.map(c => {
+            const f = fresh(c.days_idle, th);
+            return html`
+              <tr key=${c.name} class=${'clickable' + (picked === c.name ? ' picked' : '')}
+                  title=${picked === c.name ? 'click to clear the filter' : 'click to show only this customer'}
+                  onClick=${() => onPick(picked === c.name ? null : c.name)}>
+                <td><b>${c.name}</b><div class="sub">${c.status || ''}</div></td>
+                <td><span style=${'color:' + f.c}>${f.i}</span> ${ago(c.days_idle)}</td>
+                <td class="num">${c.projects.length}</td>
+                <td class="num">${c.open_tasks || html`<span class="muted">—</span>`}</td>
+                <td class="num">${hrs(c.hours)}<div class="sub">${c.hours_30d ? hrs(c.hours_30d) + ' / 30d' : ''}</div></td>
+              </tr>`;
+          })}
+        </table>
+      </div>
+    </section>`;
+}
+
+/* ---------- page ---------- */
+
+function App() {
+  const { data: D, err, stamp, reload, auto, setAuto } = useData('/api/data');
+  const [sel, setSel] = useState(null);
+  const [q, setQ] = useState('');
+  const [scope, setScope] = useState('all');
+  const [mode, setMode] = useState('band');
+  const [cust, setCust] = useState(null);
+  const [folded, toggleFold, expandAll] = useFolded();
+
+  const rows = useMemo(() => {
+    if (!D) return [];
+    const needle = q.trim().toLowerCase();
+    return D.projects.filter(p => {
+      if (p.band === 'workspace') return false;
+      // a picked customer is the stronger statement; it overrides the scope chips
+      if (cust) { if (p.customer !== cust) return false; }
+      else {
+        if (scope === 'customers' && !p.key.startsWith('customers/')) return false;
+        if (scope === 'own' && !p.key.startsWith('own/')) return false;
+      }
+      if (!needle) return true;
+      return (label(p) + ' ' + p.key + ' ' + p.fno_code + ' ' + p.goal + ' ' + p.focus)
+        .toLowerCase().includes(needle);
+    });
+  }, [D, q, scope, cust]);
+
+  const counts = useMemo(() => {
+    const n = { quiet: 0, inflight: 0, dormant: 0, asks: 0 };
+    rows.forEach(p => { n[p.band] = (n[p.band] || 0) + 1; n.asks += p.counts.asks_unsent; });
+    return n;
+  }, [rows]);
+
+  const tiles = [
+    html`<${Tile} key="a" label="Projects" value=${rows.length} foot="excluding the workspace"/>`,
+    html`<${Tile} key="i" label="In flight" value=${counts.inflight} foot="worked in 14 days"/>`,
+    html`<${Tile} key="q" label="Gone quiet" value=${counts.quiet} hot=${counts.quiet > 0}
+                  foot="active, untouched"/>`,
+    html`<${Tile} key="k" label="Unsent asks" value=${counts.asks} hot=${counts.asks > 0}
+                  foot="across these projects"/>`,
+  ];
+
+  return html`
+    <${Shell} here="/projects" title="Projects"
+              sub=${D ? plural(rows.length, 'project') : 'loading…'}
+              stamp=${stamp} auto=${auto} onAuto=${() => setAuto(a => !a)} onRefresh=${reload}
+              tiles=${tiles}>
+      ${err ? html`<div class="alert">Cannot reach the server: ${err}</div>` : null}
+
+      <div class="filterbar">
+        <span class="flabel">Scope</span>
+        ${cust
+          ? html`<button class="chip on" onClick=${() => setCust(null)}
+                         title="clear the customer filter">${cust} \u00d7</button>`
+          : [['all', 'All'], ['customers', 'Customers'], ['own', 'Own']].map(([k, tx]) => html`
+              <button key=${k} class=${'chip' + (scope === k ? ' on' : '')}
+                      onClick=${() => setScope(k)}>${tx}</button>`)}
+        <span class="fsep"></span>
+        <span class="flabel">Group by</span>
+        ${[['band', 'Activity'], ['status', 'Status']].map(([k, tx]) => html`
+          <button key=${k} class=${'chip' + (mode === k ? ' on' : '')}
+                  onClick=${() => setMode(k)}>${tx}</button>`)}
+        ${folded.size ? html`
+          <button class="chip" onClick=${expandAll}>Expand all (${folded.size} folded)</button>`
+          : null}
+        <span class="fsep"></span>
+        <input type="search" placeholder="Filter projects…" value=${q}
+               onInput=${e => setQ(e.target.value)}/>
+      </div>
+
+      ${D ? html`
+        <div class="split-wide">
+          <${Customers} customers=${D.customers} th=${D.thresholds}
+                        picked=${cust} onPick=${setCust}/>
+          <${Table} projects=${rows} th=${D.thresholds} onOpen=${setSel}
+                    mode=${mode} folded=${folded} onToggle=${toggleFold}/>
+        </div>` : null}
+
+      <${Drawer} open=${!!sel} onClose=${() => setSel(null)}>
+        <${Detail} p=${sel} tasks=${D ? D.tasks : []}/>
+      <//>
+    <//>`;
+}
+
+render(html`<${App}/>`, document.getElementById('root'));

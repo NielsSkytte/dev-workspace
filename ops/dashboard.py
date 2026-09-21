@@ -25,7 +25,13 @@ which is also what makes that session's time attribute to the right project.
 Pure stdlib, ASCII-only (workspace convention).
 """
 import os, sys, re, json, glob, datetime, subprocess, shutil, importlib.util
+import io, time, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from lib.substrate import (read, frontmatter, identity, sections, bullets,
+                           labelled, field, plain, first_para, days_ago)
+from lib.workspace import customer_dirs, project_dirs
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,133 +60,34 @@ def _load_rollup():
 rollup = _load_rollup()
 
 
+_daybrief_mod = None
+
+
 def _daybrief():
-    """ops/bin/daybrief.py, loaded on demand so a fault there never stops the server."""
-    path = os.path.join(ROOT, "ops", "bin", "daybrief.py")
-    spec = importlib.util.spec_from_file_location("daybrief", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """ops/bin/daybrief.py, loaded on demand so a fault there never stops the server.
+
+    Memoised after the first success: /api/today and the project table both want it, and
+    re-executing the module per request costs a full parse. A failed load leaves the memo
+    empty, so the next call retries."""
+    global _daybrief_mod
+    if _daybrief_mod is None:
+        path = os.path.join(ROOT, "ops", "bin", "daybrief.py")
+        spec = importlib.util.spec_from_file_location("daybrief", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _daybrief_mod = mod
+    return _daybrief_mod
 
 
-# ---------- small parsers ----------
+def _daybrief_model():
+    """The day-brief model, or {} if it cannot be built.
 
-def read(path):
+    The project table borrows the resume-card fields from here rather than parsing the
+    cards a second time. A fault in the brief must not take the dashboard down with it."""
     try:
-        with open(path, encoding="utf-8") as f:
-            return f.read()
+        return _daybrief().build()
     except Exception:
-        return ""
-
-
-def parse_identity(text):
-    """The `## Identity` block of a project CLAUDE.md -> {key: value}."""
-    out = {}
-    block = re.search(r"^## Identity\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
-    if not block:
-        return out
-    for line in block.group(1).splitlines():
-        m = re.match(r"^([a-z_]+):(.*)$", line.strip())
-        if m:
-            val = m.group(2).split("#", 1)[0].strip()
-            out[m.group(1)] = val
-    return out
-
-
-def parse_frontmatter(text):
-    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
-    if not m:
         return {}
-    out = {}
-    for line in m.group(1).splitlines():
-        k = re.match(r"^([a-z_]+):(.*)$", line.strip())
-        if k:
-            out[k.group(1)] = k.group(2).split("#", 1)[0].strip()
-    return out
-
-
-def sections(text):
-    """-> {heading: body} for every `## Heading` in a markdown file."""
-    out, cur, buf = {}, None, []
-    for line in text.splitlines():
-        m = re.match(r"^## +(.+?)\s*$", line)
-        if m:
-            if cur:
-                out[cur] = "\n".join(buf).strip()
-            cur, buf = m.group(1), []
-        elif cur:
-            buf.append(line)
-    if cur:
-        out[cur] = "\n".join(buf).strip()
-    return out
-
-
-def bullets(body, limit=6):
-    """Leading bullet / numbered items of a section body, markdown stripped to plain text."""
-    out = []
-    for line in (body or "").splitlines():
-        s = line.strip()
-        m = re.match(r"^(?:[-*]|\d+\.)\s+(.*)$", s)
-        if m:
-            item = m.group(1).strip()
-            if item.startswith("~~"):
-                continue          # struck through = resolved; not an open item
-            out.append(plain(item))
-    return out[:limit]
-
-
-def labelled(body, label):
-    """Bullets that follow a `**Label:**` line, up to the next bold label or blank run."""
-    if not body:
-        return []
-    lines = body.splitlines()
-    out, grabbing = [], False
-    for line in lines:
-        s = line.strip()
-        if re.match(r"^\*\*.+?:\*\*", s):
-            grabbing = s.lower().startswith("**" + label.lower())
-            rest = re.sub(r"^\*\*.+?:\*\*", "", s).strip()
-            if grabbing and rest:
-                out.append(plain(rest))
-            continue
-        if grabbing:
-            m = re.match(r"^(?:[-*]|\d+\.)\s+(.*)$", s)
-            if m:
-                out.append(plain(m.group(1)))
-            elif not s:
-                continue
-    return out[:6]
-
-
-def field(body, label):
-    """The value of a `**Label:** value` line."""
-    m = re.search(r"^\*\*" + re.escape(label) + r":\*\*\s*(.+)$", body or "", re.M)
-    return plain(m.group(1)) if m else ""
-
-
-def plain(s):
-    s = re.sub(r"`([^`]*)`", r"\1", s)
-    s = re.sub(r"\*\*([^*]*)\*\*", r"\1", s)
-    s = re.sub(r"~~([^~]*)~~", r"\1", s)
-    s = re.sub(r"\[\[([^\]]*)\]\]", r"\1", s)
-    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
-    return s.strip()
-
-
-def first_para(body, limit=420):
-    for para in (body or "").split("\n\n"):
-        p = plain(" ".join(x.strip() for x in para.splitlines()).strip())
-        if p and not p.startswith("---"):
-            return p[:limit] + ("..." if len(p) > limit else "")
-    return ""
-
-
-def iso_days_ago(date_str, today):
-    try:
-        d = datetime.date.fromisoformat(date_str[:10])
-    except Exception:
-        return None
-    return (datetime.date.fromisoformat(today) - d).days
 
 
 # ---------- discovery ----------
@@ -189,10 +96,7 @@ def discover():
     """-> (projects, customers). A project is a folder with its own CLAUDE.md."""
     projects, customers = {}, {}
 
-    for cdir in sorted(glob.glob(os.path.join(ROOT, "customers", "*"))):
-        if not os.path.isdir(cdir):
-            continue
-        cname = os.path.basename(cdir)
+    for cname, cdir in customer_dirs(ROOT):
         ctext = read(os.path.join(cdir, "CLAUDE.md"))
         cctx = sections(read(os.path.join(cdir, "CONTEXT.md")))
         prof = {}
@@ -209,16 +113,12 @@ def discover():
             "focus": first_para(cctx.get("Current Focus", "")),
             "projects": [],
         }
-        for pdir in sorted(glob.glob(os.path.join(cdir, "*"))):
-            if os.path.isdir(pdir) and os.path.exists(os.path.join(pdir, "CLAUDE.md")):
-                key = "customers/%s/%s" % (cname, os.path.basename(pdir))
-                projects[key] = build_project(key, pdir, cname)
-                customers[cname]["projects"].append(key)
+        for key, pdir in project_dirs(ROOT, cname):
+            projects[key] = build_project(key, pdir, cname)
+            customers[cname]["projects"].append(key)
 
-    for pdir in sorted(glob.glob(os.path.join(ROOT, "own", "*"))):
-        if os.path.isdir(pdir) and os.path.exists(os.path.join(pdir, "CLAUDE.md")):
-            key = "own/" + os.path.basename(pdir)
-            projects[key] = build_project(key, pdir, None)
+    for key, pdir in project_dirs(ROOT, "own"):
+        projects[key] = build_project(key, pdir, None)
 
     projects["Dev"] = {
         "key": "Dev", "name": "Dev (workspace itself)", "customer": None, "path": ROOT,
@@ -232,7 +132,7 @@ def discover():
 
 
 def build_project(key, pdir, customer):
-    ident = parse_identity(read(os.path.join(pdir, "CLAUDE.md")))
+    ident = identity(read(os.path.join(pdir, "CLAUDE.md")))
     ctx = sections(read(os.path.join(pdir, "CONTEXT.md")))
     state = ctx.get("State", "")
     return {
@@ -258,7 +158,7 @@ def collect_tasks():
     for state in ("in-progress", "open", "done", "cancelled"):
         for path in sorted(glob.glob(os.path.join(ROOT, "ops", "tasks", state, "*.md"))):
             text = read(path)
-            fm = parse_frontmatter(text)
+            fm, _ = frontmatter(text)
             body = sections(text)
             log = bullets(body.get("Log", ""), limit=50)
             out.append({
@@ -894,25 +794,116 @@ def active_sessions():
 
 
 def collect_todos():
+    """The unchecked captures in ops/TODO.md.
+
+    `line` and `raw` carry the source position, so ticking one can rewrite exactly that
+    line and refuse if the file moved underneath the page."""
     text = read(os.path.join(ROOT, "ops", "TODO.md"))
     open_items = []
-    for line in text.splitlines():
+    for i, line in enumerate(text.splitlines()):
         m = re.match(r"^- \[ \]\s*(\d{4}-\d{2}-\d{2})?\s*[-\u2014]?\s*(.*)$", line.strip())
         if m:
-            open_items.append({"date": m.group(1) or "", "text": plain(m.group(2))[:300]})
+            open_items.append({"date": m.group(1) or "", "text": plain(m.group(2))[:300],
+                               "line": i, "raw": line})
     return open_items
+
+
+# ---------- project status (the Projects table) ----------
+
+DORMANT_RE = re.compile(r"complete|delivered|archived", re.I)
+INFLIGHT_DAYS = 14
+
+
+def project_band(p):
+    """Which band a project sits in on the Projects page.
+
+    The same rule the overview applied in the browser, moved here so one definition
+    serves every page and can be tested:
+      workspace  the Dev bucket, which is not a project
+      dormant    the context says complete / delivered / archived
+      inflight   worked within INFLIGHT_DAYS
+      quiet      active, but nobody has touched it"""
+    if p["key"] == "Dev":
+        return "workspace"
+    if DORMANT_RE.search(p.get("ctx_status", "") or ""):
+        return "dormant"
+    idle = p.get("days_idle")
+    return "inflight" if idle is not None and idle <= INFLIGHT_DAYS else "quiet"
+
+
+EMPTY_COUNTS = {"in_progress": 0, "open": 0, "parked": 0, "due_back": 0,
+                "stalled": 0, "asks_unsent": 0, "devops": 0, "total": 0}
+
+
+def merge_card_fields(projects):
+    """Add the resume-card and task-count fields the Projects table needs.
+
+    They already exist in the day-brief model, which parses the same cards; borrowing
+    them keeps one parser rather than two that can disagree. The card's `blocked_on` is
+    a list of PEOPLE and its `open_threads` is a COUNT, so neither can reuse the name
+    the CONTEXT State block already holds on the project."""
+    model = _daybrief_model()
+    by_key = {b["key"]: b for b in model.get("projects", [])}
+    for key, p in projects.items():
+        b = by_key.get(key) or {}
+        card = b.get("card") or {}
+        p["card_shape"] = card.get("shape", "none")
+        p["goal"] = card.get("goal", "")
+        p["standing_date"] = card.get("standing_date", "")
+        p["blocked_people"] = card.get("blocked_on", []) or []
+        p["card_threads"] = card.get("open_threads", 0) or 0
+        p["counts"] = b.get("counts") or dict(EMPTY_COUNTS)
 
 
 # ---------- assembly ----------
 
-def collect():
+CACHE_TTL = 30.0                       # s
+_cache = {"data": {"at": 0.0, "v": None}, "today": {"at": 0.0, "v": None}}
+_cache_lock = threading.Lock()
+
+
+def _memo(name, build, force=False):
+    """Serve `name` from the memo, or rebuild it.
+
+    One walk reads every task file, every CLAUDE.md and CONTEXT.md, every heartbeat and
+    the XLSX. Without this, Refresh, the 60 s auto-refresh and three pages sharing one
+    payload each pay for a full walk. The lock is held across the build so two concurrent
+    misses do not both walk; every write path calls invalidate(), so a change you just
+    made is never hidden behind the memo."""
+    slot = _cache[name]
+    with _cache_lock:
+        if not force and slot["v"] is not None and time.monotonic() - slot["at"] < CACHE_TTL:
+            return slot["v"]
+        slot["v"] = build()
+        slot["at"] = time.monotonic()
+        return slot["v"]
+
+
+def collect(force=False):
+    """The dashboard payload -- projects, customers, tasks, time, hygiene."""
+    return _memo("data", _collect, force)
+
+
+def collect_daybrief(force=False):
+    """The day-brief model -- the task view Today renders, with its progress dates."""
+    return _memo("today", _daybrief_model, force)
+
+
+def invalidate():
+    """Drop both memos, so the next read sees what a write just did."""
+    with _cache_lock:
+        for slot in _cache.values():
+            slot["v"] = None
+
+
+def _collect():
     today = rollup.to_local(datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%d")
     projects, customers = discover()
     tasks = collect_tasks()
     entries, unfinalized = collect_time(today)
     todos = collect_todos()
     for t in todos:
-        t["age"] = iso_days_ago(t["date"], today) if t["date"] else None
+        t["age"] = days_ago(t["date"], today) if t["date"] else None
 
     # canonical key match (timesheets carry historical casing and merged/deleted folders)
     lookup = {k.lower(): k for k in projects}
@@ -930,7 +921,7 @@ def collect():
         h["total"] += e["hours"]
         if e["date"][:7] == today[:7]:
             h["month"] += e["hours"]
-        age = iso_days_ago(e["date"], today)
+        age = days_ago(e["date"], today)
         if age is not None and age <= 30:
             h["d30"] += e["hours"]
         if e["date"] > h["last"]:
@@ -957,10 +948,13 @@ def collect():
         p["by_date"] = by_date_proj.get(key, {})
         last = max([x for x in (h["last"], p.get("last_worked", "")) if x] or [""])
         p["last_activity"] = last
-        p["days_idle"] = iso_days_ago(last, today) if last else None
+        p["days_idle"] = days_ago(last, today) if last else None
         p["tasks"] = [t["slug"] for t in tasks_by_project.get(key, [])
                       if t["state"] in ("open", "in-progress")]
         p["tasks_done"] = len([t for t in tasks_by_project.get(key, []) if t["state"] == "done"])
+        p["band"] = project_band(p)
+
+    merge_card_fields(projects)
 
     for cname, c in customers.items():
         nk = "node:customers/" + cname
@@ -972,7 +966,7 @@ def collect():
         if nl:
             lasts.append(nl)
         c["last_activity"] = max(lasts) if lasts else ""
-        c["days_idle"] = iso_days_ago(c["last_activity"], today) if c["last_activity"] else None
+        c["days_idle"] = days_ago(c["last_activity"], today) if c["last_activity"] else None
         c["open_tasks"] = sum(len(projects[k]["tasks"]) for k in c["projects"])
 
     week = rollup.week_key(today)
@@ -1043,6 +1037,11 @@ def launch(path, mode, prompt=""):
     'claude' may carry an initial `prompt` (e.g. a /task invocation). Returns (ok, message)."""
     if mode not in ("claude", "code", "file"):
         return False, "unknown launch mode: %r" % mode
+    # An empty path is not the workspace root: abspath("") is the server's own working
+    # directory, which is inside ROOT and exists, so it would pass the guard below and
+    # start a session wherever the server happens to be running.
+    if not path:
+        return False, "no path given"
     path = os.path.abspath(path)
     if not path.lower().startswith(ROOT.lower()) or not os.path.exists(path):
         return False, "path outside the workspace"
@@ -1152,7 +1151,201 @@ def reassign_dev(date, to_project, activity="", fno_task=""):
                   % (moved, to_project, date, touched, "" if touched == 1 else "s"))
 
 
+# ---------- task mutations (direct-write: mechanical state only) ----------
+# Session-free path for the day view: moving a task between states and updating
+# frontmatter fields that carry no judgment. Writing a Progress block or a Next
+# step still belongs to a session.
+#
+# Safety: the task must exist under ROOT/ops/tasks; only the listed actions are
+# accepted -- no free-form writes.
+
+def _fm_line(key, val):
+    return "%s: %s" % (key, val) if val else "%s:" % key
+
+
+def _apply_fm(text, updates):
+    """Apply {field: new_value} to the frontmatter block of a task file.
+    Empty-string value writes 'field:' (blank). A field not already present is
+    appended. Every other line is kept verbatim -- inline comments, key order,
+    indented block values, and the blank line before the body.
+
+    Values are written literally. The line is REPLACED, not regex-substituted:
+    a value carrying a backslash (a Windows path) or a group reference is
+    ordinary free text from the day view, and as a substitution template it
+    would raise or silently rewrite itself."""
+    m = re.match(r"^(---[ \t]*\n)(.*?\n)(---[ \t]*\n)", text, re.S)
+    if not m:
+        return text
+    lines = m.group(2).splitlines()
+    rest = text[m.end():]
+    seen = set()
+    for i, line in enumerate(lines):
+        k = re.match(r"([A-Za-z_][\w-]*):", line)
+        if k and k.group(1) in updates and k.group(1) not in seen:
+            seen.add(k.group(1))
+            lines[i] = _fm_line(k.group(1), updates[k.group(1)])
+    for key, val in updates.items():
+        if key not in seen:
+            lines.append(_fm_line(key, val))
+    return m.group(1) + "\n".join(lines) + "\n" + m.group(3) + rest
+
+
+def _append_log(text, date_str, note):
+    """Prepend a dated bullet to ## Log, creating the section if absent."""
+    note = re.sub(r"\s+", " ", note).strip()[:500]
+    entry = "- %s — %s\n" % (date_str, note)
+    m = re.search(r"^(## Log[^\n]*\n)", text, re.M)
+    if m:
+        return text[:m.end()] + entry + text[m.end():]
+    return text.rstrip("\n") + "\n\n## Log\n" + entry
+
+
+def todo_mutate(index, action, raw):
+    """Tick or drop one unchecked line of ops/TODO.md.
+
+    The file is hand-maintained prose, so the write is surgical. The caller names the
+    line number AND the line it was showing; if the two no longer agree the file moved
+    under the page and nothing is written. Only that line's text changes -- its
+    indentation, its inner spacing and its line ending are put back as they were, which
+    is also what keeps a CRLF file from being rewritten wholesale."""
+    if action not in ("tick", "drop"):
+        return False, "unknown action: %r" % (action,)
+    path = os.path.join(ROOT, "ops", "TODO.md")
+    try:
+        with io.open(path, encoding="utf-8", newline="") as f:
+            text = f.read()
+    except Exception as exc:
+        return False, str(exc)
+    lines = text.splitlines(keepends=True)
+    if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(lines):
+        return False, "line %r is outside TODO.md" % (index,)
+    content = lines[index].rstrip("\r\n")
+    ending = lines[index][len(content):]
+    if content != raw:
+        return False, "TODO.md changed since the page loaded -- refresh"
+    m = re.match(r"^(\s*)- \[ \](\s*)(.*)$", content)
+    if not m:
+        return False, "not an unchecked item"
+    indent, gap, body = m.group(1), m.group(2), m.group(3)
+    today = datetime.date.today().isoformat()
+    if action == "tick":
+        new = "%s- [x]%s%s  (done %s)" % (indent, gap, body, today)
+    else:
+        new = "%s- [x]%s~~%s~~  (dropped %s)" % (indent, gap, body, today)
+    lines[index] = new + ending
+    try:
+        with io.open(path, "w", encoding="utf-8", newline="") as f:
+            f.write("".join(lines))
+    except Exception as exc:
+        return False, str(exc)
+    return True, "%s: %s" % ("ticked" if action == "tick" else "dropped", body[:60])
+
+
+def task_mutate(slug, action, **kwargs):
+    """Mechanical task mutations from the day-view without a session.
+
+    action: done | open | in-progress | ask-sent | ask-answered | resume | park | wait
+    kwargs: date (park), waiting_on (wait)
+    Returns (ok, message)."""
+    if not re.match(r"^[\w-]+$", slug or ""):
+        return False, "bad slug"
+    found_state = found_path = None
+    for state in ("in-progress", "open"):
+        p = os.path.join(ROOT, "ops", "tasks", state, slug + ".md")
+        if os.path.exists(p):
+            found_state, found_path = state, p
+            break
+    if not found_path:
+        return False, "task not found: %s" % slug
+
+    text = read(found_path)
+    updates = {}
+    new_state = None
+
+    if action == "done":
+        new_state = "done"
+        updates["status"] = "done"
+    elif action == "open":
+        if found_state != "in-progress":
+            return False, "task is not in-progress"
+        new_state = "open"
+        updates["status"] = "open"
+    elif action == "in-progress":
+        if found_state != "open":
+            return False, "task is not open"
+        new_state = "in-progress"
+        updates["status"] = "in-progress"
+    elif action == "ask-sent":
+        updates["customer_ask"] = "sent " + datetime.date.today().isoformat()
+    elif action == "ask-answered":
+        updates["customer_ask"] = "answered"
+    elif action == "resume":
+        updates["waiting_on"] = ""
+        updates["resume_on"] = ""
+    elif action == "park":
+        date = (kwargs.get("date") or "").strip()
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+            return False, "bad date: %r" % date
+        updates["resume_on"] = date
+        updates["waiting_on"] = ""
+    elif action == "wait":
+        wo = (kwargs.get("waiting_on") or "").strip()
+        if not wo:
+            return False, "waiting_on required"
+        updates["waiting_on"] = wo
+        updates["resume_on"] = ""
+    elif action == "comment":
+        txt = (kwargs.get("text") or "").strip()
+        if not txt:
+            return False, "empty note"
+        new_text = _append_log(text, datetime.date.today().isoformat(), txt)
+        try:
+            with open(found_path, "w", encoding="utf-8") as f:
+                f.write(new_text)
+        except Exception as exc:
+            return False, str(exc)
+        return True, "note added: %s" % slug
+    else:
+        return False, "unknown action: %r" % action
+
+    new_text = _apply_fm(text, updates)
+    target = (os.path.join(ROOT, "ops", "tasks", new_state, slug + ".md")
+              if new_state else found_path)
+    try:
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(new_text)
+        if new_state and target != found_path:
+            os.remove(found_path)
+    except Exception as exc:
+        return False, str(exc)
+    return True, "%s: %s" % (action, slug)
+
+
 # ---------- server ----------
+
+# Three pages, one payload. `/overview` stays until the Time page replaces it.
+PAGES = {"/": "web/today.html", "/index.html": "web/today.html", "/today": "web/today.html",
+         "/projects": "web/projects.html", "/time": "web/time.html",
+         "/overview": "dashboard.html", "/overview.html": "dashboard.html"}
+WEB = os.path.join(HERE, "web")
+MIME = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
+        ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
+        ".svg": "image/svg+xml", ".ico": "image/x-icon", ".png": "image/png",
+        ".woff2": "font/woff2", ".map": "application/json; charset=utf-8"}
+
+# One entry per write path. Each takes the decoded request body and returns (ok, message).
+POST_ROUTES = {
+    "/api/launch": lambda r: launch(r.get("path", ""), r.get("mode", "claude"),
+                                    r.get("prompt", "")),
+    "/api/reassign": lambda r: reassign_dev(r.get("date", ""), r.get("to", ""),
+                                            r.get("activity", ""), r.get("fno_task", "")),
+    "/api/task": lambda r: task_mutate(r.get("slug", ""), r.get("action", ""),
+                                       date=r.get("date", ""),
+                                       waiting_on=r.get("waiting_on", ""),
+                                       text=r.get("text", "")),
+    "/api/todo": lambda r: todo_mutate(r.get("line"), r.get("action", ""), r.get("raw", "")),
+}
+
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
@@ -1174,35 +1367,45 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/today":
             try:
-                self._send(200, json.dumps(_daybrief().build()))
+                self._send(200, json.dumps(collect_daybrief()))
             except Exception as exc:
                 self._send(500, json.dumps({"error": str(exc)}))
             return
-        pages = {"/": "today.html", "/index.html": "today.html", "/today": "today.html",
-                 "/overview": "dashboard.html", "/overview.html": "dashboard.html"}
-        if path in pages:
-            html = read(os.path.join(HERE, pages[path]))
-            if not html:
-                self._send(500, pages[path] + " not found", "text/plain")
-                return
-            self._send(200, html, "text/html; charset=utf-8")
+        if path in PAGES:
+            self._send_file(os.path.join(HERE, PAGES[path]))
+            return
+        if path.startswith("/web/"):
+            self._send_file(os.path.join(WEB, path[len("/web/"):]))
             return
         self._send(404, "not found", "text/plain")
 
+    def _send_file(self, path):
+        """Serve one file from disk, refusing anything outside ops/."""
+        full = os.path.abspath(path)
+        if not full.startswith(os.path.abspath(HERE) + os.sep):
+            self._send(403, "forbidden", "text/plain")
+            return
+        try:
+            with open(full, "rb") as f:
+                body = f.read()
+        except Exception:
+            self._send(404, os.path.basename(full) + " not found", "text/plain")
+            return
+        ctype = MIME.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
+        self._send(200, body, ctype)
+
     def do_POST(self):
-        launching = self.path.startswith("/api/launch")
-        if not launching and not self.path.startswith("/api/reassign"):
+        path = self.path.split("?", 1)[0]
+        handler = POST_ROUTES.get(path)
+        if handler is None:
             self._send(404, "{}")
             return
         try:
             n = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(n) or b"{}")
-            if launching:
-                ok, msg = launch(req.get("path", ""), req.get("mode", "claude"),
-                                 req.get("prompt", ""))
-            else:
-                ok, msg = reassign_dev(req.get("date", ""), req.get("to", ""),
-                                       req.get("activity", ""), req.get("fno_task", ""))
+            ok, msg = handler(req)
+            if ok:
+                invalidate()        # a write must not sit behind the payload memo
             self._send(200 if ok else 400, json.dumps({"ok": ok, "message": msg}))
         except Exception as exc:
             self._send(500, json.dumps({"ok": False, "message": str(exc)}))
