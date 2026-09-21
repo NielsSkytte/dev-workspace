@@ -138,13 +138,19 @@ function clipWeek(w, allowed, today) {
 /* Distribute a dimension's F&O entry total across its rows in proportion to their work
    hours, rounded to the 0.25 h F&O step, with the last row absorbing the remainder so the
    block still sums to the entry total exactly. Consolidation only moves hours BETWEEN days
-   within a dimension, so the dimension total is the thing that must survive. */
+   within a dimension, so the dimension total is the thing that must survive.
+
+   The measurements the figure rests on are distributed the same way and ride along on the
+   row (`measured`, `work`, `value`). They are not another opinion about the hours -- they
+   are the same dimension total, split by the same proportion -- so a row can show what was
+   measured beside what will be typed without the two being able to disagree. */
 function scaleRows(rows, scale) {
   if (!scale) return rows;
   const dk = r => `${r.project}|${r.activity || ''}|${r.fno_task || ''}`;
   const out = rows.map(r => Object.assign({}, r, { work: r.hours }));
   const groups = {};
   out.forEach(r => { (groups[dk(r)] || (groups[dk(r)] = [])).push(r); });
+  const share = (total, part, whole) => Math.round(total * (part / whole) * 100) / 100;
   for (const k in groups) {
     const g = groups[k], s = scale[k];
     if (!s || !s.work) continue;
@@ -152,8 +158,12 @@ function scaleRows(rows, scale) {
     if (!work) continue;
     let left = Math.round(s.entry * 4) / 4;
     g.forEach((r, i) => {
+      const part = r.hours;
+      r.measured = share(s.measured, part, work);
+      r.value = share(s.value, part, work);
+      r.work = share(s.work, part, work);
       if (i === g.length - 1) { r.hours = Math.round(left * 100) / 100; return; }
-      const v = Math.round(s.entry * (r.hours / work) * 4) / 4;
+      const v = Math.round(s.entry * (part / work) * 4) / 4;
       r.hours = v; left = Math.round((left - v) * 100) / 100;
     });
   }
@@ -162,9 +172,62 @@ function scaleRows(rows, scale) {
 
 /* ---------- readiness ---------- */
 
-function Ready({ rows, onPick, periodLabel }) {
+/* The sessions behind one line.
+ *
+ * The exact key is date + project + the two sub-dimensions AS THE TIMESHEET HOLDS THEM. It
+ * misses whenever the dimension has moved since the day was written -- an activity filled
+ * in later, a task renamed -- and a miss reads as "nothing happened", which is the one
+ * thing it never means. So a miss falls back to every session on that date and project,
+ * merged, and says that is what it did. */
+function lineEvidence(D, row) {
+  const all = D.lineSessions || {};
+  const rec = all[sessKey(row)];
+  if (rec && (rec.blocks || []).length) {
+    return { blocks: rec.blocks, more: rec.more || 0, wide: false };
+  }
+  const prefix = `${row.date}|${row.project}|`.toLowerCase();
+  const merged = {};
+  Object.keys(all).forEach(k => {
+    if (!k.startsWith(prefix)) return;
+    (all[k].blocks || []).forEach(b => {
+      const m = merged[b.session] || (merged[b.session] =
+        { session: b.session, turns: 0, hours: 0, task: b.task, lines: [] });
+      m.turns += b.turns;
+      m.hours = Math.round((m.hours + b.hours) * 100) / 100;
+      if (b.task && !m.task) m.task = b.task;
+      (b.lines || []).forEach(x => { if (!m.lines.includes(x)) m.lines.push(x); });
+    });
+  });
+  const blocks = Object.values(merged).sort((a, b) => b.hours - a.hours).slice(0, 4);
+  return { blocks, more: 0, wide: blocks.length > 0 };
+}
+
+/* The first thing said about a line. A timesheet row reads "Carl-Ras / – / –" and says
+   nothing, which is worst exactly where it matters: deciding which task an untagged line
+   belongs to. Until a line carries a written description this is the closest thing to one,
+   and it is free -- the memory hook already recorded it. */
+function lineGist(D, row, n) {
+  const said = [];
+  lineEvidence(D, row).blocks.forEach(b => (b.lines || []).forEach(x => {
+    if (x && !said.includes(x)) said.push(x);
+  }));
+  return said.slice(0, n || 1);
+}
+
+/* The readiness gate.
+ *
+ * Grouped by project and by what is missing, because that is the grain a fix is made at --
+ * one `fno_requires`, one `fno_code`, one task id usually answers the whole group. But the
+ * group is not the thing you correct: expanding it lists its lines with the date, the hours
+ * and what was said in the sessions behind each, so the one you open is the one you meant.
+ */
+function Ready({ rows, onPick, periodLabel, scaled, D }) {
+  const [open, setOpen] = useState(() => new Set());
   const short = rows.filter(r => (r.missing || []).length);
-  const hours = Math.round(short.reduce((s, r) => s + (r.work || r.hours), 0) * 100) / 100;
+  const unit = scaled ? 'work time' : 'timesheet hours';
+  const hoursOf = r => (r.work !== undefined ? r.work : r.hours);
+  const hours = Math.round(short.reduce((s, r) => s + hoursOf(r), 0) * 100) / 100;
+
   if (!short.length) {
     return html`
       <div class="card ausec">
@@ -173,33 +236,65 @@ function Ready({ rows, onPick, periodLabel }) {
           it — company, Proj ID, and whatever the customer registers on.</p>
       </div>`;
   }
+
   const byWhat = {};
   short.forEach(r => (r.missing || []).forEach(m => {
     const k = r.project + '\u0000' + m.label;
-    const g = byWhat[k] || (byWhat[k] = { project: r.project, label: m.label, why: m.why,
-                                          hours: 0, rows: [] });
-    g.hours = Math.round((g.hours + (r.work || r.hours)) * 100) / 100;
+    const g = byWhat[k] || (byWhat[k] = { id: k, project: r.project, label: m.label,
+                                          why: m.why, hours: 0, rows: [] });
+    g.hours = Math.round((g.hours + hoursOf(r)) * 100) / 100;
     g.rows.push(r);
   }));
   const groups = Object.values(byWhat).sort((a, b) => b.hours - a.hours);
+  const toggle = id => setOpen(s => {
+    const n = new Set(s);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+
   return html`
     <div class="card ausec">
-      <h3>Not ready to enter — ${short.length} line${short.length === 1 ? '' : 's'}, ${hrs(hours)} h</h3>
+      <h3>Not ready to enter — ${short.length} line${short.length === 1 ? '' : 's'}
+        ${' \u00b7 ' + hrs(hours)} h ${unit}</h3>
       <p class="sub">What the customer's own registration rule asks for and the line cannot
-        supply (<code>fno_requires</code> on the customer node; ops/time/README.md 4.1). Pick a
-        line to fill it in.</p>
+        supply (<code>fno_requires</code> on the customer node; ops/time/README.md 4.1).
+        Open a group to see its lines, then pick the one to fix.</p>
       <div style="overflow-x:auto"><table class="autable">
-        <thead><tr><th>Project</th><th>Missing</th><th class="r">Hours</th>
-          <th class="r">Lines</th><th>Why</th></tr></thead>
+        <thead><tr><th></th><th>Project</th><th>Missing</th>
+          <th class="r">${scaled ? 'Work' : 'Hours'}</th><th class="r">Lines</th>
+          <th>Why</th></tr></thead>
         <tbody>${groups.map(g => html`
-          <tr key=${g.project + g.label} class="clickable" onClick=${() => onPick(g.rows[0])}>
-            <td>${shortProject(g.project)}</td>
-            <td><b class="accentink">${g.label}</b></td>
-            <td class="r">${hrs(g.hours)}</td>
-            <td class="r muted">${g.rows.length}</td>
-            <td class="sub">${g.why}</td>
-          </tr>`)}</tbody>
+          <${Fragment} key=${g.id}>
+            <tr class="clickable augrp" onClick=${() => toggle(g.id)}>
+              <td class="fold">${open.has(g.id) ? '\u25be' : '\u25b8'}</td>
+              <td>${shortProject(g.project)}</td>
+              <td><b class="accentink">${g.label}</b></td>
+              <td class="r">${hrs(g.hours)}</td>
+              <td class="r muted">${g.rows.length}</td>
+              <td class="sub">${g.why}</td>
+            </tr>
+            ${open.has(g.id) ? g.rows.slice().sort((a, b) => a.date.localeCompare(b.date))
+              .map(r => {
+                const gist = lineGist(D, r);
+                return html`
+                  <tr key=${rowKey(r) + g.label} class="clickable"
+                      onClick=${() => onPick(r)}>
+                    <td></td>
+                    <td style="white-space:nowrap">${r.date}${r.live
+                      ? html` <span class="pill warn">live</span>` : null}</td>
+                    <td class="muted">${r.fno_task || r.activity
+                      || html`<span class="muted">nothing tagged</span>`}</td>
+                    <td class="r">${hrs(hoursOf(r))}</td>
+                    <td class="r muted">${hrs(r.hours)}</td>
+                    <td class="sub gist">${gist.length ? gist[0]
+                      : html`<span class="muted">no session evidence for this line</span>`}</td>
+                  </tr>`;
+              }) : null}
+          <//>`)}</tbody>
       </table></div>
+      <p class="sub" style="margin:8px 0 0">The right-hand column is the first thing said in
+        the sessions behind that line — the memory hook's record, not a written description.
+        The full evidence is in the line's own panel.</p>
     </div>`;
 }
 
@@ -252,6 +347,10 @@ function SourceFixes({ row, D, onDone }) {
   const tagged = new Set((((D.lineSessions || {})[sessKey(row)] || {}).blocks || [])
     .map(b => b.task).filter(Boolean));
   const tasks = (D.targets || []).filter(x => x.project === row.project || tagged.has(x.slug));
+  /* The line's own tasks first, and the rest of the project's behind a fold. Six open tasks
+     with nothing to separate them is the same as none. */
+  const onThisLine = tasks.filter(x => tagged.has(x.slug));
+  const others = tasks.filter(x => !tagged.has(x.slug));
 
   useEffect(() => {
     setCode(proj ? blankIfPlaceholder(proj.fno_code) : '');
@@ -318,14 +417,24 @@ function SourceFixes({ row, D, onDone }) {
                        onSave=${() => field('customer', row.customer, 'fno_requires', req.trim())}/>
         <//>` : null}
 
-      <div class="srchead">Tasks on this project</div>
-      ${!tasks.length ? html`
-        <p class="sub" style="margin:0">No open task on ${shortProject(row.project)}.
-          ${onTask ? ' This customer registers on task, so the work needs one before its time can be entered — open one in Azure DevOps and put the id on a task file.' : ''}</p>`
-        : tasks.map(x => html`
-          <div key=${x.slug} class="srctask">
+      <div class="srchead">${onThisLine.length
+        ? `The task${onThisLine.length === 1 ? '' : 's'} behind this line`
+        : 'Tasks on this project'}</div>
+      ${onThisLine.length ? null : html`
+        <p class="sub" style="margin:0 0 6px">
+          ${tasks.length
+            ? html`<b>No task was tagged on this line's sessions</b>, so none of these is
+                   "the" one — the work was done without a task selected. Setting a task
+                   below will not reach this line; it reaches the next session tagged with
+                   it. To give <i>this</i> line a task, correct its day above.`
+            : html`No open task on ${shortProject(row.project)}.${onTask
+                ? ' This customer registers on task, so the work needs one before its time can be entered — open one in Azure DevOps and put the id on a task file.'
+                : ''}`}</p>`}
+      ${(onThisLine.length ? onThisLine : others).map(x => html`
+          <div key=${x.slug} class=${'srctask' + (tagged.has(x.slug) ? ' on' : '')}>
             <div class="srctitle">${x.title || x.slug}
-              <span class="sub">${x.state}${tagged.has(x.slug) ? ' · tagged on this line' : ''}</span></div>
+              <span class="sub">${x.state}${tagged.has(x.slug)
+                ? ' · this line was worked under it' : ''}</span></div>
             <div class="actrow">
               <span class="flabel" style="min-width:56px">Task</span>
               <input type="text" value=${(dims[x.slug] || {}).fno_task || ''}
@@ -344,9 +453,36 @@ function SourceFixes({ row, D, onDone }) {
               }, '/api/task')}>Save</button>
             </div>
           </div>`)}
+      ${onThisLine.length && others.length ? html`
+        <details class="srcmore">
+          <summary>${others.length} other open task${others.length === 1 ? '' : 's'} on
+            ${shortProject(row.project)}</summary>
+          ${others.map(x => html`
+            <div key=${x.slug} class="srctask">
+              <div class="srctitle">${x.title || x.slug}
+                <span class="sub">${x.state}</span></div>
+              <div class="actrow">
+                <span class="flabel" style="min-width:56px">Task</span>
+                <input type="text" value=${(dims[x.slug] || {}).fno_task || ''}
+                       placeholder="ADO work item, or none"
+                       onInput=${e => edit(x.slug, 'fno_task', e.target.value)}
+                       aria-label="fno_task"/>
+                <span class="flabel" style="min-width:56px">Activity</span>
+                <input type="text" value=${(dims[x.slug] || {}).activity || ''}
+                       placeholder=${onTask ? 'F&O derives it' : 'activity id'}
+                       onInput=${e => edit(x.slug, 'activity', e.target.value)}
+                       aria-label="activity"/>
+                <button class="act" disabled=${busy} onClick=${() => run({
+                  slug: x.slug, action: 'set-dims',
+                  fno_task: ((dims[x.slug] || {}).fno_task || '').trim() || 'none',
+                  activity: ((dims[x.slug] || {}).activity || '').trim(),
+                }, '/api/task')}>Save</button>
+              </div>
+            </div>`)}
+        </details>` : null}
       <p class="sub" style="margin:8px 0 0">A task's dimensions reach every line tagged with
         it, including today's, which is what makes this the fix and the correction above the
-        stopgap. A line worked with no task tagged is not reached — correct its day.</p>
+        stopgap.</p>
     </div>`;
 }
 
@@ -396,7 +532,8 @@ function LineEditor({ row, raw, D, onDone }) {
   /* What this line was: the sessions behind it and what the memory hook recorded being
      said in them. A line that reads "Carl-Ras / – / –" says nothing, and that is exactly
      where deciding which task it belongs to is hardest. */
-  const sess = ((D.lineSessions || {})[sessKey(row)] || {}).blocks || [];
+  const ev = lineEvidence(D, row);
+  const sess = ev.blocks;
 
   return html`
     <h3>${shortProject(row.project)}</h3>
@@ -466,10 +603,21 @@ function LineEditor({ row, raw, D, onDone }) {
 
     <div class="block">
       <h4>What this line was</h4>
+      <p class="sub" style="margin:0 0 6px">${ev.wide
+        ? html`No session matched this line's exact dimensions — its activity or task has
+               moved since the day was written — so this is <b>every session on
+               ${row.date} for ${shortProject(row.project)}</b>.`
+        : 'The sessions behind this one date and dimension.'}
+        What the memory hook recorded being said in them; not a written description, the
+        first turns verbatim.</p>
       ${sess.length ? sess.map((b, i) => html`
-        <div key=${i} class="tsess"><b>${hrs(b.hours)} h</b> · ${b.turns} turn${b.turns === 1 ? '' : 's'}
+        <div key=${i} class="tsess">
+          <b>${hrs(b.hours)} h</b> · ${b.turns} turn${b.turns === 1 ? '' : 's'}
+          · <span class="muted">${b.session}</span>
           · <span class="muted">${b.task || 'no task tagged'}</span>
           ${(b.lines || []).map((t, j) => html`<div key=${j} class="tturn">${t}</div>`)}
+          ${(b.lines || []).length ? null
+            : html`<div class="tturn muted">no memory records for this session</div>`}
         </div>`)
         : html`<p class="sub" style="margin:0">No session evidence for this line.</p>`}
     </div>
@@ -499,6 +647,10 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
      what you see. Filtering on firma alone put deselected customers on the clipboard
      invisibly, which is an over-registration straight into a production ERP. */
   const rowsFor = f => rows.filter(r => r.firma === f && !custOff.has(custOf(r)));
+  /* Only Element Logic requires a Beskrivelse, so the column is dead weight everywhere
+     else -- and on a week view the measurement columns need the room. Decided per COMPANY:
+     one customer needing it must not put an empty column on every other company's block. */
+  const wantsDesc = rs => rs.some(r => r.description || (r.requires || []).includes('description'));
 
   const copy = async f => {
     const rs = rowsFor(f);
@@ -543,6 +695,7 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
 
   const block = f => {
     const rs = rowsFor(f);
+    const anyDesc = wantsDesc(rs);
     const tot = rs.reduce((s, r) => s + r.hours, 0);
     const title = f === 'INTERNAL' ? 'Internal (Dev / own) — not entered in F&O'
       : f === '' ? 'No company — customer not in TidsregInfo.xlsx and no fno_firma' : f;
@@ -567,7 +720,13 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
           <table class="autable entry">
             <thead><tr>
               <th>Date</th><th>Customer</th><th>Project</th><th>Proj ID</th><th>Activity</th>
-              <th>Task</th><th>Description</th><th class="r">${scaled ? 'F&O entry' : 'Hours'}</th>
+              <th>Task</th>${anyDesc ? html`<th>Description</th>` : null}
+              ${scaled ? html`
+                <${Fragment}>
+                  <th class="r" title="the 15+5 model: what the meter says was worked">Measured</th>
+                  <th class="r" title="what the timesheet registers">Work</th>
+                <//>` : null}
+              <th class="r">${scaled ? 'F&O entry' : 'Hours'}</th>
             </tr></thead>
             <tbody>${rs.map(r => html`
               <tr key=${rowKey(r) + r.hours} class=${'clickable' + ((r.missing || []).length ? ' short' : '')}
@@ -581,11 +740,20 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
                     title="filled from TidsregInfo.xlsx; the project CLAUDE.md has no fno_code">(sheet)</span>` : null}${
                   r.conflict ? html` <span class="accentink"
                     title=${'the sheet says ' + r.xl_proj_id + ', the workspace says ' + r.ws_proj_id}>conflict</span>` : null}</td>
-                <td>${r.activity || '-'}</td>
+                <td>${r.activity || '-'}${!anyDesc && r.no_charge
+                  ? html` <span class="pill">No charge</span>` : null}</td>
                 <td>${r.fno_task || ((r.requires || []).includes('task')
                   ? html`<b class="accentink">needed</b>` : '-')}</td>
-                <td>${r.description || (r.no_charge ? html`<span class="pill">No charge</span>` : '-')}</td>
-                <td class="r">${hrs(r.hours)}</td>
+                ${anyDesc ? html`<td>${r.description
+                  || (r.no_charge ? html`<span class="pill">No charge</span>` : '-')}</td>` : null}
+                ${scaled ? html`
+                  <${Fragment}>
+                    <td class="r muted">${hrs(r.measured || 0)}</td>
+                    <td class="r muted">${hrs(r.work || 0)}</td>
+                  <//>` : null}
+                <td class="r"><b>${hrs(r.hours)}</b>${r.work
+                  ? html` <span class="muted" title="F&O entry against work time"
+                          >${Math.round(100 * r.hours / r.work)}%</span>` : null}</td>
               </tr>`)}</tbody>
           </table>
         </div>
@@ -705,6 +873,7 @@ function Evidence({ D, w, onReassign }) {
       <td>${l.activity || html`<span class="muted">–</span>`}</td>
       <td>${l.fno_task || html`<span class="muted">–</span>`}</td>
       <td class="r">${auN(l.keyboard)}${ofEntry(l.keyboard, entryOf(l))}</td>
+      <td class="r">${auN(l.measured)}</td>
       <td class="r">${auN(l.claimed)}${ctrl(l)}</td>
       <td class="r"><b>${auN(entryOf(l))}</b>${ofValue(entryOf(l), l.weighted)}</td>
       <td class="r">${auN(l.weighted)}${ofEntry(l.weighted, entryOf(l))}</td>
@@ -717,6 +886,7 @@ function Evidence({ D, w, onReassign }) {
     <tr key=${lab} class=${'autot' + (cls ? ' ' + cls : '')}>
       <td colspan="5">${lab} <span class="muted">· ${ls.length} line${ls.length === 1 ? '' : 's'}</span></td>
       <td class="r">${auN(Math.round(sum(ls, 'keyboard') * 100) / 100)}${ofEntry(sum(ls, 'keyboard'), entrySum(ls))}</td>
+      <td class="r">${auN(Math.round(sum(ls, 'measured') * 100) / 100)}</td>
       <td class="r">${auN(Math.round(sum(ls, 'claimed') * 100) / 100)}${sum(ls, 'measured')
         ? html` <span class="muted">${Math.round(100 * sum(ls, 'claimed') / sum(ls, 'measured'))}%</span>` : null}</td>
       <td class="r"><b>${auN(entrySum(ls))}</b>${ofValue(entrySum(ls), sum(ls, 'weighted'))}</td>
@@ -760,7 +930,10 @@ function Evidence({ D, w, onReassign }) {
           w.running ? ' — today joins tomorrow' : ''}</p>
 
       <div class="card ausec"><h3>1 · F&O lines</h3>
-        <p class="sub">One row per date and F&O dimension. Every hours column carries a %:
+        <p class="sub">One row per date and F&O dimension. <b>Measured</b> is the 15+5
+          model's own figure, sitting between what was typed and what is registered — the
+          control that says the rules and the meter have not drifted apart.
+          Every other hours column carries a %:
           <b>keyboard</b> and <b>value time</b> read against F&O entry, so the row scans as one
           scale — what was typed, what is billed, and how much ceiling is left. <b>Work time</b>
           is measured time, and the % beside it is that against the 15+5 model — a control, not
@@ -770,13 +943,14 @@ function Evidence({ D, w, onReassign }) {
         <div style="overflow-x:auto"><table class="autable">
           <thead><tr>
             <th>Date</th><th>Project</th><th>Proj ID</th><th>Activity</th><th>Task</th>
-            <th class="r">Keyboard</th><th class="r">Work time</th><th class="r">F&O entry</th>
+            <th class="r">Keyboard</th><th class="r">Measured</th><th class="r">Work time</th>
+            <th class="r">F&O entry</th>
             <th class="r">Value time</th><th class="r">Turns/str</th><th class="r">Files</th>
             <th class="r">T5</th></tr></thead>
           <tbody>
             ${custOrder.map(c => html`
               <${Fragment} key=${c}>
-                <tr class="augrp"><td colspan="12">${c}</td></tr>
+                <tr class="augrp"><td colspan="13">${c}</td></tr>
                 ${byCust[c].slice().sort((x, y) => x.date.localeCompare(y.date)
                   || x.project.localeCompare(y.project)
                   || (x.activity || '').localeCompare(y.activity || '')).map(lineRow)}
@@ -1196,8 +1370,11 @@ function App() {
     const scale = {};
     w.lines.forEach(l => {
       const k = `${l.project}|${l.activity || ''}|${l.fno_task || ''}`;
-      const s = scale[k] || (scale[k] = { work: 0, entry: 0 });
-      s.work += l.claimed || 0; s.entry += entryOf(l);
+      const s = scale[k] || (scale[k] = { work: 0, entry: 0, measured: 0, value: 0 });
+      s.work += l.claimed || 0;
+      s.entry += entryOf(l);
+      s.measured += l.measured || 0;
+      s.value += l.weighted || 0;
     });
     return { rkey, w, scale, split, file: 'fno-' + week,
              label: split ? `${week} in ${per.label}` : `${week} · ${auRange(w)}` };
@@ -1298,6 +1475,7 @@ function App() {
               <${Fragment}>
                 <${EntryBlocks} D=${D} rows=${rows} lead=${lead}
                                 gate=${html`<${Ready} rows=${rows} periodLabel=${view.label}
+                                                      scaled=${!!view.scale} D=${D}
                                                       onPick=${setSel}/>`}
                                 periodLabel=${view.label} fileName=${view.file}
                                 scaled=${!!view.scale}
