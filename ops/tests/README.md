@@ -19,6 +19,7 @@ scripts under test are CLI tools rather than a package, so `_bootstrap.py` puts 
 | `test_lib.py` | `lib/` - the shared read layer: substrate parsing, project discovery, the heartbeat record |
 | `test_dashboard.py` | the `ops/TODO.md` write path, the project band rule, the payload memos, the POST routing table |
 | `test_fno.py` | `lib/fno.py` and the F&O entry surface - the readiness rule, the two write paths, the workbook |
+| `test_lines.py` | `lib/lines.py` - the line-description file: its key, its round-trip, and a tolerant read |
 
 Scope is deliberate: a documented rule and a number, or a write that has to leave a hand-maintained
 file intact. Rendering and the HTTP layer are not covered here - the pages are checked under jsdom

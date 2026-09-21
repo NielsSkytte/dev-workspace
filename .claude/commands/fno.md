@@ -85,6 +85,8 @@ Danish comma — convert on the way in and check the first pasted line before tr
 
 Split the copied rows into one set per **ISO week per company** — that is the journal grain.
 
+**Check the lines are described.** `python C:\Dev\ops\bin\linedesc.py --check <YYYY-MM>` says which F&O lines have no written description (`ops/time/lines/`, README 6.1). It is not a gate — an undescribed line can still be entered — but the description is what answers "what was this 3.75 h" later, and the transcript it comes from is only kept about 30 days. Fill the gaps at `/log` before they age out; the downloaded workbook carries them in *What it was*.
+
 For `/fno rows`, stop here: hand Niels the per-journal row sets and the totals, and say nothing was
 entered.
 

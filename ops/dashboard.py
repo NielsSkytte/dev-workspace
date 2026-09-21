@@ -43,6 +43,7 @@ from lib.substrate import (read, frontmatter, identity, sections, bullets,
                            labelled, field, plain, first_para, days_ago)
 from lib.workspace import customer_dirs, project_dirs
 from lib import fno
+from lib import lines as linedesc
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -683,6 +684,11 @@ def collect_entry(entries, customers, today, projects=None):
     ws_keys = {_norm_customer(c): c for c in customers}
     cust_rules = fno.rules(ROOT)
     projects = projects or {}
+    # One read per month that has time, not one per row. A day with no description file
+    # simply has none -- the page falls back to the session evidence it already carries.
+    descs = {}
+    for month in sorted({e["date"][:7] for e in entries}):
+        descs.update(linedesc.read_month(month))
 
     def decorate(e, agg, unmapped):
         """One timesheet entry -> one F&O entry row (company, customer, resolved Proj ID)."""
@@ -712,6 +718,11 @@ def collect_entry(entries, customers, today, projects=None):
         fno_task = fno.value_or_blank(e["fno_task"])
         proj = projects.get(p) or {}
         description = proj.get("fno_description") or (rule or {}).get("description") or ""
+        # What the work WAS, written at /log (ops/lib/lines.py). Keyed on the timesheet's
+        # own dimensions, because that is the file it was written beside -- not on the
+        # resolved ones, which may have been filled in from the sheet afterwards.
+        summary = descs.get(e["date"], {}).get(
+            linedesc.dimkey(p, e["activity"], e["fno_task"]), "")
 
         # `ws_*` is the line AS THE TIMESHEET FILE HOLDS IT, which is not what the row
         # shows: a blank fno_code reads as "" here after the sheet declines to fill it, and
@@ -727,7 +738,7 @@ def collect_entry(entries, customers, today, projects=None):
                                   "ws_proj_id": ws_id, "ws_activity": e["activity"],
                                   "ws_fno_task": e["fno_task"],
                                   "xl_proj_id": xl_id, "ambiguous": False,
-                                  "description": description,
+                                  "description": description, "summary": summary,
                                   "no_charge": bool((rule or {}).get("no_charge")),
                                   "requires": (rule or {}).get("requires") or [],
                                   # A day still accruing has no finalized file, so it cannot
@@ -737,6 +748,8 @@ def collect_entry(entries, customers, today, projects=None):
         if (cell["ws_proj_id"] != ws_id or cell["ws_activity"] != e["activity"]
                 or cell["ws_fno_task"] != e["fno_task"]):
             cell["ambiguous"] = True
+        if summary and summary not in cell["summary"]:
+            cell["summary"] = (cell["summary"] + " " + summary).strip()
         cell["hours"] = round(cell["hours"] + e["hours"], 2)
         cell["missing"] = fno.missing(cell, rule)
         cell["fix"] = _fix_targets(cell, rule, proj)
@@ -1652,7 +1665,7 @@ def build_xlsx(title, headers, rows):
 
 
 ENTRY_COLUMNS = ("Date", "Company", "Customer", "Project", "Proj ID", "Activity", "Task",
-                 "Description", "Hours", "Line property", "Not ready")
+                 "Description", "Hours", "Line property", "What it was", "Not ready")
 
 
 def entry_workbook(req):
@@ -1675,6 +1688,7 @@ def entry_workbook(req):
                     r.get("proj_id", ""), r.get("activity", ""), r.get("fno_task", ""),
                     r.get("description", ""), float(r.get("hours") or 0),
                     "No charge" if r.get("no_charge") else "",
+                    r.get("summary", ""),
                     ", ".join(m.get("label", "") for m in (r.get("missing") or []))])
     # The name reaches the browser as Content-Disposition, so it keeps to word characters:
     # a dot run or a separator in a download name is noise at best.

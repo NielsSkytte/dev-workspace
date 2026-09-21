@@ -520,6 +520,10 @@ table.autable.totals td:nth-child(3){text-align:right}
 table.autable td.fold{width:1em;color:var(--muted);padding-right:4px}
 table.autable tr.augrp.clickable:hover td{background:var(--surface-2)}
 table.autable td.gist{white-space:normal;max-width:52ch;color:var(--ink-2)}
+/* a verbatim turn is evidence, not a description -- it should not read as one */
+table.autable td.gist.verbatim{font-style:italic;color:var(--muted)}
+/* a described line gets a quiet marker, so the ones still to write are visible */
+table.autable.entry tr.described td:first-child{box-shadow:inset 2px 0 0 var(--s1)}
 
 /* ══ empty states ═════════════════════════════════════════════════════════ */
 .empty{color:var(--muted);font-size:13px;margin:0;padding:6px 0}

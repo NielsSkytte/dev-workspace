@@ -24,4 +24,9 @@ data/
 /ops/time/heartbeats/
 /ops/time/timesheet/
 /ops/time/value/
+# Line descriptions: what each day's work WAS, written at /log. Operational output
+# like the rest, regenerable from ops/memory/daily/ -- and this repo has a remote, so
+# customer work descriptions do not belong in it. The robocopy mirror at /log covers
+# the whole of ops/time, so it is backed up with everything else.
+/ops/time/lines/
 /ops/time/active-task

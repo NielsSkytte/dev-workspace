@@ -397,6 +397,38 @@ in the memory records `fno-registration-per-customer-protocol`, `fno-month-close
 and `dashboard-copy-rows-transport`. Those are the durable source; the Claude harness only
 accelerates them (skill `fno-time-registration`, command `/fno`).
 
+### 6.1 Line descriptions (added 2026-09-21)
+
+`lines/<YYYY-MM>/<date>.md` — one sentence per F&O line saying what that day's work on that
+line **was**. Same key as the timesheet day beside it (project + activity + task), so the two
+read row for row:
+
+```
+| Project | Activity | Task | Hours | Description |
+|---|---|---|---|---|
+| customers/Carl-Ras/datahub | - | CarlRData-557 | 2.25 | Customer Insights unify: ... |
+```
+
+**Why.** A timesheet row says `customers/Carl-Ras/datahub | 230-02 | - | - | 3.00 | yes` and
+nothing about the work. That costs twice: an untagged line cannot be placed on a task without
+reopening the transcript, and an F&O entry figure above the measured hours has nothing beside
+it to justify it — which is the thing a customer or an auditor asks about.
+
+**Who writes it.** A **session**, at `/log` (step 5). `python ops/bin/linedesc.py <date>`
+prepares the material — the sessions behind each line and what was said in them — and prints
+the table; it never writes. This is deliberate: a local model wrote these summaries in July and
+August and was switched off on 2026-09-02 for producing text that contradicted its own turn
+(`ops/memory/store/local-summarizer-off`). A line that is not supported by the evidence is left
+blank; an invented description on a billing line is worse than none.
+
+**Regenerable, so Guardrail 7 holds.** Delete the directory and nothing is lost that
+`ops/memory/daily/` does not still hold — this is a written-down reading of the transcript, not
+a second source for it.
+
+`python ops/bin/linedesc.py --check <YYYY-MM>` reports coverage. The Time page shows the
+description on the line and in its panel, puts it in the downloaded workbook as *What it was*,
+and renders the undescribed lines in italic with the first thing said in them instead.
+
 ## 7. Value model (ADR-004, PROVISIONAL -- re-evaluate end of 2026-08)
 
 Sections 1-6 measure **time**. This section derives a second number, **weighted hours**, from what

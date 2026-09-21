@@ -275,7 +275,7 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
             </tr>
             ${open.has(g.id) ? g.rows.slice().sort((a, b) => a.date.localeCompare(b.date))
               .map(r => {
-                const gist = lineGist(D, r);
+                const gist = r.summary || lineGist(D, r)[0] || '';
                 return html`
                   <tr key=${rowKey(r) + g.label} class="clickable"
                       onClick=${() => onPick(r)}>
@@ -286,15 +286,17 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
                       || html`<span class="muted">nothing tagged</span>`}</td>
                     <td class="r">${hrs(hoursOf(r))}</td>
                     <td class="r muted">${hrs(r.hours)}</td>
-                    <td class="sub gist">${gist.length ? gist[0]
-                      : html`<span class="muted">no session evidence for this line</span>`}</td>
+                    <td class=${'sub gist' + (r.summary ? '' : ' verbatim')}>${gist
+                      || html`<span class="muted">no description and no session evidence</span>`}</td>
                   </tr>`;
               }) : null}
           <//>`)}</tbody>
       </table></div>
-      <p class="sub" style="margin:8px 0 0">The right-hand column is the first thing said in
-        the sessions behind that line — the memory hook's record, not a written description.
-        The full evidence is in the line's own panel.</p>
+      <p class="sub" style="margin:8px 0 0">The right-hand column is the line's written
+        description where it has one, and otherwise <i>italic</i>: the first thing said in
+        the sessions behind it, verbatim from the memory hook. Descriptions are written at
+        <code>/log</code>; <code>python ops/bin/linedesc.py --check ${periodLabel.length === 8
+          ? periodLabel : ''}</code> says what is still missing.</p>
     </div>`;
 }
 
@@ -601,8 +603,16 @@ function LineEditor({ row, raw, D, onDone }) {
 
     <${SourceFixes} row=${row} D=${D} onDone=${onDone}/>
 
+    ${row.summary ? html`
+      <div class="block">
+        <h4>What this line was</h4>
+        <p style="margin:0">${row.summary}</p>
+        <p class="sub" style="margin:4px 0 0">Written at /log into
+          <code>ops/time/lines/${row.date.slice(0, 7)}/${row.date}.md</code>.</p>
+      </div>` : null}
+
     <div class="block">
-      <h4>What this line was</h4>
+      <h4>${row.summary ? 'The sessions behind it' : 'What this line was'}</h4>
       <p class="sub" style="margin:0 0 6px">${ev.wide
         ? html`No session matched this line's exact dimensions — its activity or task has
                moved since the day was written — so this is <b>every session on
@@ -729,7 +739,9 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
               <th class="r">${scaled ? 'F&O entry' : 'Hours'}</th>
             </tr></thead>
             <tbody>${rs.map(r => html`
-              <tr key=${rowKey(r) + r.hours} class=${'clickable' + ((r.missing || []).length ? ' short' : '')}
+              <tr key=${rowKey(r) + r.hours} title=${r.summary || ''}
+                  class=${'clickable' + ((r.missing || []).length ? ' short' : '')
+                    + (r.summary ? ' described' : '')}
                   onClick=${() => onPick(r)}>
                 <td style="white-space:nowrap">${r.date}${r.live
                   ? html` <span class="pill warn" title="still accruing; finalize at /log">live</span>` : null}</td>
