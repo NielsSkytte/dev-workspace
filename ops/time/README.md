@@ -257,6 +257,7 @@ An absent field means nothing extra is required. The table below stays the recor
 | Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
 | Element Logic | `6001-01` | Activity `600003` | **+ `Beskrivelse` required** — see below | 2026-09-02 |
 | Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet |
+| **Aeven** | `4058-1` (always) | **Activity** — no tasks | **number not recorded yet** | 2026-09-21 |
 | Finansforbundet | `4053-01` | Activity `Møder` | from the sheet | sheet |
 
 **Element Logic, in full (2026-09-02):** the lines go in company **PNO1** (Pingala Norge AS), not

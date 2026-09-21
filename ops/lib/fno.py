@@ -59,10 +59,18 @@ def is_unset(value):
 
     `UNSET` is what the rollup writes for a project with no `fno_code`; `?` and `6013-?` are
     what the owner writes in the sheet for "not assigned yet"; `PENDING...` is what a project
-    CLAUDE.md carries while it waits for a code. All three are placeholders, and treating a
-    placeholder as a value is how a `?` reaches a timesheet."""
+    CLAUDE.md carries while it waits for a code; **`none` is what a task file carries for
+    "no Azure DevOps work item yet"** (the convention is id-or-`none`, never blank, so the
+    absence is deliberate and visible). All of them are placeholders, and treating a
+    placeholder as a value is how a `?` or a literal `none` reaches a timesheet."""
     v = (value or "").strip()
-    return (not v) or v.upper() == "UNSET" or v.upper().startswith("PENDING") or "?" in v
+    return ((not v) or v.upper() in ("UNSET", "NONE") or v.upper().startswith("PENDING")
+            or "?" in v)
+
+
+def value_or_blank(v):
+    """A dimension as it should be TYPED: a placeholder is nothing, not a word."""
+    return "" if is_unset(v) else (v or "").strip()
 
 
 def _block(text, header):

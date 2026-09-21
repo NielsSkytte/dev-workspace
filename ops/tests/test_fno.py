@@ -62,16 +62,39 @@ DAY = (
 )
 
 
+TASK = (
+    "---\n"
+    "title: Build the Widget portal\n"
+    "project: customers/Widget/portal\n"
+    "status: open\n"
+    "activity:\n"
+    "fno_task: none        # no Azure DevOps work item yet\n"
+    "---\n"
+    "\n"
+    "# Build the Widget portal\n"
+    "\n"
+    "## Progress\n"
+    "- 2026-09-14 - started.\n"
+)
+
+
 class IsUnset(unittest.TestCase):
     """A placeholder is the absence of a value, however it is spelled."""
 
     def test_placeholders(self):
-        for v in ("", "   ", None, "UNSET", "unset", "?", "6013-?", "PENDING", "PENDING code"):
+        for v in ("", "   ", None, "UNSET", "unset", "?", "6013-?", "PENDING", "PENDING code",
+                  "none", "None"):
             self.assertTrue(fno.is_unset(v), repr(v))
 
     def test_real_codes(self):
-        for v in ("230-02", "4058-1", "INTERNAL-RND", "222"):
+        for v in ("230-02", "4058-1", "INTERNAL-RND", "222", "CarlRData-557", "Task-72114"):
             self.assertFalse(fno.is_unset(v), repr(v))
+
+    def test_value_or_blank(self):
+        # `fno_task: none` is the task-file convention for "no work item yet". It must never
+        # be typed into F&O as though it were one.
+        self.assertEqual(fno.value_or_blank("none"), "")
+        self.assertEqual(fno.value_or_blank(" CarlRData-557 "), "CarlRData-557")
 
 
 class Norm(unittest.TestCase):
@@ -383,6 +406,146 @@ class EntryRows(unittest.TestCase):
         r = rows["2026-09-15Dev"]
         self.assertEqual(r["firma"], "INTERNAL")
         self.assertEqual(r["missing"], [])
+
+
+class SetDims(unittest.TestCase):
+    """A task lends its two sub-dimensions to every line tagged with it, so setting them
+    there is the durable fix -- and, for a day still accruing, the only one."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.tmp, "ops", "tasks", "open"))
+        self.path = os.path.join(self.tmp, "ops", "tasks", "open",
+                                 "2026-09-14-widget-portal-build.md")
+        with io.open(self.path, "w", encoding="utf-8", newline="") as f:
+            f.write(TASK)
+        self._root = dashboard.ROOT
+        dashboard.ROOT = self.tmp
+
+    def tearDown(self):
+        dashboard.ROOT = self._root
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def read(self):
+        with io.open(self.path, encoding="utf-8", newline="") as f:
+            return f.read()
+
+    def set(self, **kw):
+        return dashboard.task_mutate("2026-09-14-widget-portal-build", "set-dims", **kw)
+
+    def test_sets_the_task(self):
+        ok, msg = self.set(fno_task="WID-99")
+        self.assertTrue(ok, msg)
+        self.assertIn("fno_task: WID-99", self.read())
+
+    def test_sets_the_activity_alone(self):
+        # The Aeven shape: activities exist, tasks do not, so the activity has to be
+        # settable without inventing a task alongside it.
+        ok, msg = self.set(activity="600003")
+        self.assertTrue(ok, msg)
+        self.assertIn("activity: 600003", self.read())
+        self.assertIn("fno_task: none", self.read())
+
+    def test_a_field_not_sent_is_left_alone(self):
+        self.set(fno_task="WID-99")
+        self.set(activity="600003")
+        text = self.read()
+        self.assertIn("fno_task: WID-99", text)
+        self.assertIn("activity: 600003", text)
+
+    def test_nothing_sent(self):
+        ok, msg = self.set()
+        self.assertFalse(ok)
+        self.assertEqual(self.read(), TASK)
+
+    def test_the_body_and_the_other_fields_survive(self):
+        self.set(fno_task="WID-99")
+        text = self.read()
+        self.assertIn("project: customers/Widget/portal\n", text)
+        self.assertIn("## Progress\n- 2026-09-14 - started.\n", text)
+
+    def test_a_value_cannot_carry_a_newline(self):
+        ok, _ = self.set(fno_task="WID-99\nstatus: done")
+        self.assertFalse(ok)
+        self.assertEqual(self.read(), TASK)
+
+    def test_an_unknown_task(self):
+        ok, _ = dashboard.task_mutate("no-such-task", "set-dims", fno_task="X")
+        self.assertFalse(ok)
+
+
+class LineEndings(unittest.TestCase):
+    """A write puts the endings back as it found them.
+
+    The substrate is not uniform: task files and CLAUDE.md are LF, the timesheet days and
+    TODO.md are CRLF because rollup.py writes them in text mode on Windows. Flipping either
+    turns a one-line correction into a whole-file diff, which is what makes the correction
+    unreviewable -- the same standard `todo_mutate` was held to.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.tmp, "ops", "tasks", "open"))
+        os.makedirs(os.path.join(self.tmp, "customers", "Widget", "portal"))
+        os.makedirs(os.path.join(self.tmp, "timesheet", "2026-09"))
+        self.task = os.path.join(self.tmp, "ops", "tasks", "open",
+                                 "2026-09-14-widget-portal-build.md")
+        self.proj = os.path.join(self.tmp, "customers", "Widget", "portal", "CLAUDE.md")
+        self.day = os.path.join(self.tmp, "timesheet", "2026-09", "2026-09-15.md")
+        self._root, self._ts = dashboard.ROOT, dashboard.rollup.TIMESHEET
+        dashboard.ROOT = self.tmp
+        dashboard.rollup.TIMESHEET = os.path.join(self.tmp, "timesheet")
+
+    def tearDown(self):
+        dashboard.ROOT, dashboard.rollup.TIMESHEET = self._root, self._ts
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def put(self, path, text, crlf):
+        with io.open(path, "wb") as f:
+            f.write((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
+
+    def endings(self, path):
+        with io.open(path, "rb") as f:
+            raw = f.read()
+        crlf, lf = raw.count(b"\r\n"), raw.count(b"\n")
+        return "crlf" if crlf and crlf == lf else "lf" if not crlf else "mixed"
+
+    def run_all(self, crlf):
+        want = "crlf" if crlf else "lf"
+        self.put(self.task, TASK, crlf)
+        self.put(self.proj, PROJECT, crlf)
+        self.put(self.day, DAY, crlf)
+
+        ok, msg = dashboard.task_mutate("2026-09-14-widget-portal-build", "set-dims",
+                                        fno_task="WID-99")
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.endings(self.task), want, "task file")
+
+        ok, msg = dashboard.task_mutate("2026-09-14-widget-portal-build", "comment",
+                                        text="a note")
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.endings(self.task), want, "task file after a note")
+
+        ok, msg = dashboard.fno_field("project", "customers/Widget/portal",
+                                      "fno_code", "901-08")
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.endings(self.proj), want, "project CLAUDE.md")
+
+        ok, msg = dashboard.timesheet_edit(
+            "2026-09-15",
+            {"project": "customers/Widget/portal", "proj_id": "UNSET",
+             "activity": "", "fno_task": ""},
+            {"proj_id": "901-08"})
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.endings(self.day), want, "timesheet day")
+
+    def test_an_lf_file_stays_lf(self):
+        self.run_all(False)
+
+    def test_a_crlf_file_stays_crlf(self):
+        # This is the real shape of ops/time/timesheet/*.md, and the case where a rebuilt
+        # table would otherwise land LF inside a CRLF file.
+        self.run_all(True)
 
 
 class Workbook(unittest.TestCase):

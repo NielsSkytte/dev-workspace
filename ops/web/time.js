@@ -51,7 +51,21 @@ const shortProject = p => p.replace(/^customers\//, '');
 /* The line as the server knows it, so an edit names exactly one row of one day file. */
 const rowKey = r => [r.date, r.project, r.proj_id || '', r.activity || '',
                      r.fno_task || ''].join('|');
-const sessKey = r => `${r.date}|${r.project}|${r.activity || ''}|${r.fno_task || ''}`.toLowerCase();
+const sessKey = r => `${r.date}|${r.project}|${r.ws_activity || ''}|${r.ws_fno_task || ''}`.toLowerCase();
+
+/* The server's own customer key, so the page can look a rule up by name. Kept in step with
+   lib/fno.norm: fold the Danish letters, drop the separators. */
+const normCust = s => (s || '').toLowerCase()
+  .replace(/\u00e6/g, 'ae').replace(/\u00f8/g, 'oe').replace(/\u00e5/g, 'aa')
+  .replace(/[\s\-_/.]/g, '');
+
+/* UNSET, PENDING, `none`, a bare `?` -- the server blanks these on an entry row, but a
+   project's fno_code and a task's fno_task are shown raw, and a placeholder in an input
+   invites saving it back. */
+const blankIfPlaceholder = v => {
+  const s = (v || '').trim();
+  return (!s || /\?/.test(s) || /^(unset|none)$/i.test(s) || /^pending/i.test(s)) ? '' : s;
+};
 
 /* ---------- the F&O entry figure ----------
    Work time is the floor, value time the ceiling, and turns+files decide how far up the band
@@ -193,6 +207,149 @@ function Ready({ rows, onPick, periodLabel }) {
    Two grains, both offered. Correcting the day fixes the hours being entered now; setting
    the field on the project or the customer stops the gap coming back next month. */
 
+/* One `key: value` on one file, with what it is worth saying about it. */
+function FieldRow({ label: lab, value, onInput, onSave, busy, hint, placeholder, action }) {
+  return html`
+    <${Fragment}>
+      <div class="actrow">
+        <span class="flabel" style="min-width:104px">${lab}</span>
+        <input type="text" value=${value} placeholder=${placeholder || ''}
+               onInput=${e => onInput(e.target.value)} aria-label=${lab}/>
+        <button class="act" disabled=${busy} onClick=${onSave}>${action || 'Set'}</button>
+      </div>
+      ${hint ? html`<p class="sub" style="margin:2px 0 0 112px">${hint}</p>` : null}
+    <//>`;
+}
+
+/* Where an F&O dimension comes from, and setting it there.
+ *
+ * The day correction above fixes the hours being entered now. This fixes the reason, and
+ * each field belongs to a different thing:
+ *
+ *   Proj ID      the project's `## Identity` fno_code
+ *   Activity     the task's `activity:`, or the customer's fno_activity as the default
+ *   Task         the task's `fno_task:` -- the linked ADO work item
+ *   Beskrivelse  the project's fno_description, since it carries the engagement
+ *
+ * In F&O a Task carries its own Activity, so a customer registering on task wants only the
+ * task and an invented activity there is noise at best (Carl Ras, ops/time/README.md 4.1).
+ * A customer with activities and no tasks -- Aeven -- wants only the activity, and there is
+ * no task to hang it on, so it goes on the customer as the default for every line.
+ */
+function SourceFixes({ row, D, onDone }) {
+  const [code, setCode] = useState('');
+  const [defAct, setDefAct] = useState('');
+  const [req, setReq] = useState('');
+  const [desc, setDesc] = useState('');
+  const [dims, setDims] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  const proj = (D.projects || []).find(p => p.key === row.project);
+  const rule = row.customer ? ((D.entry.rules || {})[normCust(row.customer)] || null) : null;
+  /* Every task that could carry this line's sub-dimensions: the project's open and
+     in-progress ones, plus whatever the heartbeats behind this line were actually tagged
+     with -- which may be a task that has since been closed. */
+  const tagged = new Set((((D.lineSessions || {})[sessKey(row)] || {}).blocks || [])
+    .map(b => b.task).filter(Boolean));
+  const tasks = (D.targets || []).filter(x => x.project === row.project || tagged.has(x.slug));
+
+  useEffect(() => {
+    setCode(proj ? blankIfPlaceholder(proj.fno_code) : '');
+    setDefAct(rule ? rule.activity : '');
+    setReq((row.requires || []).join(', '));
+    setDesc((proj && proj.fno_description) || (rule && rule.description) || '');
+    const d = {};
+    tasks.forEach(x => {
+      d[x.slug] = { activity: blankIfPlaceholder(x.activity),
+                    fno_task: blankIfPlaceholder(x.fno_task) };
+    });
+    setDims(d);
+    setBusy(false);
+  }, [rowKey(row)]);
+
+  const run = async (body, url) => {
+    setBusy(true);
+    const j = await post(url || '/api/fno', body);
+    setBusy(false);
+    toast(j.message || (j.ok ? 'saved' : 'failed'));
+    if (j.ok) onDone();
+  };
+  const field = (kind, target, f, value) => run({ kind, target, field: f, value });
+  const edit = (slug, f, v) => setDims(d => ({ ...d, [slug]: { ...d[slug], [f]: v } }));
+
+  const needs = new Set((row.missing || []).map(m => m.field));
+  const onTask = (row.requires || []).includes('task');
+
+  return html`
+    <div class="block">
+      <h4>Set it at the source</h4>
+      <p class="sub" style="margin:0 0 10px">The day fix above covers the hours you are
+        entering now; these fix the reason, so next month's lines carry it themselves.
+        In F&O a <b>Task</b> brings its own <b>Activity</b> — set the task where the customer
+        registers on tasks, and the activity where there are only activities.</p>
+
+      ${proj ? html`
+        <${Fragment}>
+          <div class="srchead">Project <code>${row.project}</code></div>
+          <${FieldRow} label="fno_code" value=${code} onInput=${setCode} busy=${busy}
+                       placeholder="e.g. 230-02"
+                       hint=${needs.has('proj_id') ? 'the Proj ID this line is missing' : null}
+                       onSave=${() => field('project', row.project, 'fno_code', code.trim())}/>
+          ${(row.requires || []).includes('description') ? html`
+            <${FieldRow} label="fno_description" value=${desc} onInput=${setDesc} busy=${busy}
+                         placeholder="&lt;number&gt; &lt;title&gt;"
+                         hint="the Beskrivelse; it carries the engagement, so it lives on the project"
+                         onSave=${() => field('project', row.project, 'fno_description', desc.trim())}/>`
+            : null}
+        <//>` : null}
+
+      ${row.customer ? html`
+        <${Fragment}>
+          <div class="srchead">Customer <code>customers/${row.customer}</code></div>
+          <${FieldRow} label="fno_activity" value=${defAct} onInput=${setDefAct} busy=${busy}
+                       placeholder="e.g. 111749"
+                       hint=${onTask
+                         ? 'this customer registers on task, so F&O derives the activity — leave it blank'
+                         : `the default Activity for every ${row.customer} line that has none of its own`}
+                       onSave=${() => field('customer', row.customer, 'fno_activity', defAct.trim())}/>
+          <${FieldRow} label="fno_requires" value=${req} onInput=${setReq} busy=${busy}
+                       placeholder="task, activity, description"
+                       hint="what a line for this customer must carry before it can be entered"
+                       onSave=${() => field('customer', row.customer, 'fno_requires', req.trim())}/>
+        <//>` : null}
+
+      <div class="srchead">Tasks on this project</div>
+      ${!tasks.length ? html`
+        <p class="sub" style="margin:0">No open task on ${shortProject(row.project)}.
+          ${onTask ? ' This customer registers on task, so the work needs one before its time can be entered — open one in Azure DevOps and put the id on a task file.' : ''}</p>`
+        : tasks.map(x => html`
+          <div key=${x.slug} class="srctask">
+            <div class="srctitle">${x.title || x.slug}
+              <span class="sub">${x.state}${tagged.has(x.slug) ? ' · tagged on this line' : ''}</span></div>
+            <div class="actrow">
+              <span class="flabel" style="min-width:56px">Task</span>
+              <input type="text" value=${(dims[x.slug] || {}).fno_task || ''}
+                     placeholder="ADO work item, or none"
+                     onInput=${e => edit(x.slug, 'fno_task', e.target.value)}
+                     aria-label="fno_task"/>
+              <span class="flabel" style="min-width:56px">Activity</span>
+              <input type="text" value=${(dims[x.slug] || {}).activity || ''}
+                     placeholder=${onTask ? 'F&O derives it' : 'activity id'}
+                     onInput=${e => edit(x.slug, 'activity', e.target.value)}
+                     aria-label="activity"/>
+              <button class="act" disabled=${busy} onClick=${() => run({
+                slug: x.slug, action: 'set-dims',
+                fno_task: ((dims[x.slug] || {}).fno_task || '').trim() || 'none',
+                activity: ((dims[x.slug] || {}).activity || '').trim(),
+              }, '/api/task')}>Save</button>
+            </div>
+          </div>`)}
+      <p class="sub" style="margin:8px 0 0">A task's dimensions reach every line tagged with
+        it, including today's, which is what makes this the fix and the correction above the
+        stopgap. A line worked with no task tagged is not reached — correct its day.</p>
+    </div>`;
+}
+
 function LineEditor({ row, raw, D, onDone }) {
   const [pid, setPid] = useState('');
   const [act, setAct] = useState('');
@@ -214,7 +371,7 @@ function LineEditor({ row, raw, D, onDone }) {
   const scaled = row.work !== undefined && row.work !== row.hours;
 
   const changed = raw && (pid !== (raw.ws_proj_id || '') || act !== (raw.ws_activity || '')
-    || task !== (raw.fno_task || '') || String(raw.hours) !== hours.trim());
+    || task !== (raw.ws_fno_task || '') || String(raw.hours) !== hours.trim());
 
   const run = async (fn, ok) => {
     setBusy(true);
@@ -230,14 +387,11 @@ function LineEditor({ row, raw, D, onDone }) {
   const correct = () => run(() => post('/api/timesheet', {
     date: raw.date,
     row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
-           fno_task: raw.fno_task },
+           fno_task: raw.ws_fno_task },
     set: { proj_id: pid.trim(), activity: act.trim(), fno_task: task.trim(),
            hours: Number(hours) },
     note: note.trim(),
   }), 'corrected');
-
-  const setField = (kind, target, field, value) => run(
-    () => post('/api/fno', { kind, target, field, value }), 'saved');
 
   /* What this line was: the sessions behind it and what the memory hook recorded being
      said in them. A line that reads "Carl-Ras / – / –" says nothing, and that is exactly
@@ -308,38 +462,7 @@ function LineEditor({ row, raw, D, onDone }) {
         </div>
       </div>`}
 
-    ${proj ? html`
-      <div class="block">
-        <h4>Stop it recurring</h4>
-        <p class="sub" style="margin:0 0 8px">The day fix covers the hours you are entering
-          now. These write the project's own <code>## Identity</code>, so next month's lines
-          carry it themselves.</p>
-        <div class="actrow"><span class="flabel" style="min-width:64px">fno_code</span>
-          <input type="text" value=${pid} onInput=${e => setPid(e.target.value)}
-                 aria-label="fno_code on the project"/>
-          <button class="act" disabled=${busy || !pid.trim()}
-                  onClick=${() => setField('project', row.project, 'fno_code', pid.trim())}>
-            Set on ${proj.name}</button></div>
-        <p class="sub" style="margin:8px 0 0">Now: <code>${proj.fno_code}</code>
-          ${proj.fno_description ? html` · Beskrivelse <code>${proj.fno_description}</code>` : null}</p>
-      </div>` : null}
-
-    ${row.customer ? html`
-      <div class="block">
-        <h4>What ${row.customer} registers on</h4>
-        <p class="sub" style="margin:0 0 6px">
-          ${(row.requires || []).length
-            ? html`Every line needs <b>${(row.requires || []).join(', ')}</b>.`
-            : 'No extra dimension recorded — Proj ID alone.'}
-          Confirmed rules are in ops/time/README.md 4.1; this is the copy the page reads.</p>
-        <div class="actrow">
-          <input type="text" value=${(row.requires || []).join(', ')} readonly
-                 aria-label="fno_requires"/>
-          <button class="act" disabled=${busy}
-                  onClick=${() => setField('customer', row.customer, 'fno_requires',
-                                           (row.requires || []).join(', '))}>Rewrite rule</button>
-        </div>
-      </div>` : null}
+    <${SourceFixes} row=${row} D=${D} onDone=${onDone}/>
 
     <div class="block">
       <h4>What this line was</h4>

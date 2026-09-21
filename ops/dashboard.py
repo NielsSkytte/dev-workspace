@@ -704,8 +704,12 @@ def collect_entry(entries, customers, today, projects=None):
         weak, xl_weak = fno.is_unset(ws_id), fno.is_unset(xl_id)
         proj_id = ws_id if not weak else ("" if xl_weak else xl_id)
         conflict = bool(not weak and not xl_weak and xl_id != ws_id)
-        activity = (e["activity"] or (rule or {}).get("activity")
-                    or (row_c["aktivitet"] if row_c else ""))
+        # A placeholder is not a value anywhere it can be typed. `fno_task: none` means
+        # "no work item yet" (ops/tasks convention), and it was going onto the clipboard as
+        # the Task -- so it is blanked here and the line reads as short of one instead.
+        activity = fno.value_or_blank(e["activity"]) or (rule or {}).get("activity") \
+            or (row_c["aktivitet"] if row_c else "")
+        fno_task = fno.value_or_blank(e["fno_task"])
         proj = projects.get(p) or {}
         description = proj.get("fno_description") or (rule or {}).get("description") or ""
 
@@ -715,12 +719,13 @@ def collect_entry(entries, customers, today, projects=None):
         # matches on these, so they travel with the row. When two timesheet lines fold into
         # one cell and disagree, the cell is `ambiguous` and the editor will not write --
         # naming one of them would correct the wrong line.
-        k = (firma, e["date"], cust, p, proj_id, activity, e["fno_task"])
+        k = (firma, e["date"], cust, p, proj_id, activity, fno_task)
         cell = agg.setdefault(k, {"firma": firma, "date": e["date"], "customer": cust,
                                   "project": p, "proj_id": proj_id, "activity": activity,
-                                  "fno_task": e["fno_task"], "hours": 0.0,
+                                  "fno_task": fno_task, "hours": 0.0,
                                   "from_sheet": weak and not xl_weak, "conflict": conflict,
                                   "ws_proj_id": ws_id, "ws_activity": e["activity"],
+                                  "ws_fno_task": e["fno_task"],
                                   "xl_proj_id": xl_id, "ambiguous": False,
                                   "description": description,
                                   "no_charge": bool((rule or {}).get("no_charge")),
@@ -729,7 +734,8 @@ def collect_entry(entries, customers, today, projects=None):
                                   # be corrected -- the editor has to say that, not fail.
                                   "live": bool(e.get("live")),
                                   "task_note": row_c["task_note"] if row_c else ""})
-        if cell["ws_proj_id"] != ws_id or cell["ws_activity"] != e["activity"]:
+        if (cell["ws_proj_id"] != ws_id or cell["ws_activity"] != e["activity"]
+                or cell["ws_fno_task"] != e["fno_task"]):
             cell["ambiguous"] = True
         cell["hours"] = round(cell["hours"] + e["hours"], 2)
         cell["missing"] = fno.missing(cell, rule)
@@ -1219,6 +1225,30 @@ def reassign_dev(date, to_project, activity="", fno_task=""):
 # Safety: the task must exist under ROOT/ops/tasks; only the listed actions are
 # accepted -- no free-form writes.
 
+def _read_raw(path):
+    """-> (text with \n endings, was_crlf).
+
+    A file that is read to be edited has to be written back the way it was found. The
+    substrate is not uniform -- task files and CLAUDE.md are LF, the timesheet days and
+    TODO.md are CRLF, because rollup.py writes those in text mode on Windows -- and
+    flipping either turns a one-line correction into a whole-file diff."""
+    with io.open(path, encoding="utf-8", newline="") as f:
+        raw = f.read()
+    return raw.replace("\r\n", "\n"), "\r\n" in raw
+
+
+def _write_raw(path, text, crlf):
+    with io.open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text.replace("\n", "\r\n") if crlf else text)
+
+
+FNO_FIELDS = ("fno_code", "fno_activity", "fno_description", "fno_firma",
+              "fno_requires", "fno_billable")
+# A dimension value is an F&O code, an activity id or a short description -- never prose and
+# never a newline, which would break the `key: value` line it is written onto.
+FNO_VALUE_RE = re.compile(r"^[\w\-.,:/() ]{0,120}$")
+
+
 def _fm_line(key, val):
     return "%s: %s" % (key, val) if val else "%s:" % key
 
@@ -1305,7 +1335,9 @@ def task_mutate(slug, action, **kwargs):
     """Mechanical task mutations from the day-view without a session.
 
     action: done | open | in-progress | ask-sent | ask-answered | resume | park | wait
-    kwargs: date (park), waiting_on (wait)
+            | comment | set-dims
+    kwargs: date (park), waiting_on (wait), text (comment),
+            activity + fno_task (set-dims)
     Returns (ok, message)."""
     if not re.match(r"^[\w-]+$", slug or ""):
         return False, "bad slug"
@@ -1318,7 +1350,7 @@ def task_mutate(slug, action, **kwargs):
     if not found_path:
         return False, "task not found: %s" % slug
 
-    text = read(found_path)
+    text, crlf = _read_raw(found_path)
     updates = {}
     new_state = None
 
@@ -1354,14 +1386,35 @@ def task_mutate(slug, action, **kwargs):
             return False, "waiting_on required"
         updates["waiting_on"] = wo
         updates["resume_on"] = ""
+    elif action == "set-dims":
+        # The F&O sub-dimensions this task lends to every line tagged with it
+        # (ops/time/rollup.py task_dims). In F&O a Task carries its own Activity, so a
+        # task-registering customer wants only the task; a customer with activities and no
+        # tasks wants only the activity. Either may be set alone, and only what is sent is
+        # written -- a field left out keeps whatever the file says.
+        wrote = []
+        for key in ("activity", "fno_task"):
+            if key not in kwargs or kwargs[key] is None:
+                continue
+            val = str(kwargs[key]).strip()
+            if not FNO_VALUE_RE.match(val):
+                return False, "%s has characters that cannot go on a field line" % key
+            updates[key] = val
+            wrote.append("%s=%s" % (key, val or "(blank)"))
+        if not wrote:
+            return False, "nothing to set"
+        try:
+            _write_raw(found_path, _apply_fm(text, updates), crlf)
+        except Exception as exc:
+            return False, str(exc)
+        return True, "%s: %s" % (slug, ", ".join(wrote))
     elif action == "comment":
         txt = (kwargs.get("text") or "").strip()
         if not txt:
             return False, "empty note"
         new_text = _append_log(text, datetime.date.today().isoformat(), txt)
         try:
-            with open(found_path, "w", encoding="utf-8") as f:
-                f.write(new_text)
+            _write_raw(found_path, new_text, crlf)
         except Exception as exc:
             return False, str(exc)
         return True, "note added: %s" % slug
@@ -1372,8 +1425,7 @@ def task_mutate(slug, action, **kwargs):
     target = (os.path.join(ROOT, "ops", "tasks", new_state, slug + ".md")
               if new_state else found_path)
     try:
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(new_text)
+        _write_raw(target, new_text, crlf)
         if new_state and target != found_path:
             os.remove(found_path)
     except Exception as exc:
@@ -1386,13 +1438,6 @@ def task_mutate(slug, action, **kwargs):
 # Everything here exists so a line that cannot be typed into F&O can be made typeable from the
 # page. Two grains, deliberately both: correcting the finalized day fixes the hours you are
 # entering now, setting the field on the project or the customer stops the gap coming back.
-
-FNO_FIELDS = ("fno_code", "fno_activity", "fno_description", "fno_firma",
-              "fno_requires", "fno_billable")
-# A dimension value is an F&O code, an activity id or a short description -- never prose and
-# never a newline, which would break the `key: value` line it is written onto.
-FNO_VALUE_RE = re.compile(r"^[\w\-.,:/() ]{0,120}$")
-
 
 def _set_block_field(text, header, key, value):
     """Set `key: value` inside a `## Header` block, keeping any trailing `# comment`.
@@ -1439,15 +1484,14 @@ def fno_field(kind, target, key, value):
         return False, "unknown target kind: %r" % (kind,)
     if not os.path.exists(path):
         return False, "no CLAUDE.md at %s" % target
-    text = read(path)
+    text, crlf = _read_raw(path)
     out = _set_block_field(text, header, key, value)
     if out is None:
         return False, "%s has no ## %s block" % (target, header)
     if out == text:
         return True, "%s already %s" % (key, value or "blank")
     try:
-        with io.open(path, "w", encoding="utf-8", newline="") as f:
-            f.write(out)
+        _write_raw(path, out, crlf)
     except Exception as exc:
         return False, str(exc)
     return True, "%s: %s = %s" % (target, key, value or "(blank)")
@@ -1518,8 +1562,7 @@ def timesheet_edit(date, row, updates, note=""):
     if not changed:
         return False, "nothing to change"
 
-    with io.open(path, encoding="utf-8", newline="") as f:
-        text = f.read()
+    text, crlf = _read_raw(path)
     lines = text.split("\n")
     span = _totals_span(lines)
     if span is None:
@@ -1531,8 +1574,7 @@ def timesheet_edit(date, row, updates, note=""):
     rest = [x for x in lines[span[1] + 1:]]
     body = lines[:span[0]] + table.split("\n") + [""] + [trail] + rest
     try:
-        with io.open(path, "w", encoding="utf-8", newline="") as f:
-            f.write("\n".join(body))
+        _write_raw(path, "\n".join(body), crlf)
     except Exception as exc:
         return False, str(exc)
     return True, "%s: %s" % (date, "; ".join(changed))
@@ -1658,10 +1700,14 @@ POST_ROUTES = {
                                     r.get("prompt", "")),
     "/api/reassign": lambda r: reassign_dev(r.get("date", ""), r.get("to", ""),
                                             r.get("activity", ""), r.get("fno_task", "")),
+    # `activity` / `fno_task` default to None, not "": set-dims writes only what was sent,
+    # and an absent key must not blank the field the task already carries.
     "/api/task": lambda r: task_mutate(r.get("slug", ""), r.get("action", ""),
                                        date=r.get("date", ""),
                                        waiting_on=r.get("waiting_on", ""),
-                                       text=r.get("text", "")),
+                                       text=r.get("text", ""),
+                                       activity=r.get("activity"),
+                                       fno_task=r.get("fno_task")),
     "/api/todo": lambda r: todo_mutate(r.get("line"), r.get("action", ""), r.get("raw", "")),
     "/api/fno": lambda r: fno_field(r.get("kind", ""), r.get("target", ""),
                                     r.get("field", ""), r.get("value", "")),
