@@ -193,11 +193,11 @@ is added next.
 
 | # | Finding | State |
 |---|---|---|
-| 1 | No tests on the billing arithmetic | done - `ops/tests/`, 131 tests |
+| 1 | No tests on the billing arithmetic | done - `ops/tests/`, 203 tests |
 | 2 | `_apply_fm` regex frontmatter editor | done - literal line replacement |
-| 3 | `ops/lib/` shared read layer | done - `substrate`, `workspace`, `heartbeats` |
-| 4 | `collect()` no caching | open |
-| 5 | `dashboard.html` structure | open |
+| 3 | `ops/lib/` shared read layer | done - `substrate`, `workspace`, `heartbeats`, `fno` |
+| 4 | `collect()` no caching | done - a 30 s memo, dropped on every write |
+| 5 | `dashboard.html` structure | done - retired; three pages under `ops/web/` |
 
 ## What the read layer changed
 

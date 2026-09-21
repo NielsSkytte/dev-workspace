@@ -125,29 +125,59 @@ replacement is verified.
 | 1 - cache, POST routing table, `/api/todo`, project fields, tests | done |
 | 2 - `ops/web/` shell and Today at `/` | done |
 | 3 - Projects at `/projects` | done |
-| 4 - Time at `/time` | partial, see below |
+| 4 - Time at `/time`, and the two old pages retired | done |
 
 `ops/web/`: `app.css` (368 lines, the tokens and component rules lifted verbatim from
 `dashboard.html` so the validated palette is unchanged), `app.js` (the shared shell, data
 hook, drawer, toast and launch), `vendor/` (preact 10.29.8 + htm 3.1.1, ~16 KB, see its
 README), and three pages, each a 13-line document plus its own module.
 
-## Phase 4 is not finished, on purpose
+## Phase 4, and what changed about it
 
-The Time page carries the hours chart, the by-project chart, the internal-hours position
-and hygiene. It does NOT carry the F&O entry blocks, the week audit or the reassignment
-write path. Those are about 600 lines of dense UI that put numbers in front of an invoice,
-and there was no browser available this session to exercise them in. They stay where they
-are, on `/overview#timesheet/...`, linked from the Time page.
+The brief for the Time page changed when it was built: not "port the timesheet" but **be able
+to enter the month in F&O, always**. The required data has to be present, and where it is not,
+fixable from the page. Showing what to type is the start of that, not the end of it.
 
-So `ops/dashboard.html` is still live and still needed. It is out of the main nav; the
-only way in is the two timesheet links.
+So the page is the entry surface, and it knows the rule it is registering against.
 
-Remaining, in order:
+**`Enter`** - Month, Week, Companies, Customers, Consolidated in one sticky bar, then:
 
-1. Port `entryView`, `renderAudit` and `bindReassign` to the Time page, with the reassign
-   path exercised against a throwaway workspace the way `/api/todo` was.
-2. Retire `ops/dashboard.html` and the superseded `ops/today.html`.
+- **Ready to enter**, the gate. Every line is held against the customer's own registration
+  rule, and what is short is named with the hours riding on it.
+- **Totals per company**, the reconciliation figure - one F&O timesheet per company.
+- **One block per company**, with *Copy rows* (TSV) and *Excel* (a real .xlsx, built with
+  zipfile; there is no dependency to add). Both carry exactly the visible rows.
+- **The week behind the numbers** - the five evidence sections, unchanged in substance.
+
+**`Review`** keeps the month's shape: hours, by project, internal position, hygiene.
+
+Clicking a line opens the editor, which offers **two grains** on purpose:
+
+| | Writes | Fixes |
+|---|---|---|
+| Correct this day | `ops/time/timesheet/<YYYY-MM>/<date>.md` | the hours being entered now |
+| Set `fno_code` | the project's `## Identity` | every line from here on |
+
+A day still accruing has no finalized file, so the editor says so instead of failing. A
+consolidated line has no single row behind it, so the editor says that too.
+
+`ops/dashboard.html` and `ops/today.html` are gone. Their last state is commit `09b0a41`,
+committed before the delete so the uncommitted work in them survives in history.
+
+## Where the rule lives now
+
+`ops/time/README.md` 4.1 recorded what each customer registers on, in prose - readable, and
+unusable by anything. The machine-readable copy is now in the `## Customer` block of
+`customers/<client>/CLAUDE.md`, beside `name` and `status`, read by `ops/lib/fno.py`:
+
+    fno_requires: task            what a line must carry: task, activity, description
+    fno_billable: no              the line goes in as `Linjeegenskab: No charge`
+    fno_description: ...          the required Beskrivelse (on the project - it is the engagement)
+    fno_firma/fno_code/fno_activity   override the sheet for a customer it does not list
+
+Absent means nothing extra is required. Five nodes carry a rule: Carl Ras and Matas (task),
+Tystofte and Vestforbraending (activity, and Vestforbraending `No charge`), Element Logic
+(activity + description). The README table stays as the record of what was confirmed and when.
 
 ## How it was verified
 
@@ -159,6 +189,16 @@ the workspace in a temp directory, never against `ops/TODO.md`.
 160 unit tests pass, 29 of them new: the `TODO.md` write path (indentation, CRLF, a
 missing trailing newline, a stale line, an out-of-range line, a line that is not an open
 item), the band rule, the two memos, and the POST routing table.
+
+## What phase 4 turned up in the live data
+
+- **A `?` in the sheet was being read as a Proj ID.** `TidsregInfo.xlsx` writes `?` and `6013-?`
+  for "not assigned yet". Six Aeven lines were flagged `conflict` against a value that was a
+  placeholder on one side, and a `?` was reaching the entry rows as though it were a code. A
+  placeholder is now the absence of a value: it neither fills a gap nor conflicts with anything.
+- **16 September lines, 12.5 h, cannot be entered as they stand** - 15 Carl Ras lines with no
+  ADO task (the customer registers on task, always) and one line on the `customers/Aeven`
+  customer node, which has no `fno_code`. August is clean.
 
 ## Two defects found on the way
 

@@ -2,7 +2,7 @@ Open the workspace dashboard. Since 2026-09-16 it lands on **Today** (`/`): the 
 the goal, standing date, every open task with progress age, DevOps id, next step, customer-ask status and parked
 state, with buttons that open a session seeded with the right command (`/switch-task`, `/task postpone|wait|resume`,
 `/handoff`, or the card conversion). Derived by `ops/bin/daybrief.py` via `/api/today`. The original cross-project
-view is at `/overview`. The first session of a working day (05:00 boundary) opens it automatically.
+page carries Projects (`/projects`) and Time (`/time`) beside it. The first session of a working day (05:00 boundary) opens it automatically.
 
 Original overview — one page showing what is in flight, what has gone quiet, hours per project/customer, open tasks, and data hygiene. Derived live from `ops/tasks/`, `ops/time/`, every project's `CLAUDE.md` + `CONTEXT.md`, and `ops/TODO.md`. It writes nothing. The full description lives in `AGENTS.md` > *Dashboard*.
 

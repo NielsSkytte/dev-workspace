@@ -42,32 +42,45 @@ question to Niels.
    `C:\Dev\ops\time\absence.md`, then re-run. **A short period is a question about the target before
    it is a question about the hours** — never reach for `--topup` here, and never apply one whose
    weighted evidence does not support the lift.
-4. **Every dimension resolves.** For every line in the period, the customer's required dimension is
-   present (`ops/time/README.md` §4.1) and every task id exists in F&O. **An empty task lookup means
-   the task does not exist**, not that it resolved. Collect all unresolved ids and put them to Niels
-   in **one** question — do not discover them one at a time mid-entry.
+4. **Every dimension resolves.** The Time page checks this itself now: open
+   `http://127.0.0.1:8787/time`, set the Month, and read the **Ready to enter** card. It holds each
+   line against the customer's own rule (`fno_requires:` on the customer node, from
+   `ops/time/README.md` §4.1) and lists what is short, with how many hours ride on it. Green means
+   every line carries a company, a Proj ID and whatever that customer registers on.
+   Fix a red line on the page: click it and either correct the finalized day or set `fno_code` on
+   the project so it stops recurring. A day still accruing cannot be corrected — finalize it first
+   (gate 2).
+   The page cannot tell you whether a **task id exists in F&O** — only that one is present. Check
+   the ids in F&O as before; **an empty task lookup means the task does not exist**, not that it
+   resolved. Collect all unresolved ids and put them to Niels in **one** question — do not
+   discover them one at a time mid-entry.
 
 ### 3. Pull the rows
 
 Start the dashboard if it is not running: `python C:\Dev\ops\dashboard.py --no-open` (background),
-then `http://127.0.0.1:8787/`. Go to the **week timesheet / audit page** (`#timesheet/audit`) and set
-the **Month filter** to the period's month.
+then `http://127.0.0.1:8787/time`. Set **Month** to the period's month and pick the **Week**.
+
+Two ways off the page, both giving exactly the rows on screen: **Copy rows** (TSV, one company) and
+**Excel** (a workbook, one company or every visible line). Use whichever the entry path in step 4
+takes.
 
 Three traps, all load-bearing:
 
-- **Copy from the week/audit page, never the Month page.** The same *Copy rows* button yields the
-  scaled **F&O entry** figure on the week page and plain **work time** on the month page. F&O entry
-  is the source of truth for registration.
+- **Pick a week, never Whole month.** The same buttons yield the scaled **F&O entry** figure on a
+  week and plain **work time** on the whole month. F&O entry is the source of truth for
+  registration.
 - **Reconcile the copied row count against the block total, every time.** *Copy rows* used to filter
   on company alone while the table filtered on company *and* the customer chips, so copying with a
   customer deselected silently put extra rows on the clipboard — an over-registration into a
-  production ERP. Fixed 2026-09-01 (`dashboard.html`, the two filters are now identical), but the
+  production ERP. Fixed 2026-09-01 (now `ops/web/time.js`, where the two filters are one expression), but the
   reconciliation stays: what you paste goes into a live financial system.
 - **One block per company, one copy each.** The payload has no company column, because the company
   is the block you copied from. PING and PNO1 are separate copies and separate journals.
 
 The clipboard payload is TSV with a header row: `Date, Customer, Project, Proj ID, Activity, Task,
-Hours`. Dates are ISO `YYYY-MM-DD`; **hours use a dot decimal** (`7.5`, `1.25`) while F&O expects the
+Description, Hours`; the workbook adds `Company`, `Line property` (Vestforbraending's `No charge`)
+and `Not ready`. `Description` carries the `Beskrivelse` where a customer requires one -- Element
+Logic only. Dates are ISO `YYYY-MM-DD`; **hours use a dot decimal** (`7.5`, `1.25`) while F&O expects the
 Danish comma — convert on the way in and check the first pasted line before trusting the rest.
 
 Split the copied rows into one set per **ISO week per company** — that is the journal grain.

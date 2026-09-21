@@ -18,7 +18,7 @@ description: >
   Dynamics 365 F&O timesheet or project-journal work. The per-period run sequence is the `/fno`
   command; this skill carries the knowledge each of its steps needs. Companion knowledge: the
   canonical per-customer table is `ops/time/README.md` section 4.1, and the numbers to enter come
-  from the dashboard week/audit page. Use this skill even if the request names only one piece
+  from the dashboard Time page at `/time`. Use this skill even if the request names only one piece
   (e.g. just "what project id is Carl Ras" or "should I post these journals").
 ---
 
@@ -28,10 +28,16 @@ This skill exists because a seven-hour August close on 2026-09-01 produced eight
 a **production ERP**, every one of them corrected by Niels. Each rule below is one of those errors.
 Treat them as hard rules, not preferences.
 
-The numbers themselves are not this skill's business. They come from the dashboard week/audit page
-at the **F&O entry** column (`ops/memory/store/dashboard-fno-entry-measure`), and the canonical
-per-customer dimension table is **`ops/time/README.md` section 4.1**. Read those; do not re-derive
-hours here.
+The numbers themselves are not this skill's business. They come from the dashboard **Time** page
+(`http://127.0.0.1:8787/time`, Enter view) at the **F&O entry** column
+(`ops/memory/store/dashboard-fno-entry-measure`), and the canonical per-customer dimension table is
+**`ops/time/README.md` section 4.1**. Read those; do not re-derive hours here.
+
+Since 2026-09-21 that page also **checks the rule it is registering against**: each customer's
+`fno_requires:` (on `customers/<client>/CLAUDE.md`) is held against every line, and the *Ready to
+enter* card names what is short and how many hours ride on it. A green card is the fourth pre-flight
+gate answered for everything except whether a task id exists in F&O. A red line is fixable on the
+page -- correct the finalized day, or set `fno_code` on the project so it stops recurring.
 
 ---
 
@@ -54,7 +60,10 @@ Validate **every** id in the period **before** entering the first line, not as y
 
 ## 1. Transport - paste, do not drive the grid
 
-**Default path: the dashboard's Copy rows into F&O's Excel add-in.** Driving a production F&O grid
+**Default path: the dashboard's rows into F&O's Excel add-in.** The Time page hands them over two
+ways, both carrying exactly what is on screen: **Copy rows** (TSV, one company) and **Excel** (an
+.xlsx, one company or every visible line, with the `Company`, `Line property` and `Not ready`
+columns the clipboard leaves out). Driving a production F&O grid
 one coordinate at a time is the thing to stop doing. On 2026-09-01 the browser extension dropped
 twice, the tab group was rebuilt three times, screenshots timed out repeatedly, and the page
 **rescaled between screenshots** so coordinates went stale mid-sequence. That put `0,75` into
@@ -74,24 +83,28 @@ Order of preference:
 
 Never let the browser path become the happy path in a plan, a report, or a rewrite of this skill.
 
-### What Copy rows actually gives you
+### What the page actually gives you
 
-Three traps, verified in `ops/dashboard.html` on 2026-09-01. Full detail and the code references:
-`ops/memory/store/dashboard-copy-rows-transport`.
+Verified 2026-09-01, re-verified on the rebuilt page 2026-09-21 (`ops/web/time.js`). Full detail and
+the code references: `ops/memory/store/dashboard-copy-rows-transport`.
 
-- **The week/audit page and the Month page share the same button and mean different things.** On the
-  week page the hours are the scaled **F&O entry** figure; on the Month page they are plain **work
-  time**. Registration uses F&O entry, so **always copy from the week/audit page**.
-- **Copy rows ignores the customer chip filter.** It filters on company only. Copying while a
-  customer is deselected puts **more rows on the clipboard than are on screen**. Clear the chips
-  before copying and reconcile the row count against the block.
+- **A week and Whole month mean different things.** With a week selected the hours are the scaled
+  **F&O entry** figure; on Whole month they are plain **work time**. Registration uses F&O entry, so
+  **always pick a week first**.
+- **What you take away is what you see.** Both buttons apply the company chips *and* the customer
+  chips. The 2026-09-01 defect was Copy rows filtering on company alone, which put deselected
+  customers on the clipboard invisibly -- an over-registration straight into a production ERP. It is
+  one expression now, but **reconcile the row count against the block total every time anyway**:
+  what you paste goes into a live financial system.
 - **Hours come out with a dot decimal** (`7.5`, `1.25`, `8`) while F&O expects the Danish comma.
-  Convert, and check the first pasted line before trusting the rest.
+  Convert, and check the first pasted line before trusting the rest. The workbook writes them as
+  numbers, so Excel applies the locale itself.
 
-The payload is TSV with a header: `Date, Customer, Project, Proj ID, Activity, Task, Hours`. There is
-**no company column** - the company is the block you copied from, so PING and PNO1 are separate
-copies and separate journals. Nothing outside the browser reproduces the entry figure: the scaling
-lives only in the dashboard's JavaScript, so `rollup.py --week` and `dashboard.py --json` give work
+The clipboard payload is TSV with a header: `Date, Customer, Project, Proj ID, Activity, Task,
+Description, Hours`, and **no company column** - the company is the block you copied from, so PING
+and PNO1 are separate copies and separate journals. The workbook adds `Company`, `Line property`
+(Vestforbraending's `No charge`) and `Not ready`. Nothing outside the browser reproduces the entry
+figure: the scaling lives in the page, so `rollup.py --week` and `dashboard.py --json` give work
 time, not entry hours.
 
 ---
@@ -204,7 +217,7 @@ Detail: `ops/memory/store/fno-month-close-approve-not-post`.
 
 ## 7. Which figure gets registered
 
-The dashboard week/audit page carries keyboard / measured / work time / **F&O entry** / value time.
+The Time page's week view carries keyboard / measured / work time / **F&O entry** / value time.
 **F&O entry is the source of truth for what gets registered**; work time is its floor and value time
 its ceiling.
 

@@ -22,7 +22,7 @@ progress-nudge path instead) and from `track_time.py` on UserPromptSubmit, so an
 the brief on its first prompt after 05:00. The session-start.ps1 workspace walk was removed; the brief
 replaced the file-by-file walk, so a session starts with no reads.
 
-Today (`ops/today.html`, served at `/`; the old overview at `/overview`) writes nothing: every button
+Today (served at `/`; since 2026-09-21 `ops/web/today.js`, with Projects and Time beside it) writes nothing: every button
 POSTs `/api/launch` with a command (`/switch-task`, `/task postpone|wait|resume`, `/handoff`,
 `/checkin`, `/checkin convert`) so the write happens in a session with the owner in it. Colours: the
 warm-neutral ladder for progress age, terracotta only for attention (stalled, ask unsent, DevOps none).

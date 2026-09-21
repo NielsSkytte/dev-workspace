@@ -371,7 +371,7 @@ opening instruction, which is how the two one-click routines below start.
 
 ### Today — the day's entry point (added 2026-09-16)
 
-The dashboard lands on **Today** (`/`; the original view moved to `/overview`). It is `ops/bin/daybrief.py`
+The dashboard lands on **Today** (`/`), with **Projects** (`/projects`) and **Time** (`/time`) beside it. It is `ops/bin/daybrief.py`
 rendered: per project, active first, the card's goal and standing date, every open and in-progress task
 with **progress age** (days since its `Now (date)`, coloured on the one warm-neutral ladder, terracotta
 past 14 days), DevOps id or none, next step, customer-ask status (unsent in terracotta), parked tasks with
