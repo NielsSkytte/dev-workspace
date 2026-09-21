@@ -73,6 +73,19 @@ td.rowact button{margin-left:4px}
 .popover input{font:inherit;padding:3px 6px;border:1px solid var(--axis);border-radius:6px;background:#fff}
 details summary{cursor:pointer;color:var(--ink-2);font-size:13px;margin-top:6px}
 .wsrow{display:flex;gap:16px;flex-wrap:wrap;color:var(--ink-2);font-size:13px}
+#filter-bar{padding:4px 20px 8px;display:flex;flex-direction:column;gap:6px}
+.fc-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.fc-lbl{font-size:11px;color:var(--muted);min-width:52px;flex-shrink:0}
+.fc-chip{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--grid);border-radius:20px;padding:3px 10px 6px;font:12px/1.3 inherit;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:5px;transition:border-color .1s}
+.fc-chip:hover{border-color:var(--brand)}
+.fc-chip.on{border-color:var(--brand);background:var(--brand);color:var(--brand-ink)}
+.fc-chip .cc{font-size:13px;font-weight:700;color:var(--brand)}
+.fc-chip.on .cc{color:var(--brand-ink)}
+.fc-hot{font-size:10px;color:var(--accent);background:rgba(181,68,42,.08);border-radius:4px;padding:0 4px}
+.fc-chip.on .fc-hot{color:#FFCFC4;background:rgba(255,255,255,.15)}
+.fc-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--brand);opacity:.35;border-radius:0 3px 3px 0}
+.fc-chip.on .fc-bar{background:rgba(242,234,228,.6);opacity:1}
+.fc-chip.sm{padding:3px 10px}
 @media (max-width:800px){ td.next{display:none} th.next{display:none} }
 </style>
 </head>
@@ -88,13 +101,14 @@ details summary{cursor:pointer;color:var(--ink-2);font-size:13px;margin-top:6px}
   </nav>
 </header>
 <section class="tiles" id="tiles"></section>
+<section id="filter-bar"></section>
 <main id="main"></main>
 <div id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let AUTO = true, timer = null, DATA = null;
+let AUTO = true, timer = null, DATA = null, filterCust = null, filterStatus = null;
 
 function ageClass(t){
   if (t.parked) return 'chip parked';
@@ -111,6 +125,64 @@ function ageText(t){
   return t.progress_age == null ? '?' : (t.progress_age + ' d');
 }
 function isCustomer(key){ return key.toLowerCase().startsWith('customers/'); }
+function custKey(key){
+  const p = key.split('/');
+  if(p[0]==='customers') return p[1];
+  if(p[0]==='own') return '__own__';
+  return '__dev__';
+}
+function applyStatusFilter(tasks){
+  if(!filterStatus || filterStatus==='__all__') return tasks;
+  return tasks.filter(t => {
+    if(filterStatus==='in-progress') return t.state==='in-progress' && !t.parked;
+    if(filterStatus==='stalled') return t.stalled;
+    if(filterStatus==='parked') return t.parked;
+    if(filterStatus==='asks') return t.ask_unsent;
+    return true;
+  });
+}
+function buildFilterBar(){
+  const custMap = {};
+  DATA.projects.forEach(p => {
+    const c = custKey(p.key);
+    if(!custMap[c]) custMap[c] = {total:0,stalled:0,asks:0};
+    p.tasks.forEach(t => {
+      custMap[c].total++;
+      if(t.stalled) custMap[c].stalled++;
+      if(t.ask_unsent) custMap[c].asks++;
+    });
+  });
+  const allTotal = Object.values(custMap).reduce((s,v) => s+v.total, 0);
+  const maxTotal = Math.max(...Object.values(custMap).map(v => v.total), 1);
+  const custs = Object.entries(custMap).filter(([,v]) => v.total>0)
+    .sort(([,a],[,b]) => b.total-a.total);
+
+  function chip(key, label, count, pct, warns, sm){
+    const on = sm ? (filterStatus||'__all__')===key : (key==='__all__' ? filterCust===null : filterCust===key);
+    const attr = sm ? 'data-fs="'+key+'"' : 'data-fc="'+key+'"';
+    return '<button class="fc-chip'+(sm?' sm':'')+(on?' on':'')+'" '+attr+'>'
+      +'<span>'+esc(label)+'</span>'+(sm?'':'<span class="cc">'+count+'</span>')
+      +(warns||'')
+      +(sm?'':'<span class="fc-bar" style="width:'+pct+'%"></span>')
+      +'</button>';
+  }
+
+  let html = '<div class="fc-row"><span class="fc-lbl">Customer</span>'
+    +chip('__all__','All',allTotal,100,'',false)
+    +custs.map(([c,v]) => {
+      const lbl = c==='__own__'?'own':c==='__dev__'?'Dev':c;
+      const pct = Math.round(v.total/maxTotal*100);
+      const warns = (v.stalled?'<span class="fc-hot">'+v.stalled+' stalled</span>':'')
+                   +(v.asks?'<span class="fc-hot">'+v.asks+' unsent</span>':'');
+      return chip(c,lbl,v.total,pct,warns,false);
+    }).join('')+'</div>';
+
+  const stats=[['__all__','All'],['in-progress','In progress'],['stalled','Stalled'],['parked','Parked'],['asks','Asks unsent']];
+  html+='<div class="fc-row"><span class="fc-lbl">Status</span>'
+    +stats.map(([k,l]) => chip(k,l,0,0,'',true)).join('')+'</div>';
+
+  $('#filter-bar').innerHTML = html;
+}
 function workPrompt(p, t){
   return isCustomer(p.key) ? ('/switch-task ' + t.slug)
     : ('Work on task ' + t.slug + ' (ops/tasks/' + t.state + '/' + t.slug + '.md): read its Progress block and start on Next 1.');
@@ -128,6 +200,41 @@ let toastT;
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3600); }
 
+async function taskDirect(slug, action, extra){
+  try{
+    const r = await fetch('/api/task', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(Object.assign({slug, action}, extra||{}))});
+    const j = await r.json();
+    toast(j.message || (j.ok ? action + ' done' : 'failed'));
+    if(j.ok) load();
+  }catch(e){ toast('Error: ' + e.message); }
+}
+
+function notePopover(btn, p, t){
+  closePopovers();
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.style.cssText += 'flex-direction:column;align-items:stretch;min-width:280px';
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'Quick note…';
+  ta.style.cssText = 'font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--axis);border-radius:6px;resize:vertical;width:100%;min-height:60px;background:#fff';
+  const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+  const ok = document.createElement('button'); ok.className = 'act primary'; ok.textContent = 'Save';
+  const no = document.createElement('button'); no.className = 'act'; no.textContent = 'Cancel';
+  ok.onclick = () => {
+    const txt = ta.value.trim();
+    if(!txt){ toast('Empty note'); return; }
+    taskDirect(t.slug, 'comment', {text: txt}); pop.remove();
+  };
+  ta.addEventListener('keydown', e => { if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ok.onclick(); });
+  no.onclick = () => pop.remove();
+  row.append(ok, no);
+  pop.append(ta, row);
+  const r = btn.getBoundingClientRect();
+  pop.style.left = (window.scrollX + r.right - 280) + 'px'; pop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  document.body.appendChild(pop);
+  ta.focus();
+}
+
 function postponePopover(btn, p, t){
   closePopovers();
   const pop = document.createElement('div'); pop.className = 'popover';
@@ -135,7 +242,7 @@ function postponePopover(btn, p, t){
   const inp = document.createElement('input'); inp.type = 'date'; inp.value = d.toISOString().slice(0,10);
   const ok = document.createElement('button'); ok.className = 'act primary'; ok.textContent = 'Postpone';
   const no = document.createElement('button'); no.className = 'act'; no.textContent = 'Cancel';
-  ok.onclick = () => { launch(p.key, '/task postpone ' + t.slug + ' ' + inp.value); pop.remove(); };
+  ok.onclick = () => { taskDirect(t.slug, 'park', {date: inp.value}); pop.remove(); };
   no.onclick = () => pop.remove();
   pop.append(inp, ok, no);
   const r = btn.getBoundingClientRect();
@@ -150,17 +257,27 @@ function taskRow(p, t){
   let state = t.state === 'in-progress' ? 'in progress' : t.state;
   if (t.parked) state = 'parked' + (t.waiting ? ' (waiting on ' + esc(t.waiting) + ')' : ' (resumes ' + esc(t.resume_on) + ')');
   else if (t.due_back) state += ' &middot; <b>due back</b>';
+  const askBtns = t.ask_unsent
+    ? ' <button class="act" data-act="ask-sent" style="font-size:10px;padding:1px 5px">sent</button>'
+    : (t.customer_ask || '').startsWith('sent')
+      ? ' <button class="act" data-act="ask-answered" style="font-size:10px;padding:1px 5px">answered</button>'
+      : '';
   const ask = t.customer_ask && t.customer_ask !== 'none'
     ? '<span class="ask ' + esc(t.customer_ask.split(' ')[0]) + '">' + (t.ask_unsent ? 'UNSENT' : esc(t.customer_ask)) + '</span>'
+      + askBtns
       + (t.needs && t.needs.length ? '<div class="t">' + esc(t.needs[0].slice(0, 110)) + (t.needs[0].length > 110 ? '...' : '') + '</div>' : '')
     : '<span class="ask">none</span>';
   const next = t.next && t.next.length ? esc(t.next[0]) : (t.has_progress ? '<i>no next step</i>' : '<i>no Progress block; last activity ' + esc(t.progress_date || '?') + '</i>');
   const title = t.title ? '<div class="t">' + esc(t.title.replace(/^.*?—\s*/, '').slice(0, 120)) + '</div>' : '';
   const acts = t.parked
     ? '<button class="act" data-act="resume">Resume</button>'
+      + '<button class="act" data-act="done">Done</button>'
+      + '<button class="act" data-act="note" data-pop="1">Note</button>'
     : '<button class="act primary" data-act="work">Work</button>'
+      + '<button class="act" data-act="done">Done</button>'
       + '<button class="act" data-act="postpone" data-pop="1">Postpone</button>'
-      + '<button class="act" data-act="wait">Wait on customer</button>';
+      + '<button class="act" data-act="wait">Wait: customer</button>'
+      + '<button class="act" data-act="note" data-pop="1">Note</button>';
   return '<tr class="' + (t.parked ? 'parkedrow' : '') + '" data-slug="' + esc(t.slug) + '">'
     + '<td class="age"><span class="' + ageClass(t) + '" title="days since the task\'s Now date (' + esc(t.progress_date || 'unknown') + ')">' + ageText(t) + '</span></td>'
     + '<td class="slug"><code>' + esc(t.slug) + '</code>' + title + '</td>'
@@ -171,7 +288,8 @@ function taskRow(p, t){
     + '<td class="rowact">' + acts + '</td></tr>';
 }
 
-function projectCard(p){
+function projectCard(p, tasksOver){
+  const tasks = tasksOver !== undefined ? tasksOver : p.tasks;
   const c = p.card || {}; const k = p.counts || {};
   const standAge = c.standing_date ? Math.round((new Date(DATA.today) - new Date(c.standing_date)) / 86400000) : null;
   const meta = [
@@ -180,7 +298,7 @@ function projectCard(p){
     p.fno_code ? ('F&amp;O ' + esc(p.fno_code)) : ''
   ].filter(Boolean).join(' &middot; ');
   const legacy = c.shape !== 'card';
-  const active = p.tasks.filter(t => !t.parked), parked = p.tasks.filter(t => t.parked);
+  const active = tasks.filter(t => !t.parked), parked = tasks.filter(t => t.parked);
   let html = '<article data-key="' + esc(p.key) + '"><div class="phead"><h2>' + esc(p.key) + '</h2>'
     + '<span class="badge">' + esc(p.status || 'no status') + '</span>'
     + (legacy ? '<span class="badge legacy">old CONTEXT.md</span>' : '')
@@ -192,7 +310,7 @@ function projectCard(p){
   if (legacy) html += '<div class="legacybox"><span class="w">CONTEXT.md is the old shape' + (c.bytes ? ' (' + Math.round(c.bytes/1024) + ' KB)' : '') + '.</span>'
     + '<span>Goal, standing and open threads are not readable until it is converted.</span>'
     + '<button class="act primary" data-pact="convert">Convert to the card</button></div>';
-  if (p.tasks.length){
+  if (tasks.length){
     html += '<div class="note">' + esc(k.in_progress) + ' in progress, ' + esc(k.open) + ' open, ' + esc(k.parked) + ' parked'
       + (k.stalled ? ', <b>' + k.stalled + ' stalled over 14 days</b>' : '')
       + (k.asks_unsent ? ', <b>' + k.asks_unsent + ' customer ask' + (k.asks_unsent === 1 ? '' : 's') + ' unsent</b>' : '')
@@ -210,10 +328,10 @@ function projectCard(p){
 function render(){
   const m = DATA;
   $('#title').textContent = 'Today \u2014 ' + m.weekday + ' ' + m.today;
+
+  buildFilterBar();
+
   const ps = m.projects.slice();
-  const live = ps.filter(p => p.tasks.length || p.status === 'active' || p.status === 'planned');
-  const quiet = ps.filter(p => !live.includes(p));
-  live.sort((a, b) => (b.last_worked || '').localeCompare(a.last_worked || ''));
   const all = ps.flatMap(p => p.tasks);
   const tiles = [
     ['In progress', all.filter(t => t.state === 'in-progress' && !t.parked).length, false],
@@ -225,18 +343,38 @@ function render(){
     ['TODO open', m.todo.count, false],
   ];
   $('#tiles').innerHTML = tiles.map(([l, n, hot]) => '<div class="tile' + (hot && n ? ' hot' : '') + '"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>').join('');
-  $('#subtitle').textContent = live.length + ' projects in play, ' + quiet.length + ' quiet';
-  let html = live.map(projectCard).join('');
-  html += '<article class="quiet"><details><summary>Quiet projects (' + quiet.length + ') and workspace-level work</summary><div class="wsrow" style="margin-top:8px">'
-    + quiet.map(p => '<span>' + esc(p.key) + ' <span class="badge">' + esc(p.status || '-') + '</span></span>').join('') + '</div>'
-    + (m.workspace_tasks.length ? '<div class="note">Workspace tasks: ' + m.workspace_tasks.map(t => '<code>' + esc(t.slug) + '</code> (' + esc(t.state) + ')').join(', ') + '</div>' : '')
-    + '<div class="note">TODO: ' + m.todo.count + ' unchecked' + (m.todo.oldest ? ', oldest ' + esc(m.todo.oldest) : '') + ' &middot; derived by ops/bin/daybrief.py; every button opens a session that makes the change, this page writes nothing.</div>'
-    + '</details></article>';
+
+  const isFiltered = filterCust !== null || (filterStatus && filterStatus !== '__all__');
+  const live = ps.filter(p => {
+    if(filterCust !== null && custKey(p.key) !== filterCust) return false;
+    const ft = applyStatusFilter(p.tasks);
+    if(filterStatus && filterStatus !== '__all__') return ft.length > 0;
+    return p.tasks.length || p.status === 'active' || p.status === 'planned';
+  });
+  const quiet = isFiltered ? [] : ps.filter(p => !live.includes(p));
+  live.sort((a, b) => (b.last_worked || '').localeCompare(a.last_worked || ''));
+
+  $('#subtitle').textContent = isFiltered
+    ? live.length + ' project' + (live.length === 1 ? '' : 's') + ' matching filter'
+    : live.length + ' projects in play, ' + quiet.length + ' quiet';
+
+  let html = live.map(p => projectCard(p, applyStatusFilter(p.tasks))).join('');
+  if(!isFiltered){
+    html += '<article class="quiet"><details><summary>Quiet projects (' + quiet.length + ') and workspace-level work</summary><div class="wsrow" style="margin-top:8px">'
+      + quiet.map(p => '<span>' + esc(p.key) + ' <span class="badge">' + esc(p.status || '-') + '</span></span>').join('') + '</div>'
+      + (m.workspace_tasks.length ? '<div class="note">Workspace tasks: ' + m.workspace_tasks.map(t => '<code>' + esc(t.slug) + '</code> (' + esc(t.state) + ')').join(', ') + '</div>' : '')
+      + '<div class="note">TODO: ' + m.todo.count + ' unchecked' + (m.todo.oldest ? ', oldest ' + esc(m.todo.oldest) : '') + ' &middot; derived by ops/bin/daybrief.py; every button opens a session that makes the change, this page writes nothing.</div>'
+      + '</details></article>';
+  }
   $('#main').innerHTML = html;
   $('#stamp').textContent = 'fetched ' + new Date().toLocaleTimeString();
 }
 
 document.addEventListener('click', e => {
+  const fc = e.target.closest('[data-fc]');
+  if(fc){ filterCust = fc.dataset.fc==='__all__' ? null : fc.dataset.fc; render(); return; }
+  const fs = e.target.closest('[data-fs]');
+  if(fs){ filterStatus = fs.dataset.fs==='__all__' ? null : fs.dataset.fs; render(); return; }
   const b = e.target.closest('button[data-act],button[data-pact]');
   if (!b) return;
   const art = b.closest('article'); const key = art && art.dataset.key; if (!key) return;
@@ -250,9 +388,13 @@ document.addEventListener('click', e => {
   }
   const slug = b.closest('tr').dataset.slug; const t = p.tasks.find(x => x.slug === slug); if (!t) return;
   if (b.dataset.act === 'work') launch(p.key, workPrompt(p, t));
-  if (b.dataset.act === 'wait') launch(p.key, '/task wait ' + slug + ' customer');
-  if (b.dataset.act === 'resume') launch(p.key, '/task resume ' + slug);
+  if (b.dataset.act === 'done') taskDirect(t.slug, 'done');
+  if (b.dataset.act === 'wait') taskDirect(t.slug, 'wait', {waiting_on: 'customer'});
+  if (b.dataset.act === 'resume') taskDirect(t.slug, 'resume');
+  if (b.dataset.act === 'ask-sent') taskDirect(t.slug, 'ask-sent');
+  if (b.dataset.act === 'ask-answered') taskDirect(t.slug, 'ask-answered');
   if (b.dataset.act === 'postpone') postponePopover(b, p, t);
+  if (b.dataset.act === 'note') notePopover(b, p, t);
 });
 
 async function load(){
