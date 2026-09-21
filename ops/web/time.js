@@ -333,9 +333,24 @@ function Ready({ rows, onPick, periodLabel, scaled, D }) {
     </div>`;
 }
 
-/* ---------- the line editor ----------
-   Two grains, both offered. Correcting the day fixes the hours being entered now; setting
-   the field on the project or the customer stops the gap coming back next month. */
+/* ---------- the line panel ----------
+ *
+ * Two words are doing one job in this workspace, and keeping them apart is the whole point
+ * of how this panel is laid out:
+ *
+ *   a WORK-TASK   `ops/tasks/<state>/<slug>.md` -- a unit of work you open a session on
+ *   an F&O TASK   the Azure DevOps work-item id that goes in the Task column of a time line
+ *
+ * A work-task carries an F&O task (and an activity) so that every line worked under it is
+ * already complete. That mapping is customer-level hygiene and lives on the Projects page,
+ * not here -- from a timesheet line it reads as though editing it would fix the line, and
+ * it would not: it reaches the next session, never the day already written.
+ *
+ * So this panel does two things and says which is which:
+ *   1. set the F&O dimensions on the timesheet line(s) behind this row -- the entry act
+ *   2. set the defaults that stop the gap recurring -- the project's fno_code, the
+ *      customer's activity and rule
+ */
 
 /* One `key: value` on one file, with what it is worth saying about it. */
 function FieldRow({ label: lab, value, onInput, onSave, busy, hint, placeholder, action }) {
@@ -351,80 +366,214 @@ function FieldRow({ label: lab, value, onInput, onSave, busy, hint, placeholder,
     <//>`;
 }
 
-/* Where an F&O dimension comes from, and setting it there.
+/* What a customer already registers on, from the lines already entered.
  *
- * The day correction above fixes the hours being entered now. This fixes the reason, and
- * each field belongs to a different thing:
+ * Not the project's open work-tasks: every open Carl Ras one carries `fno_task: none`,
+ * because the convention is id-or-none and the ids are opened in DevOps as the work goes.
+ * The ids actually in use are on the lines, so that is where the list comes from -- ranked
+ * by how much time is on them, with the most recent date beside each. A work-task that does
+ * carry an id joins them. */
+function knownValues(D, row, field) {
+  const seen = {};
+  (D.entry.rows || []).forEach(r => {
+    if (!r.customer || r.customer !== row.customer) return;
+    const v = blankIfPlaceholder(r[field]);
+    if (!v) return;
+    const s = seen[v] || (seen[v] = { value: v, hours: 0, n: 0, last: '', mine: false });
+    s.hours = Math.round((s.hours + r.hours) * 100) / 100;
+    s.n += 1;
+    if (r.date > s.last) s.last = r.date;
+    if (r.project === row.project) s.mine = true;
+  });
+  const out = Object.values(seen).sort((a, b) => (b.mine - a.mine) || (b.hours - a.hours));
+  if (field === 'fno_task') {
+    const have = new Set(out.map(u => u.value));
+    (D.targets || []).forEach(x => {
+      const id = blankIfPlaceholder(x.fno_task);
+      if (x.project === row.project && id && !have.has(id)) {
+        out.push({ value: id, hours: 0, n: 0, last: '', mine: true, title: x.title });
+      }
+    });
+  }
+  return out;
+}
+
+const knownLabel = u => (u.n
+  ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
+  : `${u.value} — ${u.title || 'from a work-task'}`);
+
+/* One timesheet line: its F&O dimensions, and the write that puts them there.
+ *
+ * This is the entry act. It rewrites one row of one finalized day file and records the
+ * correction underneath, the way ops/time/README.md says to. A day still accruing has no
+ * file yet and says so. */
+function DayFix({ raw, row, D, onDone, only }) {
+  const [pid, setPid] = useState('');
+  const [act, setAct] = useState('');
+  const [task, setTask] = useState('');
+  const [hours, setHours] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setPid(blankIfPlaceholder(raw.proj_id) || blankIfPlaceholder(row.proj_id));
+    setAct(blankIfPlaceholder(raw.activity));
+    setTask(blankIfPlaceholder(raw.fno_task));
+    setHours(String(raw.hours));
+    setNote('');
+    setBusy(false);
+  }, [rowKey(raw)]);
+
+  const onTask = (row.requires || []).includes('task');
+  const tasks = knownValues(D, row, 'fno_task');
+  const acts = knownValues(D, row, 'activity');
+  const changed = pid !== (raw.ws_proj_id || '') || act !== (raw.ws_activity || '')
+    || task !== (raw.ws_fno_task || '') || String(raw.hours) !== hours.trim();
+
+  const correct = async () => {
+    setBusy(true);
+    const j = await post('/api/timesheet', {
+      date: raw.date,
+      row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
+             fno_task: raw.ws_fno_task },
+      set: { proj_id: pid.trim(), activity: act.trim(), fno_task: task.trim(),
+             hours: Number(hours) },
+      note: note.trim(),
+    });
+    setBusy(false);
+    toast(j.message || (j.ok ? 'corrected' : 'failed'));
+    if (j.ok) onDone();
+  };
+
+  if (raw.live) {
+    return html`
+      <div class="daycard">
+        <div class="dayhead"><b>${raw.date}</b> · ${hrs(raw.hours)} h
+          <span class="pill warn">live</span></div>
+        <p class="sub" style="margin:4px 0 0">Still accruing, so there is no finalized
+          timesheet file to write. Close the day with <code>/log</code> and it becomes
+          editable. The defaults below apply to it now.</p>
+      </div>`;
+  }
+  if (raw.ambiguous) {
+    return html`
+      <div class="daycard">
+        <div class="dayhead"><b>${raw.date}</b> · ${hrs(raw.hours)} h</div>
+        <p class="sub" style="margin:4px 0 0">Two timesheet lines on ${raw.date} resolve to
+          this one row, so there is no single line to change. Edit
+          <code>ops/time/timesheet/${raw.date.slice(0, 7)}/${raw.date}.md</code> by hand.</p>
+      </div>`;
+  }
+
+  return html`
+    <div class="daycard">
+      <div class="dayhead"><b>${raw.date}</b> · ${hrs(raw.hours)} h
+        ${only ? null : html`<span class="sub">${dowName(raw.date)}</span>`}</div>
+
+      ${tasks.length ? html`
+        <div class="actrow">
+          <span class="flabel" style="min-width:64px">F&O task</span>
+          <select class="mini" value=${task}
+                  onChange=${e => setTask(e.target.value)}>
+            <option value="">${task ? '(clear it)' : 'pick one already in use…'}</option>
+            ${tasks.map(u => html`
+              <option key=${u.value} value=${u.value}>${knownLabel(u)}</option>`)}
+            ${task && !tasks.some(u => u.value === task)
+              ? html`<option value=${task}>${task}</option>` : null}
+          </select>
+        </div>` : null}
+      <div class="actrow">
+        <span class="flabel" style="min-width:64px">${tasks.length ? '…or type' : 'F&O task'}</span>
+        <input type="text" value=${task} onInput=${e => setTask(e.target.value)}
+               placeholder="the linked DevOps work item" aria-label="F&O task"/>
+      </div>
+
+      ${acts.length ? html`
+        <div class="actrow">
+          <span class="flabel" style="min-width:64px">Activity</span>
+          <select class="mini" value=${act} onChange=${e => setAct(e.target.value)}>
+            <option value="">${act ? '(clear it)' : 'pick one already in use…'}</option>
+            ${acts.map(u => html`
+              <option key=${u.value} value=${u.value}>${knownLabel(u)}</option>`)}
+            ${act && !acts.some(u => u.value === act)
+              ? html`<option value=${act}>${act}</option>` : null}
+          </select>
+        </div>` : null}
+      <div class="actrow">
+        <span class="flabel" style="min-width:64px">${acts.length ? '…or type' : 'Activity'}</span>
+        <input type="text" value=${act} onInput=${e => setAct(e.target.value)}
+               placeholder=${onTask ? 'F&O derives it from the task — leave blank' : 'activity id'}
+               aria-label="Activity"/>
+      </div>
+
+      <details class="daymore">
+        <summary>Proj ID, hours and a reason</summary>
+        <div class="actrow"><span class="flabel" style="min-width:64px">Proj ID</span>
+          <input type="text" value=${pid} onInput=${e => setPid(e.target.value)}
+                 placeholder="e.g. 230-02" aria-label="Proj ID"/></div>
+        <div class="actrow"><span class="flabel" style="min-width:64px">Hours</span>
+          <input type="text" value=${hours} onInput=${e => setHours(e.target.value)}
+                 aria-label="Hours"/>
+          <span class="sub">work time, 0.25 h steps</span></div>
+        <div class="actrow"><span class="flabel" style="min-width:64px">Why</span>
+          <input type="text" value=${note} onInput=${e => setNote(e.target.value)}
+                 placeholder="goes into the correction note" aria-label="Why"/></div>
+      </details>
+
+      <div class="rowacts">
+        <span class="sub" style="margin-right:auto">writes
+          <code>timesheet/${raw.date.slice(0, 7)}/${raw.date}.md</code></span>
+        <button class="act primary" disabled=${busy || !changed}
+                onClick=${correct}>Save ${raw.date}</button>
+      </div>
+    </div>`;
+}
+
+/* The defaults behind a line, on the files that own them.
  *
  *   Proj ID      the project's `## Identity` fno_code
- *   Activity     the task's `activity:`, or the customer's fno_activity as the default
- *   Task         the task's `fno_task:` -- the linked ADO work item
  *   Beskrivelse  the project's fno_description, since it carries the engagement
+ *   Activity     the customer's fno_activity, the default for every line with none
+ *   the rule     the customer's fno_requires
  *
- * In F&O a Task carries its own Activity, so a customer registering on task wants only the
- * task and an invented activity there is noise at best (Carl Ras, ops/time/README.md 4.1).
- * A customer with activities and no tasks -- Aeven -- wants only the activity, and there is
- * no task to hang it on, so it goes on the customer as the default for every line.
+ * The work-task mapping is NOT here. It is customer-level hygiene -- every open work-task
+ * should carry an F&O task or activity before any time is logged to it -- and it lives on
+ * the Projects page, where the customer does.
  */
 function SourceFixes({ row, D, onDone }) {
   const [code, setCode] = useState('');
   const [defAct, setDefAct] = useState('');
   const [req, setReq] = useState('');
   const [desc, setDesc] = useState('');
-  const [dims, setDims] = useState({});
   const [busy, setBusy] = useState(false);
 
   const proj = (D.projects || []).find(p => p.key === row.project);
   const rule = row.customer ? ((D.entry.rules || {})[normCust(row.customer)] || null) : null;
-  /* Every task that could carry this line's sub-dimensions: the project's open and
-     in-progress ones, plus whatever the heartbeats behind this line were actually tagged
-     with -- which may be a task that has since been closed. */
-  const tagged = new Set((((D.lineSessions || {})[sessKey(row)] || {}).blocks || [])
-    .map(b => b.task).filter(Boolean));
-  const tasks = (D.targets || []).filter(x => x.project === row.project || tagged.has(x.slug));
-  /* The line's own tasks first, and the rest of the project's behind a fold. Six open tasks
-     with nothing to separate them is the same as none. */
-  const onThisLine = tasks.filter(x => tagged.has(x.slug));
-  const others = tasks.filter(x => !tagged.has(x.slug));
 
   useEffect(() => {
     setCode(proj ? blankIfPlaceholder(proj.fno_code) : '');
     setDefAct(rule ? rule.activity : '');
     setReq((row.requires || []).join(', '));
     setDesc((proj && proj.fno_description) || (rule && rule.description) || '');
-    const d = {};
-    tasks.forEach(x => {
-      d[x.slug] = { activity: blankIfPlaceholder(x.activity),
-                    fno_task: blankIfPlaceholder(x.fno_task) };
-    });
-    setDims(d);
     setBusy(false);
   }, [rowKey(row)]);
 
-  const run = async (body, url) => {
+  const field = async (kind, target, f, value) => {
     setBusy(true);
-    const j = await post(url || '/api/fno', body);
+    const j = await post('/api/fno', { kind, target, field: f, value });
     setBusy(false);
     toast(j.message || (j.ok ? 'saved' : 'failed'));
     if (j.ok) onDone();
   };
-  const field = (kind, target, f, value) => run({ kind, target, field: f, value });
-  const edit = (slug, f, v) => setDims(d => ({ ...d, [slug]: { ...d[slug], [f]: v } }));
 
   const needs = new Set((row.missing || []).map(m => m.field));
   const onTask = (row.requires || []).includes('task');
-  /* When none of the project's tasks is this line's, the list is reference material, not
-     the thing to do -- so it folds. It is still here, because editing a task's dimensions
-     from the line that made you notice them is the point of having it. */
-  const foldOthers = !onThisLine.length && others.length > 1;
 
   return html`
     <div class="block">
-      <h4>Set it at the source</h4>
-      <p class="sub" style="margin:0 0 10px">The day fix above covers the hours you are
-        entering now; these fix the reason, so next month's lines carry it themselves.
-        In F&O a <b>Task</b> brings its own <b>Activity</b> — set the task where the customer
-        registers on tasks, and the activity where there are only activities.</p>
+      <h4>Defaults, so it stops recurring</h4>
+      <p class="sub" style="margin:0 0 10px">These do not touch the lines above — they set
+        what future lines inherit.</p>
 
       ${proj ? html`
         <${Fragment}>
@@ -454,165 +603,18 @@ function SourceFixes({ row, D, onDone }) {
                        placeholder="task, activity, description"
                        hint="what a line for this customer must carry before it can be entered"
                        onSave=${() => field('customer', row.customer, 'fno_requires', req.trim())}/>
+          <p class="sub" style="margin:10px 0 0">Every open work-task for ${row.customer}
+            should carry an F&O task or activity of its own, so a session tagged with it
+            produces a line that is already complete. That check is on
+            <a href="/projects">Projects</a>, under the customer.</p>
         <//>` : null}
-
-      <div class="srchead">${onThisLine.length
-        ? `The task${onThisLine.length === 1 ? '' : 's'} behind this line`
-        : 'A task\u2019s own dimensions'}</div>
-      ${onThisLine.length ? null : html`
-        <p class="sub" style="margin:0 0 6px">
-          ${tasks.length
-            ? html`<b>No task was tagged on this line's sessions</b>, so none of these is
-                   "the" one — the work was done without a task selected. Editing a task
-                   here changes what <i>future</i> sessions tagged with it carry; to put a
-                   task on <i>this</i> line, use <b>Tag it</b> above.`
-            : html`No open task on ${shortProject(row.project)}.${onTask
-                ? ' This customer registers on task, so the work needs one before its time can be entered — open one in Azure DevOps and put the id on a task file.'
-                : ''}`}</p>`}
-      ${(onThisLine.length ? onThisLine : others.slice(0, foldOthers ? 0 : others.length))
-        .map(x => html`
-          <div key=${x.slug} class=${'srctask' + (tagged.has(x.slug) ? ' on' : '')}>
-            <div class="srctitle">${x.title || x.slug}
-              <span class="sub">${x.state}${tagged.has(x.slug)
-                ? ' · this line was worked under it' : ''}</span></div>
-            <div class="actrow">
-              <span class="flabel" style="min-width:56px">Task</span>
-              <input type="text" value=${(dims[x.slug] || {}).fno_task || ''}
-                     placeholder="ADO work item, or none"
-                     onInput=${e => edit(x.slug, 'fno_task', e.target.value)}
-                     aria-label="fno_task"/>
-              <span class="flabel" style="min-width:56px">Activity</span>
-              <input type="text" value=${(dims[x.slug] || {}).activity || ''}
-                     placeholder=${onTask ? 'F&O derives it' : 'activity id'}
-                     onInput=${e => edit(x.slug, 'activity', e.target.value)}
-                     aria-label="activity"/>
-              <button class="act" disabled=${busy} onClick=${() => run({
-                slug: x.slug, action: 'set-dims',
-                fno_task: ((dims[x.slug] || {}).fno_task || '').trim() || 'none',
-                activity: ((dims[x.slug] || {}).activity || '').trim(),
-              }, '/api/task')}>Save</button>
-            </div>
-          </div>`)}
-      ${others.length && (foldOthers || onThisLine.length) ? html`
-        <details class="srcmore">
-          <summary>${onThisLine.length ? `${others.length} other open task` : `all
-            ${others.length} open task`}${others.length === 1 ? '' : 's'} on
-            ${shortProject(row.project)}</summary>
-          ${others.map(x => html`
-            <div key=${x.slug} class="srctask">
-              <div class="srctitle">${x.title || x.slug}
-                <span class="sub">${x.state}</span></div>
-              <div class="actrow">
-                <span class="flabel" style="min-width:56px">Task</span>
-                <input type="text" value=${(dims[x.slug] || {}).fno_task || ''}
-                       placeholder="ADO work item, or none"
-                       onInput=${e => edit(x.slug, 'fno_task', e.target.value)}
-                       aria-label="fno_task"/>
-                <span class="flabel" style="min-width:56px">Activity</span>
-                <input type="text" value=${(dims[x.slug] || {}).activity || ''}
-                       placeholder=${onTask ? 'F&O derives it' : 'activity id'}
-                       onInput=${e => edit(x.slug, 'activity', e.target.value)}
-                       aria-label="activity"/>
-                <button class="act" disabled=${busy} onClick=${() => run({
-                  slug: x.slug, action: 'set-dims',
-                  fno_task: ((dims[x.slug] || {}).fno_task || '').trim() || 'none',
-                  activity: ((dims[x.slug] || {}).activity || '').trim(),
-                }, '/api/task')}>Save</button>
-              </div>
-            </div>`)}
-        </details>` : null}
-      <p class="sub" style="margin:8px 0 0">A task's dimensions reach every line tagged with
-        it, including today's, which is what makes this the fix and the correction above the
-        stopgap.</p>
     </div>`;
 }
 
-function LineEditor({ row, raw, D, onDone }) {
-  const [pid, setPid] = useState('');
-  const [act, setAct] = useState('');
-  const [task, setTask] = useState('');
-  const [hours, setHours] = useState('');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const k = row ? rowKey(row) : '';
-  useEffect(() => {
-    if (!row) return;
-    setPid(row.proj_id || ''); setAct(row.activity || ''); setTask(row.fno_task || '');
-    setHours(String(raw ? raw.hours : row.hours)); setNote('');
-  }, [k]);
+function LineEditor({ row, behind, D, onDone }) {
   if (!row) return null;
-
-  const proj = (D.projects || []).find(p => p.key === row.project);
   const missing = row.missing || [];
   const scaled = row.work !== undefined && row.work !== row.hours;
-  /* What to offer for a dimension this line is missing.
-   *
-   * Not the project's open task files: every open Carl Ras task carries `fno_task: none`,
-   * because the convention is id-or-none and the ids are opened in Azure DevOps as the work
-   * goes. The ids actually in use are on the lines already entered, so that is where the
-   * list comes from -- the same customer's lines, ranked by how much time is on them, with
-   * the most recent date beside each. An open task file that does carry an id joins them.
-   */
-  const usedValues = field => {
-    const seen = {};
-    (D.entry.rows || []).forEach(r => {
-      if (r.customer !== row.customer || !r.customer) return;
-      const v = blankIfPlaceholder(r[field]);
-      if (!v) return;
-      const s = seen[v] || (seen[v] = { value: v, hours: 0, n: 0, last: '', mine: false });
-      s.hours = Math.round((s.hours + r.hours) * 100) / 100;
-      s.n += 1;
-      if (r.date > s.last) s.last = r.date;
-      if (r.project === row.project) s.mine = true;
-    });
-    return Object.values(seen)
-      .sort((a, b) => (b.mine - a.mine) || (b.hours - a.hours));
-  };
-
-  const knownTasks = (() => {
-    const used = usedValues('fno_task');
-    const have = new Set(used.map(u => u.value));
-    (D.targets || []).forEach(x => {
-      const id = blankIfPlaceholder(x.fno_task);
-      if (x.project === row.project && id && !have.has(id)) {
-        used.push({ value: id, hours: 0, n: 0, last: '', mine: true, title: x.title });
-      }
-    });
-    return used;
-  })();
-  const knownActs = usedValues('activity');
-
-  const optLabel = u => u.n
-    ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
-    : `${u.value} — ${u.title || 'from a task file'}`;
-
-  const changed = raw && (pid !== (raw.ws_proj_id || '') || act !== (raw.ws_activity || '')
-    || task !== (raw.ws_fno_task || '') || String(raw.hours) !== hours.trim());
-
-  const run = async (fn, ok) => {
-    setBusy(true);
-    const j = await fn();
-    setBusy(false);
-    toast(j.message || (j.ok ? ok : 'failed'));
-    if (j.ok) onDone();
-  };
-
-  /* The row is named by what the timesheet FILE holds (`ws_*`), not by what the page shows:
-     a Proj ID can have come from the sheet and an activity from the customer rule, and
-     neither is in the file. */
-  const correct = () => run(() => post('/api/timesheet', {
-    date: raw.date,
-    row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
-           fno_task: raw.ws_fno_task },
-    set: { proj_id: pid.trim(), activity: act.trim(), fno_task: task.trim(),
-           hours: Number(hours) },
-    note: note.trim(),
-  }), 'corrected');
-
-  /* What this line was: the sessions behind it and what the memory hook recorded being
-     said in them. A line that reads "Carl-Ras / – / –" says nothing, and that is exactly
-     where deciding which task it belongs to is hardest. */
   const ev = lineEvidence(D, row);
   const sess = ev.blocks;
 
@@ -631,92 +633,26 @@ function LineEditor({ row, raw, D, onDone }) {
           <li key=${m.field}><b class="accentink">${m.label}</b> — ${m.why}</li>`)}</ul>
       </div>` : null}
 
-    ${row.live ? html`
-      <div class="block">
-        <h4>Correct the day</h4>
-        <p class="sub" style="margin:0">${row.date} is still accruing — there is no finalized
-          timesheet file to correct yet. Close it with <code>/log</code> (or
-          <code>python ops/time/rollup.py</code>) and it becomes editable. The source fixes
-          below apply now and will be picked up when the day is written.</p>
-      </div>`
-      : !raw ? html`
-      <div class="block">
-        <h4>Correct the day</h4>
-        <p class="sub" style="margin:0">${row.merged
-          ? html`This line has been consolidated onto another date, so there is no single
-                 timesheet row behind it. Turn <b>Consolidated</b> off to correct it — or
-                 open the same line from <b>Not ready to enter</b>, which never consolidates.`
-          : html`No timesheet row on ${row.date} matches this line any more — the day has
-                 moved under the page. Refresh.`}</p>
-      </div>`
-      : raw.ambiguous ? html`
-      <div class="block">
-        <h4>Correct the day</h4>
-        <p class="sub" style="margin:0">Two timesheet lines on ${raw.date} resolve to this
-          one row, so there is no single line to change. Edit
-          <code>ops/time/timesheet/${raw.date.slice(0, 7)}/${raw.date}.md</code> by hand.</p>
-      </div>` : html`
-      <div class="block">
-        <h4>Correct ${raw.date}</h4>
-        <p class="sub" style="margin:0 0 8px">Writes
-          <code>ops/time/timesheet/${raw.date.slice(0, 7)}/${raw.date}.md</code> and records the
-          correction underneath, the way the file says to.</p>
-        ${knownTasks.length ? html`
-          <div class="actrow">
-            <span class="flabel" style="min-width:64px">Task</span>
-            <select class="mini" value="" onChange=${e => { setTask(e.target.value); e.target.value = ''; }}>
-              <option value="">tag it with a task already in use…</option>
-              ${knownTasks.map(u => html`
-                <option key=${u.value} value=${u.value}>${optLabel(u)}</option>`)}
-            </select>
-          </div>` : null}
-        ${knownActs.length ? html`
-          <div class="actrow">
-            <span class="flabel" style="min-width:64px">Activity</span>
-            <select class="mini" value="" onChange=${e => { setAct(e.target.value); e.target.value = ''; }}>
-              <option value="">…or an activity already in use</option>
-              ${knownActs.map(u => html`
-                <option key=${u.value} value=${u.value}>${optLabel(u)}</option>`)}
-            </select>
-          </div>` : null}
-        ${knownTasks.length || knownActs.length ? html`
-          <p class="sub" style="margin:2px 0 8px 72px">Every value ${row.customer} already
-            registers on, most-used first. Picking one fills the field below; nothing is
-            written until you press Correct.</p>` : null}
-        <div class="actrow"><span class="flabel" style="min-width:64px">Proj ID</span>
-          <input type="text" value=${pid} onInput=${e => setPid(e.target.value)}
-                 placeholder="e.g. 230-02" aria-label="Proj ID"/></div>
-        <div class="actrow"><span class="flabel" style="min-width:64px">Activity</span>
-          <input type="text" value=${act} onInput=${e => setAct(e.target.value)}
-                 placeholder="blank if F&O derives it" aria-label="Activity"/></div>
-        <div class="actrow"><span class="flabel" style="min-width:64px">Task</span>
-          <input type="text" value=${task} onInput=${e => setTask(e.target.value)}
-                 placeholder="the linked ADO work item" aria-label="Task"/></div>
-        <div class="actrow"><span class="flabel" style="min-width:64px">Hours</span>
-          <input type="text" value=${hours} onInput=${e => setHours(e.target.value)}
-                 aria-label="Hours"/>
-          <span class="sub">work time, 0.25 h steps</span></div>
-        <div class="actrow"><span class="flabel" style="min-width:64px">Why</span>
-          <input type="text" value=${note} onInput=${e => setNote(e.target.value)}
-                 placeholder="goes into the correction note" aria-label="Why"/></div>
-        <div class="rowacts">
-          <button class="act primary" disabled=${busy || !changed}
-                  onClick=${correct}>Correct this day</button>
-        </div>
-      </div>`}
+    <div class="block">
+      <h4>${behind.length > 1
+        ? `The ${behind.length} timesheet lines behind this row`
+        : 'The timesheet line'}</h4>
+      ${behind.length > 1 ? html`
+        <p class="sub" style="margin:0 0 8px">Consolidated packs a week's hours onto as few
+          days as possible, so the row above stands for these. Each is its own line in its
+          own day file and is tagged on its own.</p>` : null}
+      ${behind.length ? behind.map(r => html`
+        <${DayFix} key=${rowKey(r)} raw=${r} row=${row} D=${D} onDone=${onDone}
+                   only=${behind.length === 1}/>`)
+        : html`<p class="sub" style="margin:0">No timesheet row matches this line any more —
+          the day has moved under the page. Refresh.</p>`}
+    </div>
 
     <${SourceFixes} row=${row} D=${D} onDone=${onDone}/>
 
-    ${row.summary ? html`
-      <div class="block">
-        <h4>What this line was</h4>
-        <p style="margin:0">${row.summary}</p>
-        <p class="sub" style="margin:4px 0 0">Written at /log into
-          <code>ops/time/lines/${row.date.slice(0, 7)}/${row.date}.md</code>.</p>
-      </div>` : null}
-
     <div class="block">
-      <h4>${row.summary ? 'The sessions behind it' : 'What this line was'}</h4>
+      <h4>What this line was</h4>
+      ${row.summary ? html`<p style="margin:0 0 8px">${row.summary}</p>` : null}
       <p class="sub" style="margin:0 0 6px">${ev.wide
         ? html`No session matched this line's exact dimensions — its activity or task has
                moved since the day was written — so this is <b>every session on
@@ -728,7 +664,7 @@ function LineEditor({ row, raw, D, onDone }) {
         <div key=${i} class="tsess">
           <b>${hrs(b.hours)} h</b> · ${b.turns} turn${b.turns === 1 ? '' : 's'}
           · <span class="muted">${b.session}</span>
-          · <span class="muted">${b.task || 'no task tagged'}</span>
+          · <span class="muted">${b.task || 'no work-task tagged'}</span>
           ${(b.lines || []).map((t, j) => html`<div key=${j} class="tturn">${t}</div>`)}
           ${(b.lines || []).length ? null
             : html`<div class="tturn muted">no memory records for this session</div>`}
@@ -1505,8 +1441,8 @@ function App() {
    * exists to fix lines, and a line you cannot correct is not one you can fix. It carries
    * the same scale, so its hours agree with the blocks even though its rows do not.
    */
-  const { rows, gateRows, rawByKey } = useMemo(() => {
-    if (!D || !view) return { rows: [], gateRows: [], rawByKey: {} };
+  const { rows, gateRows, rawRows, rawByKey } = useMemo(() => {
+    if (!D || !view) return { rows: [], gateRows: [], rawRows: [], rawByKey: {} };
     const E = D.entry;
     const inR = new Set((E.ranges || {})[view.rkey] || []);
     const raw = (E.rows || []).filter(r => inR.has(r.date));
@@ -1515,9 +1451,26 @@ function App() {
       : raw;
     const raws = {};
     raw.forEach(r => { raws[rowKey(r)] = r; });
-    return { rows: scaleRows(base, view.scale), rawByKey: raws,
+    return { rows: scaleRows(base, view.scale), rawByKey: raws, rawRows: raw,
              gateRows: merge ? scaleRows(raw, view.scale) : null };
   }, [D, view, merge]);
+
+  /* The timesheet line(s) a displayed row stands for. An ordinary row is one line on one
+     day. A consolidated row is a whole week of one dimension packed onto a single date, so
+     it stands for several -- and each of those is what actually gets corrected. Matching on
+     the dimensions AS THE FILE HOLDS THEM, because consolidation moves the date and the
+     hours and nothing else. */
+  const behind = useMemo(() => {
+    if (!sel) return [];
+    const dim = r => [r.project, r.ws_proj_id || '', r.ws_activity || '',
+                      r.ws_fno_task || ''].join('|');
+    if (!sel.merged) {
+      const one = rawByKey[rowKey(sel)];
+      return one ? [one] : [];
+    }
+    return rawRows.filter(r => dim(r) === dim(sel))
+      .slice().sort((x, y) => x.date.localeCompare(y.date));
+  }, [sel, rawRows, rawByKey]);
 
   const toggle = (setter) => v => setter(s => {
     const n = new Set(s);
@@ -1627,8 +1580,7 @@ function App() {
         <//>`}
 
       <${Drawer} open=${!!sel} onClose=${() => setSel(null)}>
-        <${LineEditor} row=${sel} D=${D} onDone=${reloadAll}
-                       raw=${sel && !sel.merged ? rawByKey[rowKey(sel)] : null}/>
+        <${LineEditor} row=${sel} behind=${behind} D=${D} onDone=${reloadAll}/>
       <//>
       <${Drawer} open=${!!dev} onClose=${() => setDev(null)}>
         <${Reassign} line=${dev} projects=${(D && D.projects) || []} onDone=${reloadAll}/>

@@ -512,6 +512,25 @@ table.autable.totals td:nth-child(3){text-align:right}
 .srctask.on{background:var(--surface-2)}
 .srcmore{margin-top:10px}
 .srcmore summary{cursor:pointer;color:var(--ink-2);font-size:12px}
+
+/* one card per timesheet line behind the row: a consolidated row stands for several, and
+   each is written on its own */
+.daycard{border:1px solid var(--ring);border-radius:10px;padding:8px 10px;margin:0 0 10px}
+.daycard:last-child{margin-bottom:0}
+.dayhead{font-size:12.5px;display:flex;gap:8px;align-items:baseline}
+.dayhead .sub{margin-left:auto}
+.daymore{margin-top:6px}
+.daymore summary{cursor:pointer;color:var(--ink-2);font-size:12px}
+.daycard .rowacts{margin-top:8px;align-items:baseline}
+.daycard select.mini{flex:1;min-width:0}
+
+/* one open work-task and the F&O dimensions it lends to every line worked under it */
+.wtask{border-top:1px solid var(--ring);padding:8px 0 4px}
+.wtask:first-of-type{border-top:none}
+.wtask.short{box-shadow:inset 3px 0 0 var(--accent);padding-left:10px}
+.wtitle{font-size:12.5px;line-height:1.35}
+.wtitle .sub{display:block}
+.wtask .actrow input{flex:1;min-width:110px}
 .srctitle{font-size:12.5px;line-height:1.35}
 .srctitle .sub{display:block}
 .drawer .actrow input{min-width:90px}

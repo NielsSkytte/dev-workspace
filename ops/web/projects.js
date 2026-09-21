@@ -9,7 +9,8 @@
  */
 import {
   html, render, useState, useMemo, useEffect,
-  Shell, Tile, Drawer, Empty, Fragment, useData, launch, hrs, ago, fresh, label, plural,
+  Shell, Tile, Drawer, Empty, Fragment, useData, launch, post, toast,
+  hrs, ago, fresh, label, plural,
 } from './app.js';
 
 const BANDS = [
@@ -312,6 +313,112 @@ function Customers({ customers, th, picked, onPick }) {
     </section>`;
 }
 
+/* ---------- F&O readiness, per customer ----------
+ *
+ * Two different things are called a task in this workspace:
+ *
+ *   a WORK-TASK   `ops/tasks/<state>/<slug>.md` -- a unit of work you open a session on
+ *   an F&O TASK   the Azure DevOps work-item id that goes in the Task column of a time line
+ *
+ * A work-task carries the F&O task (and the activity) so that every timesheet line worked
+ * under it is complete the moment it is written. A work-task without one is a line that
+ * cannot be entered, discovered at month close instead of now -- so the check belongs
+ * beside the customer whose rule decides it, not on the timesheet line where it is already
+ * too late to help.
+ *
+ * `fno_task: none` is the convention for "no DevOps work item yet" (id-or-none, never
+ * blank). It is an honest answer, not a value, so it counts as missing here.
+ */
+
+const PLACEHOLDER = v => {
+  const s = (v || '').trim();
+  return !s || /\?/.test(s) || /^(unset|none)$/i.test(s) || /^pending/i.test(s);
+};
+const NORM = s => (s || '').toLowerCase()
+  .replace(/\u00e6/g, 'ae').replace(/\u00f8/g, 'oe').replace(/\u00e5/g, 'aa')
+  .replace(/[\s\-_/.]/g, '');
+
+function TaskDims({ task, rule, onDone }) {
+  const [fno, setFno] = useState('');
+  const [act, setAct] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setFno(PLACEHOLDER(task.fno_task) ? '' : task.fno_task);
+    setAct(PLACEHOLDER(task.activity) ? '' : task.activity);
+    setBusy(false);
+  }, [task.slug]);
+
+  const wants = new Set(rule ? rule.requires : []);
+  const short = (wants.has('task') && !fno) || (wants.has('activity') && !act && !rule.activity);
+  const save = async () => {
+    setBusy(true);
+    const j = await post('/api/task', { slug: task.slug, action: 'set-dims',
+                                        fno_task: fno.trim() || 'none',
+                                        activity: act.trim() });
+    setBusy(false);
+    toast(j.message || (j.ok ? 'saved' : 'failed'));
+    if (j.ok) onDone();
+  };
+
+  return html`
+    <div class=${'wtask' + (short ? ' short' : '')}>
+      <div class="wtitle">${task.title || task.slug}
+        <span class="sub">${task.state} · ${task.slug}</span></div>
+      <div class="actrow">
+        <span class="flabel" style="min-width:66px">F&O task</span>
+        <input type="text" value=${fno} onInput=${e => setFno(e.target.value)}
+               placeholder=${wants.has('task') ? 'required — the DevOps work item' : 'none'}
+               aria-label=${'fno_task ' + task.slug}/>
+        <span class="flabel" style="min-width:58px">Activity</span>
+        <input type="text" value=${act} onInput=${e => setAct(e.target.value)}
+               placeholder=${wants.has('task') ? 'F&O derives it'
+                 : (rule && rule.activity) ? rule.activity + ' (customer default)' : 'activity id'}
+               aria-label=${'activity ' + task.slug}/>
+        <button class="act" disabled=${busy} onClick=${save}>Save</button>
+      </div>
+    </div>`;
+}
+
+function FnoReadiness({ D, customer, onDone }) {
+  if (!customer) return null;
+  const rule = (((D.entry || {}).rules) || {})[NORM(customer)] || null;
+  const tasks = (D.targets || []).filter(t => t.project.startsWith('customers/' + customer + '/'));
+  const wants = new Set(rule ? rule.requires : []);
+  const shortOf = t => (wants.has('task') && PLACEHOLDER(t.fno_task))
+    || (wants.has('activity') && PLACEHOLDER(t.activity) && !(rule && rule.activity));
+  const short = tasks.filter(shortOf);
+
+  return html`
+    <section>
+      <h2>F&O readiness — ${customer}</h2>
+      <div class="card">
+        <p class="sub" style="margin:0 0 8px">
+          ${rule && rule.requires.length
+            ? html`Every ${customer} time line must carry <b>${rule.requires.join(', ')}</b>
+                   (<code>fno_requires</code> on the customer node; ops/time/README.md 4.1).`
+            : html`No registration rule recorded for ${customer} — a line needs a Proj ID and
+                   nothing more. Set <code>fno_requires</code> from a line's panel on
+                   <a href="/time">Time</a> if that is wrong.`}
+          ${rule && rule.activity
+            ? html` The default activity is <code>${rule.activity}</code>.` : null}</p>
+        ${!tasks.length
+          ? html`<${Empty}>No open work-task under ${customer}.<//>`
+          : html`
+            <${Fragment}>
+              <p class=${'sub' + (short.length ? ' accentink' : '')} style="margin:0 0 10px">
+                ${short.length
+                  ? html`<b>${short.length} of ${tasks.length}</b> open work-tasks cannot
+                         produce an enterable line yet. Any time logged to them has to be
+                         corrected day by day afterwards.`
+                  : html`All ${tasks.length} open work-tasks carry what ${customer} registers
+                         on, so time logged to them is enterable as written.`}</p>
+              ${tasks.map(t => html`
+                <${TaskDims} key=${t.slug} task=${t} rule=${rule} onDone=${onDone}/>`)}
+            <//>`}
+      </div>
+    </section>`;
+}
+
 /* ---------- page ---------- */
 
 function App() {
@@ -377,12 +484,15 @@ function App() {
       </div>
 
       ${D ? html`
-        <div class="split-wide">
-          <${Customers} customers=${D.customers} th=${D.thresholds}
-                        picked=${cust === OWN ? null : cust} onPick=${setCust}/>
-          <${Table} projects=${rows} th=${D.thresholds} onOpen=${setSel}
-                    mode=${mode} folded=${folded} onToggle=${toggleFold}/>
-        </div>` : null}
+        <${Fragment}>
+          <div class="split-wide">
+            <${Customers} customers=${D.customers} th=${D.thresholds}
+                          picked=${cust === OWN ? null : cust} onPick=${setCust}/>
+            <${Table} projects=${rows} th=${D.thresholds} onOpen=${setSel}
+                      mode=${mode} folded=${folded} onToggle=${toggleFold}/>
+          </div>
+          <${FnoReadiness} D=${D} customer=${cust === OWN ? null : cust} onDone=${reload}/>
+        <//>` : null}
 
       <${Drawer} open=${!!sel} onClose=${() => setSel(null)}>
         <${Detail} p=${sel} tasks=${D ? D.tasks : []}/>
