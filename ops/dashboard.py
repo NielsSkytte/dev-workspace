@@ -45,6 +45,7 @@ from lib.workspace import customer_dirs, project_dirs, customer_name
 from lib import fno
 from lib import lines as linedesc
 from lib import attribution
+from lib import noinvoice
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -749,6 +750,9 @@ def collect_entry(entries, customers, today, projects=None):
     descs = {}
     for month in sorted({e["date"][:7] for e in entries}):
         descs.update(linedesc.read_month(month))
+    # The register wins over the timesheet's own Billable column, so a decision taken
+    # after a day was written is honoured without rewriting it (ops/lib/noinvoice.py).
+    marks = noinvoice.entries()
 
     def decorate(e, agg, unmapped):
         """One timesheet entry -> one F&O entry row (company, customer, resolved Proj ID)."""
@@ -763,7 +767,9 @@ def collect_entry(entries, customers, today, projects=None):
         # the setup, the dashboard itself. It stays attributed to the client so the cost is
         # visible, and it is grouped with Internal here so it is never typed into F&O and
         # never counted as short of a dimension it does not need.
-        no_entry = bool(cust) and not e.get("billable", True)
+        no_entry = bool(cust) and (
+            not e.get("billable", True)
+            or bool(noinvoice.covers(e["date"], p, e["activity"], e["fno_task"], marks)))
         firma = ("INTERNAL" if no_entry else
                  ((rule or {}).get("firma") or (row_c["firma"] if row_c else "")
                   or ("" if cust else "INTERNAL")))
@@ -1281,6 +1287,40 @@ def launch(path, mode, prompt=""):
 # Both halves of a line move together. The audit joins the CLAIM (timesheet/<date>.md) to its
 # EVIDENCE (value/<date>.jsonl) on (date, project, activity, task) -- move one and the row lands
 # under the new project with nothing behind it, and an orphan sits under the old one.
+
+
+def never_invoice(date, row, to_project="", note=""):
+    """Say a line is never invoiced, and optionally where it belongs instead.
+
+    Three things happen, in this order, because the first must hold even if the others
+    cannot:
+
+    1. the decision goes on the register (`ops/time/not-invoiced.md`), which wins over the
+       folder, the timesheet file and any later correction -- so it holds on a day that is
+       still running, before a day file exists at all
+    2. if the day is finalized, the line is moved and/or its `Billable` column set to `no`,
+       so the file agrees with the register rather than contradicting it
+    3. if it is not finalized yet, nothing is written to a timesheet -- the rollup applies
+       the register when it writes the day
+
+    That ordering is the whole point of "under any circumstances": the mark is recorded
+    first and survives everything downstream of it."""
+    project = (row or {}).get("project") or ""
+    if not project.startswith("customers/"):
+        return False, "%s is not invoiced anyway" % (project or "that line")
+    ok, msg = noinvoice.record(date, project, (row or {}).get("activity") or "",
+                               (row or {}).get("fno_task") or "", note)
+    if not ok:
+        return False, msg
+    invalidate()
+
+    if rollup.parse_daily_file(date) is None:
+        return True, ("%s. %s is still running, so there is no timesheet to change -- the "
+                      "rollup will write it not billable when the day closes."
+                      % (msg, date))
+    moved, mmsg = reassign(date, row, to_project, billable=False, note=note)
+    return True, ("%s. %s" % (msg, mmsg) if moved
+                  else "%s, but the timesheet line could not be changed: %s" % (msg, mmsg))
 
 
 def _reassign_note(date, src_project, to_project, hours, billable, note):
@@ -1906,6 +1946,8 @@ POST_ROUTES = {
     "/api/reassign": lambda r: reassign(r.get("date", ""), r.get("row") or {},
                                         r.get("to", ""), r.get("billable"),
                                         r.get("note", "")),
+    "/api/noinvoice": lambda r: never_invoice(r.get("date", ""), r.get("row") or {},
+                                              r.get("to", ""), r.get("note", "")),
     # `activity` / `fno_task` default to None, not "": set-dims writes only what was sent,
     # and an absent key must not blank the field the task already carries.
     "/api/task": lambda r: task_mutate(r.get("slug", ""), r.get("action", ""),

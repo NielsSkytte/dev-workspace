@@ -400,28 +400,42 @@ accelerates them (skill `fno-time-registration`, command `/fno`).
 ### 6.1 Work that is not invoiced (added 2026-09-21)
 
 Not everything done under a customer folder goes on that customer's invoice: registering
-the time itself, fixing the setup, building this dashboard. Two ways to say so, and they
-combine — both from a line's own panel on the Time page, both recorded in the day file
-with a reason:
+the time itself, fixing the setup, building this dashboard. The folder is the only rule
+the rollup has, so it has to be told.
 
-- **Move it.** To `Dev` (the workspace, where ops work belongs), to an `own/` project, or
-  to the **customer node** `customers/<Client>` when it is for that client but not on any
-  one project. The node has no `fno_code`, so it can never produce an enterable line —
-  which is exactly right for work that is not going to be entered.
-- **Mark it not for registration.** The line stays where it is and its `Billable` column
-  becomes `no`. The entry page then groups it with Internal, leaves it out of *To enter in
-  F&O*, and stops calling it short of a dimension it does not need — while the hours stay
-  attributed to that client, so the cost of serving them is still visible.
+**`not-invoiced.md` is the register.** A row there means *never billable*, whatever the
+folder, the timesheet file or a later correction says -- the same kind of file as
+`absence.md`: a decision only the owner can make, applied by everything downstream. It is
+written from a line's panel on the Time page, appended never rewritten, and honoured in
+two places: `rollup.rows_for` when a day is derived, and the entry page when it groups
+one. That is what makes the mark hold **on a day that is still running**, before a
+timesheet file exists at all -- which is the case it is for.
+
+```
+| Date       | Project                    | Activity | Task | Why              | Recorded   |
+| 2026-09-21 | customers/Carl-Ras/datahub | -        | -    | registering time | 2026-09-21 |
+```
+
+Date + Project match the line; Activity and Task narrow it when given (`-` is any); `*` in
+Date covers every date, for work that is never billable wherever it turns up.
+
+**Where it belongs instead** is a separate question, answered on the same panel once the
+day is finalized: move it to `Dev` (the workspace -- ops, the harness, this page), to an
+`own/` project, or to the **customer node** `customers/<Client>`, which has no `fno_code`
+and so can never produce an enterable line. On a live day only the decision is taken; the
+move waits for the file to exist.
 
 **Direction is the safety rule.** Off a customer is always allowed: it reduces what is
 invoiced. Dev or `own/` **onto** a customer is the direction that over-bills (section 2),
-so it stays what it has always been — one line, chosen deliberately at the review gate.
-One customer to another is refused outright; that is two invoices wrong at once, and no
-single click should be able to do it.
+so it stays one line chosen deliberately at the review gate. One customer to another is
+refused outright.
 
-`Billable: no` is **not** the same as Vestforbraending's `No charge` (section 4.1). That
-line *is* entered in F&O, carrying `Linjeegenskab: No charge`. This one is not entered at
-all.
+`Billable: no` is **not** Vestforbraending's `No charge` (section 4.1). That line *is*
+entered in F&O carrying `Linjeegenskab: No charge`; this one is not entered at all. The
+hours stay attributed to the client either way, so the cost of serving them stays visible.
+
+This register is the one file under `ops/time/` that is **not** regenerable. Deleting it
+loses the decisions. The `/log` robocopy mirror is its backup.
 
 ### 6.2 Does the session match what it started with? (added 2026-09-21)
 

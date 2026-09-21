@@ -402,78 +402,89 @@ const knownLabel = u => (u.n
   ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
   : `${u.value} — ${u.title || 'from a work-task'}`);
 
-/* Where work for a customer goes when it cannot be invoiced.
+/* "Do not invoice this, under any circumstances."
  *
- * Registering the time itself, fixing the setup, building this page -- all of it happens
- * under a customer folder and none of it goes on that customer's invoice. Two answers,
- * and they combine:
+ * Some work happens inside a customer folder and is not that customer's to pay for:
+ * registering the time, fixing the setup, building this page. The folder cannot know
+ * that, so it has to be said -- once, per line, and it has to stick.
  *
- *   move it     to `Dev` (the workspace, which is where ops work belongs), to an `own/`
- *               project, or to the customer NODE when it is for that client but not on
- *               any one project -- the node has no fno_code, so it never produces an
- *               enterable line
- *   leave it    where it is and set the timesheet's `Billable` column to no, so the entry
- *               page tracks the hours against the client and never types them into F&O
+ * It goes on `ops/time/not-invoiced.md` first, which the rollup and the entry page both
+ * honour, so the decision survives the day being re-derived, the file being hand-edited
+ * and the line being moved. Then, if the day is finalized, the timesheet line is moved
+ * and/or set `Billable: no` so the file agrees with the register. On a day still running
+ * there is no file yet -- the register still takes it, and the rollup applies it when the
+ * day closes. That is the case this exists for: the work you are doing right now.
  *
- * Off a customer is always allowed; it reduces what is invoiced. One customer to another
- * is refused by the server -- that is two invoices wrong at once.
+ * Where it goes is a separate question from whether it is invoiced, and both are answered
+ * in one click: leave it where it is, move it to the client overall, or move it to the
+ * workspace or an own/ project.
  */
-function NotBillable({ raw, D, onDone }) {
-  const [to, setTo] = useState('');
+function NeverInvoice({ raw, D, onDone }) {
   const [why, setWhy] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setTo(''); setWhy(''); setBusy(false); }, [rowKey(raw)]);
+  useEffect(() => { setWhy(''); setBusy(false); }, [rowKey(raw)]);
 
-  const cust = raw.project.startsWith('customers/') ? raw.project.split('/')[1] : '';
-  const here = { value: '', label: cust
-    ? `leave it on ${shortProject(raw.project)}, not for registration`
-    : 'leave it where it is' };
-  const places = [here]
-    .concat(cust && raw.project !== 'customers/' + cust
-      ? [{ value: 'customers/' + cust, label: `${cust} overall (the customer, no project)` }]
-      : [])
-    .concat([{ value: 'Dev', label: 'Dev (the workspace -- ops, the harness, this page)' }])
-    .concat((D.projects || [])
-      .filter(p => p.key.startsWith('own/'))
-      .map(p => ({ value: p.key, label: p.key })));
+  if (!raw.project.startsWith('customers/')) return null;
+  const cust = raw.project.split('/')[1];
+  const node = 'customers/' + cust;
+  const own = (D.projects || []).filter(p => p.key.startsWith('own/'));
 
-  const move = async () => {
+  const mark = async to => {
     setBusy(true);
-    const j = await post('/api/reassign', {
+    const j = await post('/api/noinvoice', {
       date: raw.date,
       row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
              fno_task: raw.ws_fno_task },
-      to, billable: false, note: why.trim(),
+      to, note: why.trim(),
     });
     setBusy(false);
-    toast(j.message || (j.ok ? 'moved' : 'failed'));
+    toast(j.message || (j.ok ? 'marked' : 'failed'));
     if (j.ok) onDone();
   };
 
+  if (raw.no_entry) {
+    return html`
+      <div class="never on">
+        <b>Not invoiced.</b> <span class="sub">On the register, so it stays that way however
+        the day is re-derived. Remove the row in
+        <code>ops/time/not-invoiced.md</code> to undo it.</span>
+      </div>`;
+  }
+
   return html`
-    <details class="daymore notbill">
-      <summary>This work cannot be invoiced</summary>
-      <p class="sub" style="margin:4px 0 6px">The hours stay measured either way. What
-        changes is whether they go on ${cust || 'a customer'}'s invoice.</p>
+    <div class="never">
+      <div class="neverhead"><b>Do not invoice this</b>
+        <span class="sub">${hrs(raw.hours)} h — goes on the register, so it sticks</span></div>
       <div class="actrow">
-        <span class="flabel" style="min-width:64px">Put it</span>
-        <select class="mini" value=${to} onChange=${e => setTo(e.target.value)}>
-          ${places.map(o => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
-        </select>
-      </div>
-      <div class="actrow">
-        <span class="flabel" style="min-width:64px">Why</span>
         <input type="text" value=${why} onInput=${e => setWhy(e.target.value)}
-               placeholder="registering time, fixing my setup, ..." aria-label="why not billable"/>
+               placeholder="why — registering time, fixing my setup, the dashboard…"
+               aria-label="why not invoiced"/>
       </div>
       <div class="rowacts">
-        <span class="sub" style="margin-right:auto">${to && to !== raw.project
-          ? `moves ${hrs(raw.hours)} h to ${to}`
-          : `marks ${hrs(raw.hours)} h on ${shortProject(raw.project)} not for registration`}
-        </span>
-        <button class="act" disabled=${busy} onClick=${move}>Do it</button>
+        <button class="act" disabled=${busy} title=${'leave it on ' + raw.project}
+                onClick=${() => mark('')}>${raw.live ? 'Do not invoice it' : 'Keep it here'}</button>
+        ${raw.live ? null : html`
+          <${Fragment}>
+            ${raw.project !== node ? html`
+              <button class="act" disabled=${busy}
+                      title=${'move it to the ' + cust + ' customer node, which has no F&O code'}
+                      onClick=${() => mark(node)}>${cust} overall</button>` : null}
+            <button class="act" disabled=${busy} title="move it to the workspace"
+                    onClick=${() => mark('Dev')}>Dev</button>
+            ${own.length ? html`
+              <select class="mini" value="" disabled=${busy}
+                      onChange=${e => { if (e.target.value) mark(e.target.value); }}>
+                <option value="">own/…</option>
+                ${own.map(o => html`<option key=${o.key} value=${o.key}>${o.key}</option>`)}
+              </select>` : null}
+          <//>`}
       </div>
-    </details>`;
+      ${raw.live ? html`
+        <p class="sub" style="margin:6px 0 0">The decision is taken now and the rollup
+          applies it when the day closes. <b>Where</b> it belongs instead is a change to a
+          timesheet line, so that waits for the file to exist — come back after
+          <code>/log</code>.</p>` : null}
+    </div>`;
 }
 
 /* One timesheet line: its F&O dimensions, and the write that puts them there.
@@ -524,9 +535,10 @@ function DayFix({ raw, row, D, onDone, only }) {
       <div class="daycard">
         <div class="dayhead"><b>${raw.date}</b> · ${hrs(raw.hours)} h
           <span class="pill warn">live</span></div>
-        <p class="sub" style="margin:4px 0 0">Still accruing, so there is no finalized
-          timesheet file to write. Close the day with <code>/log</code> and it becomes
-          editable. The defaults below apply to it now.</p>
+        <p class="sub" style="margin:4px 0 8px">Still accruing, so there is no timesheet
+          file to correct yet — close the day with <code>/log</code> and the fields appear.
+          The defaults below, and the decision underneath, apply to it now.</p>
+        <${NeverInvoice} raw=${raw} D=${D} onDone=${onDone}/>
       </div>`;
   }
   if (raw.ambiguous) {
@@ -602,7 +614,7 @@ function DayFix({ raw, row, D, onDone, only }) {
                 onClick=${correct}>Save ${raw.date}</button>
       </div>
 
-      <${NotBillable} raw=${raw} D=${D} onDone=${onDone}/>
+      <${NeverInvoice} raw=${raw} D=${D} onDone=${onDone}/>
     </div>`;
 }
 

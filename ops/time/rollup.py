@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib import heartbeats as hbrec           # the raw measurement record
 from lib.substrate import file_field
 from lib.workspace import billing_entity, task_file
+from lib import noinvoice
 
 ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
@@ -197,7 +198,13 @@ def task_dims(slug):
 def rows_for(heartbeats):
     """-> list of F&O rows {project, proj_id, activity, fno_task, hours, billable}, grouped by the
     finest dimension present: two task slugs that share an activity (both with no task) merge to the
-    activity; distinct tasks stay separate; a slug with neither falls back to the project."""
+    activity; distinct tasks stay separate; a slug with neither falls back to the project.
+
+    Billable is the folder rule -- a `customers/...` project bills -- UNLESS the line is on the
+    not-invoiced register (`ops/time/not-invoiced.md`, README 6.1). The folder cannot know that
+    registering the time, or fixing the setup, is not the customer's to pay for; the register is
+    where that decision is written down, and it is applied here so a day finalized later comes out
+    right rather than having to be corrected afterwards."""
     raw = {}   # (project, slug) -> raw active hours
     for (project, slug), ivs in group(heartbeats).items():
         if ivs:
@@ -207,12 +214,15 @@ def rows_for(heartbeats):
         activity, fno_task = task_dims(slug)
         key = (project, project_id(project), activity, fno_task)
         agg[key] = agg.get(key, 0.0) + hrs
+    dates = sorted({hb["date"] for hb in heartbeats}) or [""]
+    marks = noinvoice.entries(ROOT)
     rows = []
     for (project, pid, activity, fno_task), hrs in agg.items():
         hours = max(round_quarter(hrs), MIN_HOURS)   # any work on a line that day counts as >= 0.5 h
+        billable = project.startswith("customers/") and not any(
+            noinvoice.covers(d, project, activity, fno_task, marks) for d in dates)
         rows.append({"project": project, "proj_id": pid, "activity": activity,
-                     "fno_task": fno_task, "hours": hours,
-                     "billable": project.startswith("customers/")})
+                     "fno_task": fno_task, "hours": hours, "billable": billable})
     rows.sort(key=lambda r: (not r["billable"], r["project"], r["activity"], r["fno_task"]))
     return rows
 

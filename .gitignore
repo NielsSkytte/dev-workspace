@@ -29,4 +29,8 @@ data/
 # customer work descriptions do not belong in it. The robocopy mirror at /log covers
 # the whole of ops/time, so it is backed up with everything else.
 /ops/time/lines/
+# The not-invoiced register: decisions, not derived data, so it is the one file here
+# that cannot be regenerated -- the robocopy mirror at /log is its backup, and it stays
+# out of a repo with a remote because it names customers and what was not billed to them.
+/ops/time/not-invoiced.md
 /ops/time/active-task

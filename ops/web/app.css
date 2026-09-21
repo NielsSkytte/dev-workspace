@@ -521,7 +521,14 @@ table.autable.totals td:nth-child(3){text-align:right}
 .dayhead .sub{margin-left:auto}
 .daymore{margin-top:6px}
 .daymore summary{cursor:pointer;color:var(--ink-2);font-size:12px}
-.notbill{margin-top:10px;border-top:1px solid var(--ring);padding-top:6px}
+/* "do not invoice this" -- a decision, not a setting, so it reads as one and is not
+   folded away behind a summary */
+.never{margin-top:10px;border-top:1px solid var(--ring);padding-top:8px}
+.never.on{color:var(--ink-2);font-size:12.5px}
+.neverhead{font-size:12.5px;display:flex;gap:8px;align-items:baseline;margin-bottom:6px}
+.neverhead .sub{margin-left:auto}
+.never .rowacts{margin-top:6px;flex-wrap:wrap}
+.never select.mini{font-size:12.5px}
 .daycard .rowacts{margin-top:8px;align-items:baseline}
 .daycard select.mini{flex:1;min-width:0}
 
