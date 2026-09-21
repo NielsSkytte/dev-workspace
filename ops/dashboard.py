@@ -46,6 +46,7 @@ from lib import fno
 from lib import lines as linedesc
 from lib import attribution
 from lib import noinvoice
+from lib import fnotasks
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -727,7 +728,7 @@ def _fix_targets(row, rule, proj):
     return out
 
 
-def collect_entry(entries, customers, today, projects=None):
+def collect_entry(entries, customers, today, projects=None, tasks=None):
     """F&O entry rows: one per date/customer/project/activity/task, tagged with the internal
     company (Firma). F&O takes one timesheet PER COMPANY, so the company is the outermost grouping
     on the page -- it is the thing you open a separate sheet for.
@@ -882,8 +883,16 @@ def collect_entry(entries, customers, today, projects=None):
     # between days, it never fills in a missing dimension.
     short = [r for r in rows if r["missing"]]
 
+    # What each F&O task id is called. The id is all that goes on a line; the name is so
+    # the right one can be picked out of ten at entry time (ops/lib/fnotasks.py).
+    used = sorted({r["fno_task"] for r in rows if r["fno_task"]}
+                  | {(t.get("fno_task") or "").strip() for t in (tasks or [])
+                     if (t.get("fno_task") or "").strip() not in ("", "none", "-")})
+    task_names = fnotasks.resolve(used, tasks or [])
+
     return {
         "rows": rows,
+        "task_names": task_names,
         "merged": merged,
         "ranges": ranges,
         "short": short,
@@ -1221,7 +1230,7 @@ def _collect():
         "targets": [{"project": t["project"], "slug": t["slug"], "title": t["title"],
                      "state": t["state"], "activity": t["activity"], "fno_task": t["fno_task"]}
                     for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
-        "entry": collect_entry(entries, customers, today, projects),
+        "entry": collect_entry(entries, customers, today, projects, tasks),
         "audit": collect_audit(today),
         "lineSessions": collect_line_sessions(today),
         "active_sessions": active_sessions(today),
@@ -1948,6 +1957,8 @@ POST_ROUTES = {
                                         r.get("note", "")),
     "/api/noinvoice": lambda r: never_invoice(r.get("date", ""), r.get("row") or {},
                                               r.get("to", ""), r.get("note", "")),
+    "/api/fnotask": lambda r: fnotasks.record(r.get("id", ""), r.get("name", ""),
+                                              r.get("customer", "")),
     # `activity` / `fno_task` default to None, not "": set-dims writes only what was sent,
     # and an absent key must not blank the field the task already carries.
     "/api/task": lambda r: task_mutate(r.get("slug", ""), r.get("action", ""),

@@ -398,9 +398,23 @@ function knownValues(D, row, field) {
   return out;
 }
 
-const knownLabel = u => (u.n
-  ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
-  : `${u.value} — ${u.title || 'from a work-task'}`);
+/* An id alone -- `CarlRData-555` -- is the least informative thing on the page, and the
+   one you have to pick correctly out of ten. So the option leads with what it IS: the name
+   from `ops/time/fno-tasks.md` if it has been recorded, else the title of the work-task
+   carrying it. The usage follows, because "17 lines, last 2026-08-31" is what tells you
+   this is the live one rather than the one you closed in July. Only the id is ever
+   written. */
+const clip = (s, n) => (!s ? '' : s.length > n ? s.slice(0, n - 1) + '\u2026' : s);
+
+const knownLabel = (u, names) => {
+  const rec = (names || {})[u.value] || {};
+  const bits = [u.value];
+  if (rec.name) bits.push(clip(rec.name, 52));
+  if (!rec.ok) bits.push('F&O would reject this');
+  if (u.n) bits.push(`${u.n} line${u.n === 1 ? '' : 's'}, last ${u.last}`);
+  else if (!rec.name) bits.push('from a work-task');
+  return bits.join(' · ');
+};
 
 /* "Do not invoice this, under any circumstances."
  *
@@ -487,6 +501,50 @@ function NeverInvoice({ raw, D, onDone }) {
     </div>`;
 }
 
+/* What the picked id is, and the one place to say it.
+ *
+ * The name comes from `ops/time/fno-tasks.md` when it has been recorded, and otherwise
+ * from the work-task carrying the id -- which describes the same work from our side but
+ * is not what DevOps calls it. Saying it once here is how the register gets filled: at
+ * the moment the id is in front of you, not in a sitting set aside for it. */
+function TaskName({ id, rec, customer, onDone }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setName(''); setBusy(false); }, [id]);
+
+  const save = async () => {
+    setBusy(true);
+    const j = await post('/api/fnotask', { id, name: name.trim(), customer });
+    setBusy(false);
+    toast(j.message || (j.ok ? 'named' : 'failed'));
+    if (j.ok) { setName(''); onDone(); }
+  };
+
+  if (rec && !rec.ok) {
+    return html`
+      <p class="sub" style="margin:2px 0 6px 72px"><b class="accentink">F&O will reject
+        <code>${id}</code></b> — a Task id is letters, digits and dashes. This looks like a
+        work-task slug or an id with a note after it.</p>`;
+  }
+  if (rec && rec.source === 'register') {
+    return html`
+      <p class="sub" style="margin:2px 0 6px 72px"><b>${rec.name}</b></p>`;
+  }
+  return html`
+    <${Fragment}>
+      ${rec && rec.name ? html`
+        <p class="sub" style="margin:2px 0 2px 72px">${rec.name}
+          <span class="muted">— our work-task's title, not the DevOps name</span></p>` : null}
+      <div class="actrow">
+        <span class="flabel" style="min-width:64px">is called</span>
+        <input type="text" value=${name} onInput=${e => setName(e.target.value)}
+               placeholder=${'what ' + id + ' is called in DevOps'}
+               aria-label="name this F&O task"/>
+        <button class="act" disabled=${busy || !name.trim()} onClick=${save}>Name it</button>
+      </div>
+    <//>`;
+}
+
 /* One timesheet line: its F&O dimensions, and the write that puts them there.
  *
  * This is the entry act. It rewrites one row of one finalized day file and records the
@@ -512,6 +570,8 @@ function DayFix({ raw, row, D, onDone, only }) {
   const onTask = (row.requires || []).includes('task');
   const tasks = knownValues(D, row, 'fno_task');
   const acts = knownValues(D, row, 'activity');
+  const names = (D.entry || {}).task_names || {};
+  const picked = names[task.trim()] || null;
   const changed = pid !== (raw.ws_proj_id || '') || act !== (raw.ws_activity || '')
     || task !== (raw.ws_fno_task || '') || String(raw.hours) !== hours.trim();
 
@@ -564,7 +624,7 @@ function DayFix({ raw, row, D, onDone, only }) {
                   onChange=${e => setTask(e.target.value)}>
             <option value="">${task ? '(clear it)' : 'pick one already in use…'}</option>
             ${tasks.map(u => html`
-              <option key=${u.value} value=${u.value}>${knownLabel(u)}</option>`)}
+              <option key=${u.value} value=${u.value}>${knownLabel(u, names)}</option>`)}
             ${task && !tasks.some(u => u.value === task)
               ? html`<option value=${task}>${task}</option>` : null}
           </select>
@@ -574,6 +634,9 @@ function DayFix({ raw, row, D, onDone, only }) {
         <input type="text" value=${task} onInput=${e => setTask(e.target.value)}
                placeholder="the linked DevOps work item" aria-label="F&O task"/>
       </div>
+      ${task.trim() ? html`
+        <${TaskName} id=${task.trim()} rec=${picked} customer=${row.customer}
+                     onDone=${onDone}/>` : null}
 
       ${acts.length ? html`
         <div class="actrow">
@@ -581,7 +644,7 @@ function DayFix({ raw, row, D, onDone, only }) {
           <select class="mini" value=${act} onChange=${e => setAct(e.target.value)}>
             <option value="">${act ? '(clear it)' : 'pick one already in use…'}</option>
             ${acts.map(u => html`
-              <option key=${u.value} value=${u.value}>${knownLabel(u)}</option>`)}
+              <option key=${u.value} value=${u.value}>${knownLabel(u, {})}</option>`)}
             ${act && !acts.some(u => u.value === act)
               ? html`<option value=${act}>${act}</option>` : null}
           </select>

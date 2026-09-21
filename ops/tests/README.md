@@ -22,6 +22,7 @@ scripts under test are CLI tools rather than a package, so `_bootstrap.py` puts 
 | `test_lines.py` | `lib/lines.py` - the line-description file: its key, its round-trip, and a tolerant read |
 | `test_audit.py` | `dashboard.line_rows` - the three-way join behind a week's F&O lines, and that every measured hour lands on exactly one of them |
 | `test_attribution.py` | `lib/attribution.py` - whether a turn is about to produce a line that cannot be entered, and staying quiet when it is not |
+| `test_fnotasks.py` | `lib/fnotasks.py` - what an F&O task id is called, and that the name never reaches a line |
 | `test_noinvoice.py` | `lib/noinvoice.py` - the not-invoiced register, and that the rollup and the entry page both honour it |
 | `test_reassign.py` | moving a line off the invoice, marking one not for registration, and the directions that are refused |
 

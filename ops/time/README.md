@@ -283,6 +283,27 @@ activity at worst. **Everything worked on at Carl Ras needs a task.** Tasks in u
 `CarlRData-496` Marketo ingest, `CarlRData-553` Marketo write-back, `CarlRData-555` operational
 hardening.
 
+
+### 4.2 What an F&O task id is called (added 2026-09-21)
+
+`CarlRData-555` is what the time line carries and all F&O needs. It is also the thing that
+has to be picked correctly out of ten at entry time, and an id says nothing about itself.
+
+`ops/time/fno-tasks.md` is the register: id, name, customer, when it was recorded. Written
+from a line's panel on the Time page the first time an id is used, appended never
+rewritten, so a correction is another row and the later one wins. Where no name has been
+recorded, the picker borrows the **title of the work-task carrying the id** and says that
+is what it did -- our description of the work, not DevOps' name for it. Every id in use
+has at least one work-task behind it, so there is always something to show.
+
+**Display only.** Nothing from this register reaches a timesheet line or a journal: the
+Task column takes the id and nothing else. A name there is rejected by F&O, and would be
+wrong on an invoice if it were not.
+
+It also says when an id is one F&O would reject -- the column takes letters, digits and
+dashes, and September's timesheet carries two that are not: a work-task slug with
+`(ADO id pending)` after it, and `CarlRData-555 (operation-hardening)`.
+
 ## 5. Daily review gate + cadence
 
 Heartbeats accrue continuously; a day becomes **final** when its timesheet is written and you have

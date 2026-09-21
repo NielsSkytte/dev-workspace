@@ -33,4 +33,6 @@ data/
 # that cannot be regenerated -- the robocopy mirror at /log is its backup, and it stays
 # out of a repo with a remote because it names customers and what was not billed to them.
 /ops/time/not-invoiced.md
+# What each F&O task id is called -- a register too, filled in as the ids are met.
+/ops/time/fno-tasks.md
 /ops/time/active-task
