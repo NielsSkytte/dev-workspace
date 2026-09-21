@@ -1,6 +1,6 @@
 ---
 title: DataCompare compare engine and app
-status: in-progress
+status: done
 created: 2026-09-08
 project: customers/Matas/DataCompare
 owner: self
@@ -8,7 +8,7 @@ priority: normal
 blocked_by:
 activity: 111953        # the activity for 212-01; both tasks book to it (owner, 2026-09-08)
 fno_task: Task-65904
-customer_ask: open
+customer_ask: none
 waiting_on:
 resume_on:
 source: session
@@ -20,38 +20,26 @@ pipeline, the daily run, the findings UI, the acceptance-rule mechanism and its 
 
 ## Progress
 
-**Now (2026-09-10):** the compare engine runs daily 05:00 UTC as `NB_DataCompare_Daily` in
-`GFO_DataCompare_ETL_Dev` against `SQLDB_DataCompare` (first unattended run 09-08: agreement 92.0 %,
-11,502 matched); it is entity-keyed (`FIELDS`, `ADAPTERS`, `dc.compare_pair.entity`) and verified
-against the vendor output (333,442 compared values, 42,998 findings). The app (findings, value pairs,
-vendors, rules register, method card) runs on the local relay only. The overview deck
-(`design/presentation/`) was revised with the owner 09-10 and not yet shown to Matas. Customer data is
-the gate for the next entity, not the code.
+**Now (2026-09-21):** done. The PoC was first demoed on 2026-09-10 and demoed with the deck and the
+app on 2026-09-14, when Matas approved it. `NB_DataCompare_Daily` is on `origin/main` of
+`GFOERPDataAnalysis` (last commit 2026-09-08). Master is MFO until 2026-11-01, then GFO, as agreed
+with Matas. The work continues under `2026-09-21-matas-datacompare-production` (Task-72114).
 
 **Tried and dropped:** the local Windows scheduled run (`run_daily.ps1`) -> the Fabric notebook run,
 kept as disabled fallback; "source" as the word for the non-master side -> "compared" (source read as
 where the data comes from); label tables (PaymTerm, PaymMode) as compared entities -> joined for
 context only, because MFO Danish against GFO English reports a translation as a data error.
 
-**Next:**
-1. Verify `NB_DataCompare_Daily` is committed in the Matas repo (the record contradicts itself);
-   settle `seed_static.sql` GFO-master vs the prototype's MFO.
-2. Show Matas the deck, then the app; each ruling on the big buckets becomes an acceptance rule.
-3. Send email 06 (app registration, Fabric Apps tenant setting, capacity region) and email 05
-   (`CustTable` + `CustBankAccount`); the day the client id arrives: `adapter-graphql.js`, the Azure
-   Static Web App, and `load_sql.py` + `appinsights.py` into a scheduled Fabric Python notebook.
-4. Customers, the day the tables land: overlap check on `CustAccount` across the legal-entity map,
-   row counts per legal entity both sides, is GFO `CustBankAccount` populated, then the adapter.
-5. Deploy the config store (`src/config-store/`); move `COMPANY_MAP` and the derived recode maps
-   into `cfg.*`.
+**Next:** -
 
 ## Needs from customer
 
-- **Matas:** `CustTable` + `CustBankAccount` on both Link-to-Fabric scopes (email 05). **Not sent.**
-- **Matas:** app registration for the static track, Fabric Apps tenant setting, capacity region
-  (email 06). **Not sent.**
-- **Matas:** which table/field is "Buy from creditor" in GFO; whether `PaymTerm`/`PaymMode` should
-  join the scope. **Not asked.**
+- **Matas:** `CustTable` + `CustBankAccount` on both Link-to-Fabric scopes (email 05). **Resolved:**
+  synced (owner, 2026-09-21).
+- **Matas:** app registration, Fabric Apps tenant setting, capacity region (email 06). **Resolved:**
+  old; the region is West Europe (owner, 2026-09-21).
+- **Matas:** "Buy from creditor" in GFO: unresolved, out of scope for now. `PaymTerm`/`PaymMode`:
+  joined the scope (owner, 2026-09-21).
 
 ## Why
 This is the delivery itself. It was being tracked against `2026-07-06-matas-enhance-user-stories`,
@@ -71,3 +59,4 @@ which is a different piece of work (the DevOps user stories).
   from `2026-07-06-matas-enhance-user-stories`. Heartbeats before the switch carry the old slug and are
   corrected in the timesheet at /log, never in the heartbeats themselves.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task Task-65904, customer_ask open); no facts changed. Card: CONTEXT.md converted to the resume card.
+- 2026-09-21 - check-in: done. PoC demoed 2026-09-10 and 2026-09-14, approved 2026-09-14; emails 05/06 resolved; master MFO until 2026-11-01 then GFO. All Matas work up to and including 2026-09-14 books here (Task-65904); after that to Task-72114.

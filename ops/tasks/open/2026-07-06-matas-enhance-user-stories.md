@@ -60,3 +60,4 @@ for Matas sessions — Matas (212-01) bills per ADO Task, so Matas work must run
   Tasks above were given by Niels and all 23.00 h of registered Matas time was assigned across them
   (17.50 h to 65905, 5.50 h to 65904).
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task Task-65905, customer_ask none); no facts changed. Card: CONTEXT.md converted to the resume card.
+- 2026-09-21 - check-in: still accurate (owner).
