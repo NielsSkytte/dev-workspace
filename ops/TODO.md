@@ -32,9 +32,9 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
 - [x] 2026-07-06 — mail til Impact med Kasper cc omkring videre setup for Marketo api adgang → promoted to task `tasks/open/2026-07-07-carlras-impact-marketo-mail.md`
 - [x] 2026-07-06 — formelt tilbud til Aeven omkring ServiceNow offer, skal være i pdf format → promoted to task `tasks/open/2026-07-07-aeven-servicenow-offer-pdf.md`
 - [x] 2026-07-06 — følg op på Vestforbrænding med Venzo omkring oprettelse af Fabric capacity → promoted to task `tasks/open/2026-07-07-vestforbraending-venzo-capacity-followup.md` (customer node + placeholder project scaffolded 2026-07-07)
-- [ ] 2026-07-06 — ask Niels for the Matas F&O Activity number(s) (212-01 requires an Activity on ALL time lines) and create at least one Matas task carrying activity: so /switch-task can bind sessions
+- [x] 2026-07-06 — ask Niels for the Matas F&O Activity number(s) (212-01 requires an Activity on ALL time lines) and create at least one Matas task carrying activity: so /switch-task can bind sessions  (done 2026-09-21)
 - [ ] 2026-07-23 — capture-hook sanitizer violated its own rule 4: /handoff turn recorded the command's expanded help text as the User body (should be the bare invocation). Fix the command-turn detection in .claude/hooks/capture_turn.py for skill invocations that arrive as expanded prompts. Caught by sentinel at /log (see eval-2026-07-23 record).
-- [ ] 2026-08-03 — fix the typo in `ops/TidsregInfo.xlsx`: Kunde reads `Vestforbræding`, missing the n (correct: Vestforbrænding). A CUSTOMER_ALIASES entry in dashboard.py works around it; fixing the sheet makes that line dead
+- [x] 2026-08-03 — fix the typo in `ops/TidsregInfo.xlsx`: Kunde reads `Vestforbræding`, missing the n (correct: Vestforbrænding). A CUSTOMER_ALIASES entry in dashboard.py works around it; fixing the sheet makes that line dead  (done 2026-09-21)
 - [ ] 2026-08-03 — two Projektnr in `ops/TidsregInfo.xlsx` are literally `?` and cannot be entered in F&O: Aeven (4.25 h in July) and Melbye (`6013-?`)
 - [ ] 2026-08-03 — the local memory summarizer asserted a completed action that never happened for the **5th** consecutive /log (2026-08-31: "added a PreCompact hook" — no such key exists in either settings.json; it came from the expanded `update-config` skill body being captured as the User line). Revise the model or the summarizer prompt — per-day vetting is the only thing catching it. See `eval-2026-08-31-summarizer-invented-a-hook`
 - [x] **Time: cap a heartbeat span, and split one that crosses midnight.** Done 2026-08-30 in
@@ -49,13 +49,13 @@ Each item: `- [ ] YYYY-MM-DD — the thing`. Check it off (`[x]`) or delete when
       hook, and attribute a crossing span to each day it covers. Timesheet corrected by hand
       2026-08-30; the defect is still live. (found 2026-08-30)
 - [x] Time: at the next rollup set 2026-09-07 customers/Matas/DataCompare to 8.00 h (done 2026-09-08) (owner, 2026-09-07: measured 3.00 h is too low for the day). Edit ops/time/timesheet/2026-09/2026-09-07.md after it is finalized; task Task-65905, activity 111953.
-- [ ] Time: place the remaining Matas reclaim (5.50 h of 26.00; 20.50 h went on 1-4 Sep) on the September DataCompare
+- [x] Time: place the remaining Matas reclaim (5.50 h of 26.00; 20.50 h went on 1-4 Sep) on the September DataCompare  (done 2026-09-21)
       days **at month end, before September is closed** (owner 2026-09-08: not drawn day by day).
       August cannot be changed; recovered as part of building the front end; fine to communicate to
       Matas. Books to 212-01 / activity 111953 / Task-65904.
-- [ ] Time: a billed day whose value record was never written cannot be recovered - the transcripts age
+- [x] Time: a billed day whose value record was never written cannot be recovered - the transcripts age  (done 2026-09-21)
       out (found 2026-09-08: 7 billed Matas days in July have no weighted figure and no transcript
       left). Guard wanted: warn when a billed day has no ops/time/value/ record while its transcript is
       still on disk.
 - [ ] 2026-09-09 — at the next /log, correct ops/time/timesheet/2026-09/2026-09-09.md: session f0ca3d4e (91 min, heartbeats say own/MetaAtomic) is Carl Ras 230-02: 39 min (0.75 h) to task 2026-09-09-carlras-metaatomic-implementation, 52 min (0.75 h) to 2026-08-11-carlras-operation-hardening (CarlRData-555). Decided by Niels 2026-09-09. Also: the new task needs a CarlRData work item id in fno_task.
-- [ ] `capture_turn.py`: run `_INJECTION_MARKERS` over the verbatim User line, not only over summary text (summarization is off, so harness markup like `<task-notification>` reaches `daily/` unfiltered), and collapse a skill-preamble turn the way `command_invocation()` collapses a `<command-name>` turn. Evidence: memory `capture-hook-user-line-bypasses-injection-markers` (sentinel, 2026-09-10)
+- [x] `capture_turn.py`: run `_INJECTION_MARKERS` over the verbatim User line, not only over summary text (summarization is off, so harness markup like `<task-notification>` reaches `daily/` unfiltered), and collapse a skill-preamble turn the way `command_invocation()` collapses a `<command-name>` turn. Evidence: memory `capture-hook-user-line-bypasses-injection-markers` (sentinel, 2026-09-10)  (done 2026-09-21)
