@@ -237,6 +237,19 @@ Which of the three dimensions a customer actually wants is the customer's rule, 
 truth is `ops/TidsregInfo.xlsx` (Firma / Kunde / Projektnr / Aktivitet / task note); the table below
 records what has been confirmed directly with Niels, which overrides the sheet where they differ.
 
+**The rule is also machine-readable** (2026-09-21), so the entry page can say *this line cannot
+be typed yet* instead of leaving it to be spotted. It lives in the `## Customer` block of
+`customers/<client>/CLAUDE.md`, read by `ops/lib/fno.py`:
+
+| Field | Means |
+|---|---|
+| `fno_requires:` | comma list of `task`, `activity`, `description` — what a line must carry |
+| `fno_billable: no` | the F&O line goes in as `Linjeegenskab: No charge` |
+| `fno_description:` | the required `Beskrivelse` text (on the *project*, since it carries the engagement) |
+| `fno_firma:` `fno_code:` `fno_activity:` | override the sheet for a customer it does not list |
+
+An absent field means nothing extra is required. The table below stays the record of what was confirmed and when — change it and the node together.
+
 | Customer | Proj ID | Registers on | Activity | Confirmed |
 |---|---|---|---|---|
 | **Carl Ras** | `230-02` (always) | **Task, always** — every line needs one | **Never supplied by us.** F&O derives it from the task | 2026-08-31 |

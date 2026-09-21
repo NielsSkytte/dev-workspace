@@ -6,9 +6,10 @@ Tests for the `ops/` arithmetic that reaches an invoice or edits the substrate.
 python -m unittest discover -s tests -t tests      # from C:\Dev\ops
 ```
 
-Pure stdlib `unittest`, no fixtures on disk, no server, no workspace walk. The scripts under test
-are CLI tools rather than a package, so `_bootstrap.py` puts `ops/`, `ops/time/` and `ops/bin/` on
-`sys.path`; none of them do work at import time.
+Pure stdlib `unittest`, no server and no walk of the real workspace. A write path is tested
+against a file it makes in a temp directory and throws away; nothing here touches `C:\Dev`. The
+scripts under test are CLI tools rather than a package, so `_bootstrap.py` puts `ops/`,
+`ops/time/` and `ops/bin/` on `sys.path`; none of them do work at import time.
 
 | File | Covers |
 |---|---|
@@ -16,9 +17,15 @@ are CLI tools rather than a package, so `_bootstrap.py` puts `ops/`, `ops/time/`
 | `test_value.py` | `time/value.py` - tiering, stretch grouping, the customer cap and the review flags |
 | `test_frontmatter.py` | `dashboard.py` `_apply_fm` - the task-file write path |
 | `test_lib.py` | `lib/` - the shared read layer: substrate parsing, project discovery, the heartbeat record |
+| `test_dashboard.py` | the `ops/TODO.md` write path, the project band rule, the payload memos, the POST routing table |
+| `test_fno.py` | `lib/fno.py` and the F&O entry surface - the readiness rule, the two write paths, the workbook |
 
-Scope is deliberate: pure functions with a documented rule and a number. Rendering, file discovery
-and the HTTP layer are not covered, and a test that needs the real workspace does not belong here.
+Scope is deliberate: a documented rule and a number, or a write that has to leave a hand-maintained
+file intact. Rendering and the HTTP layer are not covered here - the pages are checked under jsdom
+against a running server, and a write path is driven end to end against a throwaway workspace.
+
+Every write path is held to one standard: it changes the line it names and leaves every other byte
+alone - indentation, inline comments, line endings, and whatever prose the file already carried.
 
 Two invariants carry most of the weight, because they are what an invoice depends on:
 

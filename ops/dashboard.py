@@ -16,11 +16,21 @@ Modes:
   python ops/dashboard.py --json     print the collected payload; write nothing
   python ops/dashboard.py --no-open  serve without opening a browser
 
-Two pages: / (today.html -- the day's entry point, from /api/today = ops/bin/daybrief.py) and
-/overview (dashboard.html -- the original cross-project view, from /api/data).
-The served page re-fetches /api/data on every load and on Refresh, so it is never stale.
-POST /api/launch starts a new Claude Code session (or VS Code window) rooted at a project --
-which is also what makes that session's time attribute to the right project.
+Three pages, all under ops/web/ (Preact + htm, no build step -- see web/vendor/README.md):
+  /           the day: triage, tasks in progress, what moved (from /api/today = bin/daybrief.py)
+  /projects   every project ranked by activity, and the customers above them
+  /time       what goes into F&O -- the entry blocks per company, the readiness gate, the
+              week's evidence, and Excel
+Each re-fetches on load, on Refresh and on a timer, so nothing on screen is stale.
+
+Write paths (the page never edits a file itself):
+  /api/launch     start a session or a VS Code window rooted at a project -- which is also
+                  what makes that session's time attribute to the right project
+  /api/task       mechanical task moves; /api/todo ticks a capture
+  /api/reassign   move a Dev timesheet line to the project it was really for
+  /api/timesheet  correct one line of a finalized day (ops/time/README.md: edit the file)
+  /api/fno        set an F&O field on a project's ## Identity or a customer's ## Customer
+  /api/xlsx       the visible entry rows as a workbook
 
 Pure stdlib, ASCII-only (workspace convention).
 """
@@ -32,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.substrate import (read, frontmatter, identity, sections, bullets,
                            labelled, field, plain, first_para, days_ago)
 from lib.workspace import customer_dirs, project_dirs
+from lib import fno
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -139,6 +150,7 @@ def build_project(key, pdir, customer):
         "key": key, "name": os.path.basename(pdir), "customer": customer, "path": pdir,
         "billable": key.startswith("customers/"),
         "fno_code": ident.get("fno_code", "") or "UNSET",
+        "fno_description": ident.get("fno_description", ""),
         "type": ident.get("type", ""), "focus_tag": ident.get("focus", ""),
         "status": ident.get("status", ""),
         "ctx_status": plain(field(state, "Status")) or ident.get("status", ""),
@@ -565,22 +577,7 @@ def last_heartbeat_by_session():
 # Excel 'Kunde' values that do not normalize onto the workspace customer folder. Everything else
 # matches after lowercasing and folding spaces/hyphens/Danish letters (Vestforbraending, Element
 # Logic, Carl-Ras all resolve on their own).
-CUSTOMER_ALIASES = {
-    "jtj": "joeandthejuice",
-    # Typo in the source sheet: it reads "Vestforbraeding", missing the n after ae
-    # (correct Danish is Vestforbraending). Aliased so the entry page works; fix the xlsx and
-    # this line becomes dead.
-    "vestforbraeding": "vestforbraending",
-}
-
-
-def _norm_customer(name):
-    s = (name or "").strip().lower()
-    for a, b in (("æ", "ae"), ("ø", "oe"), ("å", "aa"),
-                 ("Æ", "ae"), ("Ø", "oe"), ("Å", "aa")):
-        s = s.replace(a, b)
-    s = re.sub(r"[\s\-_/.]", "", s)
-    return CUSTOMER_ALIASES.get(s, s)
+_norm_customer = fno.norm
 
 
 def read_companies():
@@ -644,10 +641,39 @@ def read_companies():
     return out
 
 
-def collect_entry(entries, customers, today):
+def _fix_targets(row, rule, proj):
+    """The files that can supply what this row is missing, most durable first.
+
+    Two kinds. A SOURCE fix (the project's `fno_code`, the customer node's rule) stops the gap
+    recurring on every future line; a ROW fix edits this one finalized day, which is what
+    ops/time/README.md means by "edit this file to correct". Both are offered, because a code
+    that only arrives next month still leaves this month's lines to type."""
+    out = []
+    kinds = set(m["field"] for m in row.get("missing") or ())
+    if "proj_id" in kinds and proj.get("path"):
+        out.append({"kind": "project", "field": "fno_code", "target": row["project"],
+                    "label": "Set fno_code on " + row["project"]})
+    if "description" in kinds and proj.get("path"):
+        out.append({"kind": "project", "field": "fno_description", "target": row["project"],
+                    "label": "Set fno_description on " + row["project"]})
+    if kinds and rule:
+        out.append({"kind": "customer", "field": "", "target": rule["customer"],
+                    "label": "Rule: " + rule["customer"] + "/CLAUDE.md"})
+    if kinds:
+        out.append({"kind": "row", "field": "", "target": row["date"],
+                    "label": "Correct this day's timesheet"})
+    return out
+
+
+def collect_entry(entries, customers, today, projects=None):
     """F&O entry rows: one per date/customer/project/activity/task, tagged with the internal
     company (Firma). F&O takes one timesheet PER COMPANY, so the company is the outermost grouping
     on the page -- it is the thing you open a separate sheet for.
+
+    Every row also says whether it can actually be TYPED: `missing` lists the F&O fields the
+    customer's own rule requires and the row cannot supply (ops/lib/fno.py, from the customer
+    node). A row with a non-empty `missing` is the thing to fix before the month is entered, and
+    `fix` says which file to fix it in.
 
     Returned FLAT (every date, not pre-bucketed) so the timesheet page can slice any range --
     an ISO week (the entry surface) or a calendar month (the overview) -- without the collector
@@ -655,32 +681,59 @@ def collect_entry(entries, customers, today):
     comp = read_companies()
     by_key = {c["key"]: c for c in comp}
     ws_keys = {_norm_customer(c): c for c in customers}
+    cust_rules = fno.rules(ROOT)
+    projects = projects or {}
 
     def decorate(e, agg, unmapped):
         """One timesheet entry -> one F&O entry row (company, customer, resolved Proj ID)."""
         p = e["project"]
         cust = p.split("/")[1] if p.lower().startswith("customers/") and "/" in p else ""
         row_c = by_key.get(_norm_customer(cust)) if cust else None
-        if cust and row_c is None:
+        rule = cust_rules.get(_norm_customer(cust)) if cust else None
+        if cust and row_c is None and rule is None:
             unmapped[cust] = round(unmapped.get(cust, 0.0) + e["hours"], 2)
-        firma = row_c["firma"] if row_c else ("" if cust else "INTERNAL")
+        firma = ((rule or {}).get("firma") or (row_c["firma"] if row_c else "")
+                 or ("" if cust else "INTERNAL"))
 
         # Proj ID: the timesheet's own value wins; the sheet fills a gap; disagreement is flagged,
-        # never silently resolved.
+        # never silently resolved. A placeholder on either side ("UNSET", "?", "6013-?",
+        # "PENDING...") is not a value -- it is the absence of one, so it neither fills a gap nor
+        # conflicts with anything.
         ws_id = e["proj_id"]
-        xl_id = row_c["projektnr"] if row_c else ""
-        weak = (not ws_id) or ws_id in ("UNSET", "") or ws_id.startswith("PENDING")
-        proj_id = (xl_id or ws_id) if weak else ws_id
-        conflict = bool(xl_id and not weak and xl_id != ws_id)
-        activity = e["activity"] or (row_c["aktivitet"] if row_c else "")
+        xl_id = (rule or {}).get("proj_id") or (row_c["projektnr"] if row_c else "")
+        weak, xl_weak = fno.is_unset(ws_id), fno.is_unset(xl_id)
+        proj_id = ws_id if not weak else ("" if xl_weak else xl_id)
+        conflict = bool(not weak and not xl_weak and xl_id != ws_id)
+        activity = (e["activity"] or (rule or {}).get("activity")
+                    or (row_c["aktivitet"] if row_c else ""))
+        proj = projects.get(p) or {}
+        description = proj.get("fno_description") or (rule or {}).get("description") or ""
 
+        # `ws_*` is the line AS THE TIMESHEET FILE HOLDS IT, which is not what the row
+        # shows: a blank fno_code reads as "" here after the sheet declines to fill it, and
+        # an activity can come from the sheet rather than from the day. Correcting the file
+        # matches on these, so they travel with the row. When two timesheet lines fold into
+        # one cell and disagree, the cell is `ambiguous` and the editor will not write --
+        # naming one of them would correct the wrong line.
         k = (firma, e["date"], cust, p, proj_id, activity, e["fno_task"])
         cell = agg.setdefault(k, {"firma": firma, "date": e["date"], "customer": cust,
                                   "project": p, "proj_id": proj_id, "activity": activity,
                                   "fno_task": e["fno_task"], "hours": 0.0,
-                                  "from_sheet": weak and bool(xl_id), "conflict": conflict,
-                                  "ws_proj_id": ws_id, "task_note": row_c["task_note"] if row_c else ""})
+                                  "from_sheet": weak and not xl_weak, "conflict": conflict,
+                                  "ws_proj_id": ws_id, "ws_activity": e["activity"],
+                                  "xl_proj_id": xl_id, "ambiguous": False,
+                                  "description": description,
+                                  "no_charge": bool((rule or {}).get("no_charge")),
+                                  "requires": (rule or {}).get("requires") or [],
+                                  # A day still accruing has no finalized file, so it cannot
+                                  # be corrected -- the editor has to say that, not fail.
+                                  "live": bool(e.get("live")),
+                                  "task_note": row_c["task_note"] if row_c else ""})
+        if cell["ws_proj_id"] != ws_id or cell["ws_activity"] != e["activity"]:
+            cell["ambiguous"] = True
         cell["hours"] = round(cell["hours"] + e["hours"], 2)
+        cell["missing"] = fno.missing(cell, rule)
+        cell["fix"] = _fix_targets(cell, rule, proj)
 
     def build(src):
         a, u = {}, {}
@@ -735,10 +788,17 @@ def collect_entry(entries, customers, today):
             continue
         merged[key] = build(rollup.consolidate_week(src, dates, ENTRY_MERGE_THRESHOLD))[0]
 
+    # The readiness gate for the whole payload, so a page can say "3 lines cannot be typed"
+    # without walking every range itself. Counted on the RAW rows: consolidation moves hours
+    # between days, it never fills in a missing dimension.
+    short = [r for r in rows if r["missing"]]
+
     return {
         "rows": rows,
         "merged": merged,
         "ranges": ranges,
+        "short": short,
+        "rules": {k: v for k, v in cust_rules.items()},
         "companies": sorted({c["firma"] for c in comp}),
         "mapping": comp,
         "unmapped": sorted(({"customer": k, "hours": v} for k, v in unmapped.items()),
@@ -1012,7 +1072,7 @@ def _collect():
         "targets": [{"project": t["project"], "slug": t["slug"], "title": t["title"],
                      "state": t["state"], "activity": t["activity"], "fno_task": t["fno_task"]}
                     for t in tasks if t["state"] in ("open", "in-progress") and t["project"]],
-        "entry": collect_entry(entries, customers, today),
+        "entry": collect_entry(entries, customers, today, projects),
         "audit": collect_audit(today),
         "lineSessions": collect_line_sessions(today),
         "active_sessions": active_sessions(),
@@ -1321,12 +1381,271 @@ def task_mutate(slug, action, **kwargs):
     return True, "%s: %s" % (action, slug)
 
 
+
+# ---------- F&O entry write paths ----------
+# Everything here exists so a line that cannot be typed into F&O can be made typeable from the
+# page. Two grains, deliberately both: correcting the finalized day fixes the hours you are
+# entering now, setting the field on the project or the customer stops the gap coming back.
+
+FNO_FIELDS = ("fno_code", "fno_activity", "fno_description", "fno_firma",
+              "fno_requires", "fno_billable")
+# A dimension value is an F&O code, an activity id or a short description -- never prose and
+# never a newline, which would break the `key: value` line it is written onto.
+FNO_VALUE_RE = re.compile(r"^[\w\-.,:/() ]{0,120}$")
+
+
+def _set_block_field(text, header, key, value):
+    """Set `key: value` inside a `## Header` block, keeping any trailing `# comment`.
+
+    Replaces the line rather than substituting into it, for the same reason `_apply_fm` does:
+    a value is free text and a regex template would rewrite itself. A key not already in the
+    block is appended to the end of it."""
+    m = re.search(r"^## +%s\s*$(.*?)(?=^## |\Z)" % re.escape(header), text, re.M | re.S)
+    if not m:
+        return None
+    block = m.group(1)
+    lines = block.split("\n")
+    for i, line in enumerate(lines):
+        k = re.match(r"^(%s)\s*:(.*)$" % re.escape(key), line)
+        if not k:
+            continue
+        comment = k.group(2).split("#", 1)
+        tail = ("     #" + comment[1]) if len(comment) > 1 else ""
+        lines[i] = "%s: %s%s" % (key, value, tail) if value else "%s:%s" % (key, tail)
+        return text[:m.start(1)] + "\n".join(lines) + text[m.end(1):]
+    body = block.rstrip("\n")
+    return text[:m.start(1)] + body + "\n%s: %s\n\n" % (key, value) + text[m.end(1):]
+
+
+def fno_field(kind, target, key, value):
+    """Write one F&O field onto a project's `## Identity` or a customer node's `## Customer`.
+
+    The source fix for a missing dimension: the project that has no `fno_code`, the customer
+    whose registration rule was never written down. Nothing else in either file is touched."""
+    if key not in FNO_FIELDS:
+        return False, "not an F&O field: %r" % (key,)
+    value = (value or "").strip()
+    if not FNO_VALUE_RE.match(value):
+        return False, "value has characters that cannot go on a field line"
+    if kind == "project":
+        if not re.match(r"^(customers/[^/]+/[^/]+|own/[^/]+)$", target or ""):
+            return False, "not a project key: %r" % (target,)
+        path, header = os.path.join(ROOT, target.replace("/", os.sep), "CLAUDE.md"), "Identity"
+    elif kind == "customer":
+        if not re.match(r"^[\w.-]+$", target or ""):
+            return False, "not a customer: %r" % (target,)
+        path, header = os.path.join(ROOT, "customers", target, "CLAUDE.md"), "Customer"
+    else:
+        return False, "unknown target kind: %r" % (kind,)
+    if not os.path.exists(path):
+        return False, "no CLAUDE.md at %s" % target
+    text = read(path)
+    out = _set_block_field(text, header, key, value)
+    if out is None:
+        return False, "%s has no ## %s block" % (target, header)
+    if out == text:
+        return True, "%s already %s" % (key, value or "blank")
+    try:
+        with io.open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(out)
+    except Exception as exc:
+        return False, str(exc)
+    return True, "%s: %s = %s" % (target, key, value or "(blank)")
+
+
+def _totals_span(lines):
+    """(first, last) index of the timesheet table plus its two total lines, or None."""
+    head = tail = None
+    for i, line in enumerate(lines):
+        if head is None and line.startswith("| Project |"):
+            head = i
+        if line.startswith("**Internal total:"):
+            tail = i
+    return (head, tail) if head is not None and tail is not None and tail > head else None
+
+
+def timesheet_edit(date, row, updates, note=""):
+    """Correct one line of a finalized `ops/time/timesheet/<YYYY-MM>/<date>.md`.
+
+    ops/time/README.md: "Edit this file to correct -- never the heartbeats." This is that edit,
+    made from the page instead of by hand, and it keeps the file's own convention of recording
+    the correction underneath.
+
+    `row` names the line as the page was showing it (project + the three F&O dimensions); if it
+    no longer matches exactly one line the file moved underneath and nothing is written."""
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date or ""):
+        return False, "bad date: %r" % (date,)
+    path = rollup.daily_path(date)
+    if not os.path.exists(path):
+        return False, ("%s is not finalized yet -- its hours are still a live tally. "
+                       "Run /log or ops/time/rollup.py first." % date)
+    rows = rollup.parse_daily_file(date)
+    if not rows:
+        return False, "%s has no timesheet lines" % date
+
+    def key(r):
+        return (r["project"], (r["proj_id"] or "").strip(),
+                (r["activity"] or "").strip(), (r["fno_task"] or "").strip())
+
+    want = (row.get("project") or "", (row.get("proj_id") or "").strip(),
+            (row.get("activity") or "").strip(), (row.get("fno_task") or "").strip())
+    hits = [i for i, r in enumerate(rows) if key(r) == want]
+    if len(hits) != 1:
+        return False, ("that line is no longer in %s -- refresh" % date if not hits
+                       else "%d lines in %s match -- correct the file by hand" % (len(hits), date))
+    target = rows[hits[0]]
+
+    changed = []
+    for field_ in ("proj_id", "activity", "fno_task"):
+        if field_ not in updates:
+            continue
+        val = (updates[field_] or "").strip()
+        if not FNO_VALUE_RE.match(val):
+            return False, "%s has characters that cannot go in the table" % field_
+        if val != (target[field_] or ""):
+            changed.append("%s %s -> %s" % (field_, target[field_] or "-", val or "-"))
+            target[field_] = val
+    if "hours" in updates:
+        try:
+            hrs = round(float(updates["hours"]) * 4) / 4.0
+        except (TypeError, ValueError):
+            return False, "hours must be a number"
+        if not 0 < hrs <= 24:
+            return False, "hours out of range"
+        if abs(hrs - target["hours"]) > 1e-9:
+            changed.append("hours %.2f -> %.2f" % (target["hours"], hrs))
+            target["hours"] = hrs
+    if not changed:
+        return False, "nothing to change"
+
+    with io.open(path, encoding="utf-8", newline="") as f:
+        text = f.read()
+    lines = text.split("\n")
+    span = _totals_span(lines)
+    if span is None:
+        return False, "%s does not look like a timesheet file" % date
+    table, _, _ = rollup.render_table(rows)
+    stamp = datetime.date.today().isoformat()
+    trail = "Corrected from the dashboard %s: %s%s" % (
+        stamp, "; ".join(changed), (" -- " + re.sub(r"\s+", " ", note).strip()[:300]) if note else "")
+    rest = [x for x in lines[span[1] + 1:]]
+    body = lines[:span[0]] + table.split("\n") + [""] + [trail] + rest
+    try:
+        with io.open(path, "w", encoding="utf-8", newline="") as f:
+            f.write("\n".join(body))
+    except Exception as exc:
+        return False, str(exc)
+    return True, "%s: %s" % (date, "; ".join(changed))
+
+
+# ---------- Excel ----------
+# F&O is fed either by typing or by a sheet, so the period has to be able to leave as a
+# workbook. Written with zipfile + string templates for the same reason read_companies reads
+# one that way: no dependency, and the format is small enough to be honest about.
+
+XLSX_ESC = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}
+
+
+def _xl(s):
+    return "".join(XLSX_ESC.get(c, c) for c in str(s if s is not None else ""))
+
+
+def _col(n):
+    """0 -> A, 26 -> AA."""
+    out = ""
+    n += 1
+    while n:
+        n, r = divmod(n - 1, 26)
+        out = chr(65 + r) + out
+    return out
+
+
+def build_xlsx(title, headers, rows):
+    """-> xlsx bytes. One sheet; text cells inline, numbers numeric so Excel can sum them."""
+    import zipfile
+    def cell(c, r, v):
+        ref = "%s%d" % (_col(c), r)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return '<c r="%s"><v>%s</v></c>' % (ref, repr(round(float(v), 2)))
+        return '<c r="%s" t="inlineStr"><is><t xml:space="preserve">%s</t></is></c>' % (ref, _xl(v))
+    body = ['<row r="1">%s</row>' % "".join(cell(i, 1, h) for i, h in enumerate(headers))]
+    for n, r in enumerate(rows, start=2):
+        body.append('<row r="%d">%s</row>' % (n, "".join(cell(i, n, v) for i, v in enumerate(r))))
+    sheet = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+             '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+             '<sheetData>%s</sheetData></worksheet>' % "".join(body))
+    parts = {
+        "[Content_Types].xml":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.'
+            'relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-'
+            'officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/'
+            'sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.'
+            'spreadsheetml.worksheet+xml"/></Types>',
+        "_rels/.rels":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+            'relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+        "xl/workbook.xml":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets><sheet name="%s" sheetId="1" r:id="rId1"/></sheets></workbook>'
+            % _xl(title[:31] or "Sheet1"),
+        "xl/_rels/workbook.xml.rels":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+            'relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+        "xl/worksheets/sheet1.xml": sheet,
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in parts.items():
+            z.writestr(name, data)
+    return buf.getvalue()
+
+
+ENTRY_COLUMNS = ("Date", "Company", "Customer", "Project", "Proj ID", "Activity", "Task",
+                 "Description", "Hours", "Line property", "Not ready")
+
+
+def entry_workbook(req):
+    """-> (filename, bytes) for the rows the page is showing.
+
+    The PAGE sends the rows, not a range key: on the week view the hours are the F&O entry
+    figure derived from the value model, and a sheet that disagreed with the blocks above it
+    would be worse than no sheet at all. What you download is what you see."""
+    rows = req.get("rows") or []
+    if not isinstance(rows, list) or not rows:
+        return None, "nothing to export"
+    if len(rows) > 5000:
+        return None, "too many rows"
+    out = []
+    for r in rows:
+        if not isinstance(r, dict):
+            return None, "bad row"
+        out.append([r.get("date", ""), r.get("firma", ""), r.get("customer", ""),
+                    (r.get("project", "") or "").replace("customers/", ""),
+                    r.get("proj_id", ""), r.get("activity", ""), r.get("fno_task", ""),
+                    r.get("description", ""), float(r.get("hours") or 0),
+                    "No charge" if r.get("no_charge") else "",
+                    ", ".join(m.get("label", "") for m in (r.get("missing") or []))])
+    # The name reaches the browser as Content-Disposition, so it keeps to word characters:
+    # a dot run or a separator in a download name is noise at best.
+    name = re.sub(r"[^\w-]+", "-", str(req.get("name") or "fno-entry")).strip("-") or "fno-entry"
+    return name + ".xlsx", build_xlsx(str(req.get("title") or "F&O entry"),
+                                      ENTRY_COLUMNS, out)
+
+
 # ---------- server ----------
 
-# Three pages, one payload. `/overview` stays until the Time page replaces it.
+# Three pages, one payload.
 PAGES = {"/": "web/today.html", "/index.html": "web/today.html", "/today": "web/today.html",
-         "/projects": "web/projects.html", "/time": "web/time.html",
-         "/overview": "dashboard.html", "/overview.html": "dashboard.html"}
+         "/projects": "web/projects.html", "/time": "web/time.html"}
 WEB = os.path.join(HERE, "web")
 MIME = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
         ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
@@ -1344,6 +1663,10 @@ POST_ROUTES = {
                                        waiting_on=r.get("waiting_on", ""),
                                        text=r.get("text", "")),
     "/api/todo": lambda r: todo_mutate(r.get("line"), r.get("action", ""), r.get("raw", "")),
+    "/api/fno": lambda r: fno_field(r.get("kind", ""), r.get("target", ""),
+                                    r.get("field", ""), r.get("value", "")),
+    "/api/timesheet": lambda r: timesheet_edit(r.get("date", ""), r.get("row") or {},
+                                               r.get("set") or {}, r.get("note", "")),
 }
 
 
@@ -1396,6 +1719,25 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+        if path == "/api/xlsx":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                name, body = entry_workbook(json.loads(self.rfile.read(n) or b"{}"))
+            except Exception as exc:
+                self._send(500, json.dumps({"ok": False, "message": str(exc)}))
+                return
+            if name is None:
+                self._send(400, json.dumps({"ok": False, "message": body}))
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument."
+                                             "spreadsheetml.sheet")
+            self.send_header("Content-Disposition", 'attachment; filename="%s"' % name)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         handler = POST_ROUTES.get(path)
         if handler is None:
             self._send(404, "{}")

@@ -444,6 +444,40 @@ td.rowact button{margin-left:4px}
   resize:vertical}
 button.act[disabled]{opacity:.45;cursor:not-allowed}
 
+/* ---- the F&O entry surface (Time > Enter) ---- */
+
+/* The filter bar carries the week and the company selection, and the entry blocks below it
+   are long -- the bar has to stay reachable from the bottom of a 40-row company. main is the
+   scroll container, so top:0 is its top edge. */
+main > .stickybar{position:sticky;top:0;z-index:3;background:var(--bg);
+  padding:6px 0 10px;margin:0 0 4px;box-shadow:0 6px 10px -8px rgba(0,0,0,.35)}
+main > .stickybar .filterbar{margin:0}
+.filterbar .grow{flex:1;min-width:20px}
+
+.blockhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  flex-wrap:wrap}
+.blockhead h3{font-size:15px;margin:0}
+.blockhead .grow{flex:1;min-width:10px}
+
+/* An entry row is clickable because clicking is how a short line gets fixed; a row that is
+   short of something F&O requires carries the accent on its edge, not on its text -- the
+   missing cell already says so in words. */
+table.autable tr.clickable{cursor:pointer}
+table.autable tr.clickable:hover td{background:var(--surface-2)}
+table.autable tr.short td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+table.autable.entry td{white-space:nowrap}
+table.autable.totals td{border-bottom:1px solid var(--ring)}
+table.autable.totals td:nth-child(3){text-align:right}
+
+/* The session evidence in the line editor: the same shape as the hover it replaces, minus
+   the floating box -- the drawer has room to simply show it. */
+.drawer .tsess{margin-top:8px;padding-top:8px;border-top:1px solid var(--ring);font-size:12.5px}
+.drawer .tsess:first-of-type{margin-top:2px;border-top:none}
+.drawer .tturn{color:var(--ink-2);margin:3px 0 0 10px;text-indent:-10px;font-size:12px}
+.drawer .tturn::before{content:'\2013 ';color:var(--muted)}
+.drawer select.mini{width:100%;padding:6px 8px;font-size:12.5px}
+.drawer .actrow input[readonly]{color:var(--muted)}
+
 /* ══ empty states ═════════════════════════════════════════════════════════ */
 .empty{color:var(--muted);font-size:13px;margin:0;padding:6px 0}
 .rowacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:7px}
