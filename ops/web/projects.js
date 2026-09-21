@@ -204,6 +204,85 @@ function Detail({ p, tasks }) {
     <div class="block"><code>${p.path}</code></div>`;
 }
 
+/* ---------- the filter bar ----------
+   Lifted from the retired `today.html`, which is the only place this existed. Two rows:
+   who the open work sits with, and what state it is in.
+
+   The counts are taken BEFORE the bar's own filters, on purpose -- a bar that recounted
+   itself would collapse to the one chip you picked and stop being a distribution. */
+
+const OWN = '__own__';
+const bucketOf = p => p.customer || (p.key.startsWith('own/') ? OWN : OWN);
+const bucketLabel = k => (k === OWN ? 'Own' : k);
+
+/* Which task states a project can be filtered on. Every one is already counted per
+   project by the server (`merge_card_fields`), so this reads a number rather than
+   re-deriving a rule the day brief already owns. */
+const STATES = [
+  ['in_progress', 'In progress'],
+  ['open', 'Open'],
+  ['stalled', 'Stalled'],
+  ['parked', 'Parked'],
+  ['asks_unsent', 'Asks unsent'],
+  ['due_back', 'Due back'],
+];
+
+function FilterBar({ projects, pick, onPick, state, onState }) {
+  const by = {};
+  projects.forEach(p => {
+    const k = bucketOf(p);
+    const b = by[k] || (by[k] = { total: 0, stalled: 0, asks: 0 });
+    b.total += p.counts.total;
+    b.stalled += p.counts.stalled;
+    b.asks += p.counts.asks_unsent;
+  });
+  /* A customer with no open task still has projects, and hiding it would make the bar
+     lie about who exists. It just gets no bar. */
+  const order = Object.keys(by).sort((a, b) => by[b].total - by[a].total
+    || (a === OWN) - (b === OWN) || a.localeCompare(b));
+  const max = Math.max(1, ...order.map(k => by[k].total));
+  const all = order.reduce((s, k) => s + by[k].total, 0);
+
+  const stateCounts = {};
+  STATES.forEach(([k]) => {
+    stateCounts[k] = projects.reduce((s, p) => s + (p.counts[k] || 0), 0);
+  });
+
+  const chip = (key, text, count, pct, hot) => html`
+    <button key=${key || 'all'} class=${'fc-chip' + (pick === key ? ' on' : '')}
+            onClick=${() => onPick(key)}>
+      <span>${text}</span><span class="cc">${count}</span>
+      ${hot}
+      <span class="fc-bar" style=${`width:${pct}%`}></span>
+    </button>`;
+
+  return html`
+    <div class="fcbar">
+      <div class="fc-row">
+        <span class="fc-lbl">Customer</span>
+        ${chip(null, 'All', all, 100, null)}
+        ${order.map(k => chip(k, bucketLabel(k), by[k].total,
+          Math.round(100 * by[k].total / max), html`
+            <${Fragment}>
+              ${by[k].stalled ? html`<span class="fc-hot">${by[k].stalled} stalled</span>` : null}
+              ${by[k].asks ? html`<span class="fc-hot">${by[k].asks} unsent</span>` : null}
+            <//>`))}
+      </div>
+      <div class="fc-row">
+        <span class="fc-lbl">Task state</span>
+        <button class=${'fc-chip sm' + (state ? '' : ' on')}
+                onClick=${() => onState(null)}>All</button>
+        ${STATES.map(([k, text]) => html`
+          <button key=${k} class=${'fc-chip sm' + (state === k ? ' on' : '')}
+                  disabled=${!stateCounts[k]}
+                  title=${stateCounts[k] ? `${stateCounts[k]} across the listed projects`
+                    : 'none right now'}
+                  onClick=${() => onState(state === k ? null : k)}>
+            ${text}<span class="cc">${stateCounts[k]}</span></button>`)}
+      </div>
+    </div>`;
+}
+
 /* ---------- customers ---------- */
 
 function Customers({ customers, th, picked, onPick }) {
@@ -239,27 +318,25 @@ function App() {
   const { data: D, err, stamp, reload, auto, setAuto } = useData('/api/data');
   const [sel, setSel] = useState(null);
   const [q, setQ] = useState('');
-  const [scope, setScope] = useState('all');
   const [mode, setMode] = useState('band');
   const [cust, setCust] = useState(null);
+  const [state, setState] = useState(null);
   const [folded, toggleFold, expandAll] = useFolded();
 
+  /* Everything the page lists, before the bar's filters -- what the bar counts. */
+  const listed = useMemo(
+    () => (D ? D.projects.filter(p => p.band !== 'workspace') : []), [D]);
+
   const rows = useMemo(() => {
-    if (!D) return [];
     const needle = q.trim().toLowerCase();
-    return D.projects.filter(p => {
-      if (p.band === 'workspace') return false;
-      // a picked customer is the stronger statement; it overrides the scope chips
-      if (cust) { if (p.customer !== cust) return false; }
-      else {
-        if (scope === 'customers' && !p.key.startsWith('customers/')) return false;
-        if (scope === 'own' && !p.key.startsWith('own/')) return false;
-      }
+    return listed.filter(p => {
+      if (cust && bucketOf(p) !== cust) return false;
+      if (state && !p.counts[state]) return false;
       if (!needle) return true;
       return (label(p) + ' ' + p.key + ' ' + p.fno_code + ' ' + p.goal + ' ' + p.focus)
         .toLowerCase().includes(needle);
     });
-  }, [D, q, scope, cust]);
+  }, [listed, q, cust, state]);
 
   const counts = useMemo(() => {
     const n = { quiet: 0, inflight: 0, dormant: 0, asks: 0 };
@@ -283,15 +360,10 @@ function App() {
               tiles=${tiles}>
       ${err ? html`<div class="alert">Cannot reach the server: ${err}</div>` : null}
 
+      ${D ? html`<${FilterBar} projects=${listed} pick=${cust} onPick=${setCust}
+                               state=${state} onState=${setState}/>` : null}
+
       <div class="filterbar">
-        <span class="flabel">Scope</span>
-        ${cust
-          ? html`<button class="chip on" onClick=${() => setCust(null)}
-                         title="clear the customer filter">${cust} \u00d7</button>`
-          : [['all', 'All'], ['customers', 'Customers'], ['own', 'Own']].map(([k, tx]) => html`
-              <button key=${k} class=${'chip' + (scope === k ? ' on' : '')}
-                      onClick=${() => setScope(k)}>${tx}</button>`)}
-        <span class="fsep"></span>
         <span class="flabel">Group by</span>
         ${[['band', 'Activity'], ['status', 'Status']].map(([k, tx]) => html`
           <button key=${k} class=${'chip' + (mode === k ? ' on' : '')}
@@ -307,7 +379,7 @@ function App() {
       ${D ? html`
         <div class="split-wide">
           <${Customers} customers=${D.customers} th=${D.thresholds}
-                        picked=${cust} onPick=${setCust}/>
+                        picked=${cust === OWN ? null : cust} onPick=${setCust}/>
           <${Table} projects=${rows} th=${D.thresholds} onOpen=${setSel}
                     mode=${mode} folded=${folded} onToggle=${toggleFold}/>
         </div>` : null}
