@@ -402,6 +402,80 @@ const knownLabel = u => (u.n
   ? `${u.value} — ${u.n} line${u.n === 1 ? '' : 's'}, ${hrs(u.hours)} h, last ${u.last}`
   : `${u.value} — ${u.title || 'from a work-task'}`);
 
+/* Where work for a customer goes when it cannot be invoiced.
+ *
+ * Registering the time itself, fixing the setup, building this page -- all of it happens
+ * under a customer folder and none of it goes on that customer's invoice. Two answers,
+ * and they combine:
+ *
+ *   move it     to `Dev` (the workspace, which is where ops work belongs), to an `own/`
+ *               project, or to the customer NODE when it is for that client but not on
+ *               any one project -- the node has no fno_code, so it never produces an
+ *               enterable line
+ *   leave it    where it is and set the timesheet's `Billable` column to no, so the entry
+ *               page tracks the hours against the client and never types them into F&O
+ *
+ * Off a customer is always allowed; it reduces what is invoiced. One customer to another
+ * is refused by the server -- that is two invoices wrong at once.
+ */
+function NotBillable({ raw, D, onDone }) {
+  const [to, setTo] = useState('');
+  const [why, setWhy] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setTo(''); setWhy(''); setBusy(false); }, [rowKey(raw)]);
+
+  const cust = raw.project.startsWith('customers/') ? raw.project.split('/')[1] : '';
+  const here = { value: '', label: cust
+    ? `leave it on ${shortProject(raw.project)}, not for registration`
+    : 'leave it where it is' };
+  const places = [here]
+    .concat(cust && raw.project !== 'customers/' + cust
+      ? [{ value: 'customers/' + cust, label: `${cust} overall (the customer, no project)` }]
+      : [])
+    .concat([{ value: 'Dev', label: 'Dev (the workspace -- ops, the harness, this page)' }])
+    .concat((D.projects || [])
+      .filter(p => p.key.startsWith('own/'))
+      .map(p => ({ value: p.key, label: p.key })));
+
+  const move = async () => {
+    setBusy(true);
+    const j = await post('/api/reassign', {
+      date: raw.date,
+      row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
+             fno_task: raw.ws_fno_task },
+      to, billable: false, note: why.trim(),
+    });
+    setBusy(false);
+    toast(j.message || (j.ok ? 'moved' : 'failed'));
+    if (j.ok) onDone();
+  };
+
+  return html`
+    <details class="daymore notbill">
+      <summary>This work cannot be invoiced</summary>
+      <p class="sub" style="margin:4px 0 6px">The hours stay measured either way. What
+        changes is whether they go on ${cust || 'a customer'}'s invoice.</p>
+      <div class="actrow">
+        <span class="flabel" style="min-width:64px">Put it</span>
+        <select class="mini" value=${to} onChange=${e => setTo(e.target.value)}>
+          ${places.map(o => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
+        </select>
+      </div>
+      <div class="actrow">
+        <span class="flabel" style="min-width:64px">Why</span>
+        <input type="text" value=${why} onInput=${e => setWhy(e.target.value)}
+               placeholder="registering time, fixing my setup, ..." aria-label="why not billable"/>
+      </div>
+      <div class="rowacts">
+        <span class="sub" style="margin-right:auto">${to && to !== raw.project
+          ? `moves ${hrs(raw.hours)} h to ${to}`
+          : `marks ${hrs(raw.hours)} h on ${shortProject(raw.project)} not for registration`}
+        </span>
+        <button class="act" disabled=${busy} onClick=${move}>Do it</button>
+      </div>
+    </details>`;
+}
+
 /* One timesheet line: its F&O dimensions, and the write that puts them there.
  *
  * This is the entry act. It rewrites one row of one finalized day file and records the
@@ -468,6 +542,7 @@ function DayFix({ raw, row, D, onDone, only }) {
   return html`
     <div class="daycard">
       <div class="dayhead"><b>${raw.date}</b> · ${hrs(raw.hours)} h
+        ${raw.no_entry ? html`<span class="pill">not registered</span>` : null}
         ${only ? null : html`<span class="sub">${dowName(raw.date)}</span>`}</div>
 
       ${tasks.length ? html`
@@ -526,6 +601,8 @@ function DayFix({ raw, row, D, onDone, only }) {
         <button class="act primary" disabled=${busy || !changed}
                 onClick=${correct}>Save ${raw.date}</button>
       </div>
+
+      <${NotBillable} raw=${raw} D=${D} onDone=${onDone}/>
     </div>`;
 }
 
@@ -747,10 +824,14 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
     const rs = rowsFor(f);
     const anyDesc = wantsDesc(rs);
     const tot = rs.reduce((s, r) => s + r.hours, 0);
-    const title = f === 'INTERNAL' ? 'Internal (Dev / own) — not entered in F&O'
+    const title = f === 'INTERNAL' ? 'Not entered in F&O — Dev, own/, and customer work that is not invoiced'
       : f === '' ? 'No company — customer not in TidsregInfo.xlsx and no fno_firma' : f;
+    const notReg = rs.filter(r => r.no_entry);
     const warn = f === 'INTERNAL'
       ? 'Tracked here only. Shown so the month reconciles.'
+        + (notReg.length
+          ? ` ${notReg.length} line${notReg.length === 1 ? '' : 's'} sit under a customer and are marked not for registration.`
+          : '')
       : f === '' ? 'These hours cannot go on a company timesheet until the customer is named.' : '';
     return html`
       <div class="card" style="margin-bottom:14px" key=${f}>
@@ -785,7 +866,8 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
                   onClick=${() => onPick(r)}>
                 <td style="white-space:nowrap">${r.date}${r.live
                   ? html` <span class="pill warn" title="still accruing; finalize at /log">live</span>` : null}</td>
-                <td>${r.customer || '-'}</td>
+                <td>${r.customer || '-'}${r.no_entry
+                  ? html` <span class="pill" title="marked not for registration in the timesheet">not billed</span>` : null}</td>
                 <td>${shortProject(r.project)}</td>
                 <td>${r.proj_id || html`<b class="accentink">missing</b>`}${
                   r.from_sheet ? html` <span class="sub"
@@ -1158,15 +1240,25 @@ function Exceptions({ w, dayCap }) {
 
 function Reassign({ line, projects, onDone }) {
   const [busy, setBusy] = useState(false);
+  const [why, setWhy] = useState('');
+  useEffect(() => { setWhy(''); setBusy(false); }, [line && line.date, line && line.project]);
   if (!line) return null;
+  /* Dev onto a customer is the direction that over-bills, so it stays what it has always
+     been: one line at a time, chosen deliberately at the review gate. The other direction
+     -- a customer line that was really workspace work -- is on the line's own panel, where
+     the line is. */
   const opts = projects.filter(p => p.key !== 'Dev')
     .sort((x, y) => (!x.key.startsWith('customers/')) - (!y.key.startsWith('customers/'))
       || x.key.localeCompare(y.key));
   const move = async to => {
     if (!to) return;
     setBusy(true);
-    const j = await post('/api/reassign', { date: line.date, to,
-      activity: line.activity || '', fno_task: line.fno_task || '' });
+    const j = await post('/api/reassign', {
+      date: line.date,
+      row: { project: line.project, proj_id: line.proj_id,
+             activity: line.activity || '', fno_task: line.fno_task || '' },
+      to, note: why.trim(),
+    });
     setBusy(false);
     toast(j.message || (j.ok ? 'moved' : 'failed'));
     if (j.ok) onDone();
@@ -1174,14 +1266,24 @@ function Reassign({ line, projects, onDone }) {
   return html`
     <h3>Move Dev time</h3>
     <p class="sub" style="margin:2px 0 12px">${shortDay(line.date)} · ${hrs(line.claimed)} h
-      on <code>Dev</code>${line.activity ? ' / ' + line.activity : ''}. Dev → project only;
-      time on a named project stays there.</p>
+      on <code>Dev</code>${line.activity ? ' / ' + line.activity : ''}. This is the
+      direction that <i>adds</i> to an invoice, so it is one line and one decision.</p>
     <div class="block">
-      <select class="mini" disabled=${busy} onChange=${e => move(e.target.value)}>
-        <option value="">move to…</option>
-        ${opts.map(p => html`<option key=${p.key} value=${p.key}>${p.key}${
-          p.fno_code && p.fno_code !== 'UNSET' ? ' · ' + p.fno_code : ''}</option>`)}
-      </select>
+      <div class="actrow">
+        <span class="flabel" style="min-width:48px">Why</span>
+        <input type="text" value=${why} onInput=${e => setWhy(e.target.value)}
+               placeholder="goes into the day file with the move" aria-label="why"/>
+      </div>
+      <div class="actrow">
+        <select class="mini" disabled=${busy} onChange=${e => move(e.target.value)}>
+          <option value="">move to…</option>
+          ${opts.map(p => html`<option key=${p.key} value=${p.key}>${p.key}${
+            p.fno_code && p.fno_code !== 'UNSET' ? ' · ' + p.fno_code : ''}</option>`)}
+        </select>
+      </div>
+      <p class="sub" style="margin:8px 0 0">The reverse — a customer line that was really
+        workspace work — is on that line's own panel, under
+        <b>This work cannot be invoiced</b>.</p>
     </div>`;
 }
 

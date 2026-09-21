@@ -41,9 +41,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.substrate import (read, frontmatter, identity, sections, bullets,
                            labelled, field, plain, first_para, days_ago)
-from lib.workspace import customer_dirs, project_dirs
+from lib.workspace import customer_dirs, project_dirs, customer_name
 from lib import fno
 from lib import lines as linedesc
+from lib import attribution
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -693,64 +694,12 @@ _norm_customer = fno.norm
 
 
 def read_companies():
-    """Parse ops/TidsregInfo.xlsx -> [{firma, kunde, projektnr, aktivitet, task_note}].
+    """ops/TidsregInfo.xlsx -> [{firma, kunde, key, projektnr, aktivitet, task_note}].
 
-    Read straight from the workbook (stdlib zipfile + ElementTree, no openpyxl) so the owner's
-    own sheet stays the single source for the internal-company grouping -- edit the xlsx and the
-    dashboard follows, with no exported copy to drift."""
-    # Resolve case-insensitively: the file is TidsregInfo.xlsx on disk and Windows does not care,
-    # but a hard-coded lowercase path would break anywhere else.
-    folder = os.path.join(ROOT, "ops")
-    path = ""
-    try:
-        for name in os.listdir(folder):
-            if name.lower() == "tidsreginfo.xlsx":
-                path = os.path.join(folder, name)
-                break
-    except OSError:
-        return []
-    if not path:
-        return []
-    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-    try:
-        import zipfile, xml.etree.ElementTree as ET
-        z = zipfile.ZipFile(path)
-        shared = []
-        if "xl/sharedStrings.xml" in z.namelist():
-            for si in ET.fromstring(z.read("xl/sharedStrings.xml")):
-                shared.append("".join(t.text or "" for t in si.iter(ns + "t")))
-        grid = []
-        for row in ET.fromstring(z.read("xl/worksheets/sheet1.xml")).iter(ns + "row"):
-            cells = {}
-            for c in row.iter(ns + "c"):
-                ref = re.match(r"([A-Z]+)", c.get("r") or "A")
-                col = 0
-                for ch in (ref.group(1) if ref else "A"):
-                    col = col * 26 + (ord(ch) - 64)
-                v = c.find(ns + "v")
-                txt = ""
-                if c.get("t") == "s" and v is not None:
-                    idx = int(v.text)
-                    txt = shared[idx] if idx < len(shared) else ""
-                elif c.get("t") == "inlineStr":
-                    txt = "".join(t.text or "" for t in c.iter(ns + "t"))
-                elif v is not None:
-                    txt = v.text or ""
-                cells[col - 1] = txt.strip()
-            grid.append([cells.get(i, "") for i in range(max(cells) + 1)] if cells else [])
-    except Exception:
-        return []
-
-    out = []
-    for row in grid[1:]:                       # row 0 is the header
-        row = row + [""] * 5
-        firma, kunde = row[0].strip(), row[1].strip()
-        if not firma or not kunde:
-            continue
-        out.append({"firma": firma, "kunde": kunde, "key": _norm_customer(kunde),
-                    "projektnr": row[2].strip(), "aktivitet": row[3].strip(),
-                    "task_note": row[4].strip()})
-    return out
+    Lives in the read layer (`lib/fno.companies`) because the per-turn attribution check
+    needs the same sheet to know whether a line will be enterable. Kept as a name here so
+    the call sites -- and the tests that stub it -- do not care where it moved."""
+    return fno.companies(ROOT)
 
 
 def _fix_targets(row, rule, proj):
@@ -809,23 +758,25 @@ def collect_entry(entries, customers, today, projects=None):
         rule = cust_rules.get(_norm_customer(cust)) if cust else None
         if cust and row_c is None and rule is None:
             unmapped[cust] = round(unmapped.get(cust, 0.0) + e["hours"], 2)
-        firma = ((rule or {}).get("firma") or (row_c["firma"] if row_c else "")
-                 or ("" if cust else "INTERNAL"))
+        # The timesheet's own Billable column, honoured. A customer line set to `no` is
+        # work for that client that is not going on an invoice -- registering time, fixing
+        # the setup, the dashboard itself. It stays attributed to the client so the cost is
+        # visible, and it is grouped with Internal here so it is never typed into F&O and
+        # never counted as short of a dimension it does not need.
+        no_entry = bool(cust) and not e.get("billable", True)
+        firma = ("INTERNAL" if no_entry else
+                 ((rule or {}).get("firma") or (row_c["firma"] if row_c else "")
+                  or ("" if cust else "INTERNAL")))
 
-        # Proj ID: the timesheet's own value wins; the sheet fills a gap; disagreement is flagged,
-        # never silently resolved. A placeholder on either side ("UNSET", "?", "6013-?",
-        # "PENDING...") is not a value -- it is the absence of one, so it neither fills a gap nor
-        # conflicts with anything.
+        # How the three dimensions resolve is one rule, in the read layer, because the
+        # per-turn attribution check has to reach the same verdict about whether a line can
+        # be typed. `fno_task: none` is the task-file convention for "no work item yet" and
+        # is blanked here, so the line reads as short of one instead of carrying the word.
         ws_id = e["proj_id"]
+        dims = fno.resolve_dims(ws_id, e["activity"], rule, row_c)
+        proj_id, activity = dims["proj_id"], dims["activity"]
+        conflict = dims["conflict"]
         xl_id = (rule or {}).get("proj_id") or (row_c["projektnr"] if row_c else "")
-        weak, xl_weak = fno.is_unset(ws_id), fno.is_unset(xl_id)
-        proj_id = ws_id if not weak else ("" if xl_weak else xl_id)
-        conflict = bool(not weak and not xl_weak and xl_id != ws_id)
-        # A placeholder is not a value anywhere it can be typed. `fno_task: none` means
-        # "no work item yet" (ops/tasks convention), and it was going onto the clipboard as
-        # the Task -- so it is blanked here and the line reads as short of one instead.
-        activity = fno.value_or_blank(e["activity"]) or (rule or {}).get("activity") \
-            or (row_c["aktivitet"] if row_c else "")
         fno_task = fno.value_or_blank(e["fno_task"])
         proj = projects.get(p) or {}
         description = proj.get("fno_description") or (rule or {}).get("description") or ""
@@ -841,16 +792,17 @@ def collect_entry(entries, customers, today, projects=None):
         # matches on these, so they travel with the row. When two timesheet lines fold into
         # one cell and disagree, the cell is `ambiguous` and the editor will not write --
         # naming one of them would correct the wrong line.
-        k = (firma, e["date"], cust, p, proj_id, activity, fno_task)
+        k = (firma, e["date"], cust, p, proj_id, activity, fno_task, no_entry)
         cell = agg.setdefault(k, {"firma": firma, "date": e["date"], "customer": cust,
                                   "project": p, "proj_id": proj_id, "activity": activity,
                                   "fno_task": fno_task, "hours": 0.0,
-                                  "from_sheet": weak and not xl_weak, "conflict": conflict,
+                                  "from_sheet": dims["from_sheet"], "conflict": conflict,
                                   "ws_proj_id": ws_id, "ws_activity": e["activity"],
                                   "ws_fno_task": e["fno_task"],
                                   "xl_proj_id": xl_id, "ambiguous": False,
                                   "description": description, "summary": summary,
                                   "no_charge": bool((rule or {}).get("no_charge")),
+                                  "no_entry": no_entry,
                                   "requires": (rule or {}).get("requires") or [],
                                   # A day still accruing has no finalized file, so it cannot
                                   # be corrected -- the editor has to say that, not fail.
@@ -862,7 +814,8 @@ def collect_entry(entries, customers, today, projects=None):
         if summary and summary not in cell["summary"]:
             cell["summary"] = (cell["summary"] + " " + summary).strip()
         cell["hours"] = round(cell["hours"] + e["hours"], 2)
-        cell["missing"] = fno.missing(cell, rule)
+        # Nothing that is not being entered can be short of what entry requires.
+        cell["missing"] = [] if no_entry else fno.missing(cell, rule)
         cell["fix"] = _fix_targets(cell, rule, proj)
 
     def build(src):
@@ -937,8 +890,30 @@ def collect_entry(entries, customers, today, projects=None):
     }
 
 
-def active_sessions():
-    """Task tags recorded in ops/time/active-task, each marked live or stale.
+def _turns_today(today):
+    """{session8: {project: turns}} from today's heartbeats."""
+    out = {}
+    for hb in rollup.load_heartbeats():
+        if hb["date"] != today:
+            continue
+        sid = (hb.get("session") or "")[:8]
+        if not sid:
+            continue
+        p = hb.get("project") or "Dev"
+        out.setdefault(sid, {})
+        out[sid][p] = out[sid].get(p, 0) + 1
+    return out
+
+
+def active_sessions(today=None):
+    """Every session that produced time today, what it holds, and whether the two agree.
+
+    Three questions in one row, because they are one question: what task did this session
+    start with, what projects are its turns actually landing on, and will those turns
+    produce a line that can be entered. The last is `lib/attribution.drift`, the same
+    judgement the per-turn hook makes, so the page and the nudge cannot disagree.
+
+    Task tags recorded in ops/time/active-task, each marked live or stale.
 
     The file records which tag a SESSION ID holds and keeps entries for 7 days (ops/time/README.md
     sec.2) -- it says nothing about whether that session still exists. A closed window therefore
@@ -965,6 +940,14 @@ def active_sessions():
         out.append({"slug": data.get("slug", ""), "session": (data.get("session") or "")[:8],
                     "set_at": data.get("set_at", "")})
 
+    # Every session that produced time today, whether or not it holds a task. The old
+    # list was the held tasks alone -- which is the set of sessions with nothing wrong
+    # with them, so the page could not show the problem it exists to show.
+    held = {o["session"] for o in out}
+    for sid in sorted(_turns_today(today)):
+        if sid not in held:
+            out.append({"slug": "", "session": sid, "set_at": ""})
+
     seen = last_heartbeat_by_session()
     now = datetime.datetime.now(datetime.timezone.utc)
     # Three states, because last-heartbeat is the ONLY evidence and it cannot prove a window is
@@ -980,7 +963,37 @@ def active_sessions():
         o["idle_min"] = round(mins) if mins is not None else None
         o["state"] = ("stale" if mins is None or mins > STALE_MIN
                       else "live" if mins <= live_min else "idle")
-    return [o for o in out if o["slug"]]
+
+    # What each one is actually producing, and whether it can be entered.
+    turns = _turns_today(today or datetime.date.today().isoformat())
+    rules, sheet = fno.rules(ROOT), fno.companies(ROOT)
+    for o in out:
+        landed = turns.get(o["session"]) or {}
+        o["landed"] = [{"project": p, "turns": n}
+                       for p, n in sorted(landed.items(), key=lambda kv: -kv[1])]
+        o["turns"] = sum(landed.values())
+        o["held_project"] = _task_project(o["slug"]) if o["slug"] else ""
+        found = []
+        for p in landed:
+            d = attribution.drift(p, o["slug"] if p == o["held_project"] else "",
+                                  o["slug"], o["held_project"], rules, sheet, ROOT)
+            if d:
+                found.append(d)
+        o["drift"] = found
+    # A stale tag with no turns today is last week's leftover, not a session.
+    return [o for o in out if o["slug"] or o["turns"]]
+
+
+def _task_project(slug):
+    """The project a task slug belongs to, or "" -- the task file's own `project:`."""
+    if not slug:
+        return ""
+    for state in ("in-progress", "open", "done", "cancelled"):
+        p = os.path.join(ROOT, "ops", "tasks", state, slug + ".md")
+        if os.path.exists(p):
+            fm, _ = frontmatter(read(p))
+            return fm.get("project", "") or ""
+    return ""
 
 
 def collect_todos():
@@ -1205,7 +1218,7 @@ def _collect():
         "entry": collect_entry(entries, customers, today, projects),
         "audit": collect_audit(today),
         "lineSessions": collect_line_sessions(today),
-        "active_sessions": active_sessions(),
+        "active_sessions": active_sessions(today),
         "todos": todos,
         "hygiene": {
             "unfinalized": unfinalized,
@@ -1270,38 +1283,99 @@ def launch(path, mode, prompt=""):
 # under the new project with nothing behind it, and an orphan sits under the old one.
 
 
-def _reassign_note(date, to_project, hours):
-    return ("\n> Reassigned %s: Dev -> %s (%.2f h), from the dashboard.\n"
-            "> Dev -> project only (ops/time/README.md sec.2); heartbeats untouched.\n"
-            % (date, to_project, hours))
+def _reassign_note(date, src_project, to_project, hours, billable, note):
+    """The line the correction leaves in the day file. It has to say what moved, where,
+    and whether it is going on an invoice -- a reader six weeks later has only this."""
+    what = ("%s -> %s" % (src_project, to_project) if to_project != src_project
+            else "%s, in place" % src_project)
+    bill = "billable" if billable else "NOT for registration"
+    why = (" -- " + re.sub(r"\s+", " ", note).strip()[:300]) if note else ""
+    return ("\n> Reassigned %s: %s (%.2f h), %s, from the dashboard.%s\n"
+            "> Heartbeats untouched; the value records moved with it.\n"
+            % (date, what, hours, bill, why))
 
 
-def reassign_dev(date, to_project, activity="", fno_task=""):
-    """Move a Dev row on one date to a named project. -> (ok, message)."""
+def _is_place(key):
+    """Somewhere time can be attributed: a project, a customer node, or the workspace.
+
+    A customer NODE is a legitimate destination even though it is not a project -- it is
+    where work for a client that is not on any one project belongs (ADR-003, 2026-07-28).
+    It has no `fno_code`, so it never produces an enterable line, which is exactly right
+    for work that is not going to be invoiced."""
+    if key == "Dev":
+        return True
+    if re.match(r"^customers/[^/]+$", key):
+        return os.path.isdir(os.path.join(ROOT, key.replace("/", os.sep)))
+    if re.match(r"^(customers/[^/]+/[^/]+|own/[^/]+)$", key):
+        return os.path.exists(os.path.join(ROOT, key.replace("/", os.sep), "CLAUDE.md"))
+    return False
+
+
+def reassign(date, row, to_project="", billable=None, note=""):
+    """Move one timesheet line somewhere else, and/or say it is not to be registered.
+
+    Two things a line can need, often together:
+
+      MOVE      work booked to a customer project that was really workspace work -- time
+                registration itself, fixing the setup, this dashboard -- belongs on `Dev`,
+                on an `own/` project, or on the customer NODE when it is for that client
+                but not on any one project.
+      UNBILLABLE  a line that stays where it is but is not going on an invoice. The
+                timesheet already has a `Billable` column; setting it to `no` is what the
+                entry page reads to leave the line out of the F&O blocks while still
+                counting the hours against that client.
+
+    The direction matters. Moving a customer line to Dev/own, or marking one unbillable,
+    REDUCES what is invoiced and is always allowed. Moving Dev or own time ONTO a customer
+    is the direction that over-bills (ops/time/README.md sec.2), so it stays what it has
+    always been: a deliberate call at the review gate, one line at a time, which is what
+    this is. What is refused is moving one customer's time to another customer -- that is
+    two invoices wrong, and no single click should be able to do it.
+
+    -> (ok, message)."""
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date or ""):
         return False, "bad date"
     to_project = (to_project or "").strip().replace("\\", "/").strip("/")
-    if not to_project or to_project == "Dev":
-        return False, "pick a target project"
-    proj_dir = os.path.join(ROOT, to_project.replace("/", os.sep))
-    if not os.path.exists(os.path.join(proj_dir, "CLAUDE.md")):
-        return False, "%s is not a project (no CLAUDE.md)" % to_project
+    if to_project and not _is_place(to_project):
+        return False, "%s is not a project, a customer or the workspace" % to_project
+    if not to_project and billable is None:
+        return False, "nothing to do: name a destination or set billable"
 
     rows = rollup.parse_daily_file(date)
     if rows is None:
         return False, "no finalized timesheet for %s -- close the day first" % date
-    src = [r for r in rows
-           if r["project"] == "Dev" and r["activity"] == activity and r["fno_task"] == fno_task]
-    if not src:
-        return False, "no Dev row on %s for that line" % date
-    moved = round(sum(r["hours"] for r in src), 2)
 
+    want = (row.get("project") or "", (row.get("proj_id") or "").strip(),
+            (row.get("activity") or "").strip(), (row.get("fno_task") or "").strip())
+    src = [r for r in rows
+           if (r["project"], (r["proj_id"] or "").strip(), (r["activity"] or "").strip(),
+               (r["fno_task"] or "").strip()) == want]
+    if len(src) != 1:
+        return False, ("that line is no longer on %s -- refresh" % date if not src
+                       else "%d lines match -- correct %s by hand" % (len(src), date))
+    src_project = src[0]["project"]
+    from_cust = customer_name(src_project)
+    to_cust = customer_name(to_project) if to_project else from_cust
+    if from_cust and to_cust and from_cust != to_cust:
+        return False, ("%s to %s moves one customer's time to another -- do that by hand, "
+                       "with a reason" % (from_cust, to_cust))
+
+    activity = (src[0]["activity"] or "")
+    fno_task = (src[0]["fno_task"] or "")
+    to_project = to_project or src_project
+    # An F&O activity and a DevOps work item belong to a customer. Carrying them onto Dev
+    # or own/ would leave internal time wearing a customer's dimensions, and would stop
+    # the moved hours merging into the internal line already there.
+    if not to_project.lower().startswith("customers/"):
+        activity = fno_task = ""
+    moved = src[0]["hours"]
     proj_id = rollup.project_id(to_project)
-    billable = to_project.lower().startswith("customers/")
-    keep = [r for r in rows if r not in src]
+    billable = (to_project.lower().startswith("customers/") if billable is None
+                else bool(billable))
+    keep = [r for r in rows if r is not src[0]]
     for r in keep:                                  # merge into an existing identical line
         if (r["project"] == to_project and r["activity"] == activity
-                and r["fno_task"] == fno_task):
+                and r["fno_task"] == fno_task and r["billable"] == billable):
             r["hours"] = round(r["hours"] + moved, 2)
             break
     else:
@@ -1315,7 +1389,9 @@ def reassign_dev(date, to_project, activity="", fno_task=""):
     m = re.search(r"\*\*Internal total:\*\*[^\n]*\n", raw)
     if m:
         tail = raw[m.end():]
-    rollup.write_daily(date, keep, tail + _reassign_note(date, to_project, moved))
+    rollup.write_daily(date, keep,
+                       tail + _reassign_note(date, src_project, to_project, moved,
+                                             billable, note))
 
     # the evidence side
     vpath = os.path.join(VALUE, date + ".jsonl")
@@ -1328,7 +1404,8 @@ def reassign_dev(date, to_project, activity="", fno_task=""):
                 if not line:
                     continue
                 v = json.loads(line)
-                if (v.get("project") == "Dev" and (v.get("activity") or "") == activity
+                if (v.get("project") == src_project
+                        and (v.get("activity") or "") == activity
                         and (v.get("fno_task") or "") == fno_task):
                     v["project"] = to_project
                     v["proj_id"] = proj_id
@@ -1337,8 +1414,11 @@ def reassign_dev(date, to_project, activity="", fno_task=""):
                 out.append(json.dumps(v, sort_keys=True))
         with open(vpath, "w", encoding="utf-8") as f:
             f.write("\n".join(out) + "\n")
-    return True, ("Moved %.2f h from Dev to %s on %s (%d evidence record%s)"
-                  % (moved, to_project, date, touched, "" if touched == 1 else "s"))
+    what = ("marked %.2f h on %s not for registration" % (moved, src_project)
+            if to_project == src_project
+            else "moved %.2f h from %s to %s" % (moved, src_project, to_project))
+    return True, "%s on %s (%d evidence record%s)" % (
+        what, date, touched, "" if touched == 1 else "s")
 
 
 # ---------- task mutations (direct-write: mechanical state only) ----------
@@ -1823,8 +1903,9 @@ MIME = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
 POST_ROUTES = {
     "/api/launch": lambda r: launch(r.get("path", ""), r.get("mode", "claude"),
                                     r.get("prompt", "")),
-    "/api/reassign": lambda r: reassign_dev(r.get("date", ""), r.get("to", ""),
-                                            r.get("activity", ""), r.get("fno_task", "")),
+    "/api/reassign": lambda r: reassign(r.get("date", ""), r.get("row") or {},
+                                        r.get("to", ""), r.get("billable"),
+                                        r.get("note", "")),
     # `activity` / `fno_task` default to None, not "": set-dims writes only what was sent,
     # and an absent key must not blank the field the task already carries.
     "/api/task": lambda r: task_mutate(r.get("slug", ""), r.get("action", ""),

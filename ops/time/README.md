@@ -397,7 +397,60 @@ in the memory records `fno-registration-per-customer-protocol`, `fno-month-close
 and `dashboard-copy-rows-transport`. Those are the durable source; the Claude harness only
 accelerates them (skill `fno-time-registration`, command `/fno`).
 
-### 6.1 Line descriptions (added 2026-09-21)
+### 6.1 Work that is not invoiced (added 2026-09-21)
+
+Not everything done under a customer folder goes on that customer's invoice: registering
+the time itself, fixing the setup, building this dashboard. Two ways to say so, and they
+combine — both from a line's own panel on the Time page, both recorded in the day file
+with a reason:
+
+- **Move it.** To `Dev` (the workspace, where ops work belongs), to an `own/` project, or
+  to the **customer node** `customers/<Client>` when it is for that client but not on any
+  one project. The node has no `fno_code`, so it can never produce an enterable line —
+  which is exactly right for work that is not going to be entered.
+- **Mark it not for registration.** The line stays where it is and its `Billable` column
+  becomes `no`. The entry page then groups it with Internal, leaves it out of *To enter in
+  F&O*, and stops calling it short of a dimension it does not need — while the hours stay
+  attributed to that client, so the cost of serving them is still visible.
+
+**Direction is the safety rule.** Off a customer is always allowed: it reduces what is
+invoiced. Dev or `own/` **onto** a customer is the direction that over-bills (section 2),
+so it stays what it has always been — one line, chosen deliberately at the review gate.
+One customer to another is refused outright; that is two invoices wrong at once, and no
+single click should be able to do it.
+
+`Billable: no` is **not** the same as Vestforbraending's `No charge` (section 4.1). That
+line *is* entered in F&O, carrying `Linjeegenskab: No charge`. This one is not entered at
+all.
+
+### 6.2 Does the session match what it started with? (added 2026-09-21)
+
+A turn tags its time with the work-task the session holds (ADR-003). When no task is held,
+or the held one belongs to another customer, or the turn lands on a customer node, the tag
+is dropped — and the line is still written, just without the dimension that customer
+requires. Nobody finds out until the month is entered.
+
+On 2026-09-21, twelve turns of customer work across two sessions were billed with no task,
+and a single `cd` into `customers/Aeven` to run a git command produced a line with no Proj
+ID. None of it said anything at the time.
+
+`ops/lib/attribution.drift()` is the judgement, in one place:
+
+| | |
+|---|---|
+| `no-task` | the line cannot carry what the customer registers on — no task held, the held work-task has no DevOps id yet, no activity from anywhere, or no Proj ID |
+| `elsewhere` | a work-task IS held, but on another customer, so the tag was dropped |
+| `node` | the turn landed on `customers/<Client>` itself |
+
+Anything on `Dev` or `own/` is silent: internal time is never entered, so it cannot be
+short of anything. It is used twice, so the two cannot disagree:
+
+- **the time hook** (`track_time.py`) reports it as context on your next prompt, once per
+  session per kind per project — a per-turn warning is one nobody reads
+- **the dashboard**, on Today: every session that produced time today, what it started
+  with, where its turns actually landed, and whether that will enter
+
+### 6.3 Line descriptions (added 2026-09-21)
 
 `lines/<YYYY-MM>/<date>.md` — one sentence per F&O line saying what that day's work on that
 line **was**. Same key as the timesheet day beside it (project + activity + task), so the two

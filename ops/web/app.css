@@ -521,6 +521,7 @@ table.autable.totals td:nth-child(3){text-align:right}
 .dayhead .sub{margin-left:auto}
 .daymore{margin-top:6px}
 .daymore summary{cursor:pointer;color:var(--ink-2);font-size:12px}
+.notbill{margin-top:10px;border-top:1px solid var(--ring);padding-top:6px}
 .daycard .rowacts{margin-top:8px;align-items:baseline}
 .daycard select.mini{flex:1;min-width:0}
 

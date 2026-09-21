@@ -126,6 +126,99 @@ def rules(root=None):
     return out
 
 
+def companies(root=None):
+    """Parse `ops/TidsregInfo.xlsx` -> [{firma, kunde, key, projektnr, aktivitet, task_note}].
+
+    The owner's own sheet, read straight from the workbook (stdlib zipfile + ElementTree,
+    no openpyxl) so there is no exported copy to drift. It carries the internal company and,
+    for most customers, the Proj ID and Activity -- the half of the rule that is the same
+    for every project under that customer. The other half, what a line MUST carry, is on
+    the customer node (see the module docstring).
+
+    Returns [] on anything unreadable: a missing or malformed sheet must degrade to "the
+    workspace knows less", never to a traceback in a per-turn hook."""
+    folder = os.path.join(root or ROOT, "ops")
+    path = ""
+    try:
+        for name in os.listdir(folder):
+            if name.lower() == "tidsreginfo.xlsx":
+                path = os.path.join(folder, name)
+                break
+    except OSError:
+        return []
+    if not path:
+        return []
+    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    try:
+        import zipfile
+        import xml.etree.ElementTree as ET
+        z = zipfile.ZipFile(path)
+        shared = []
+        if "xl/sharedStrings.xml" in z.namelist():
+            for si in ET.fromstring(z.read("xl/sharedStrings.xml")):
+                shared.append("".join(t.text or "" for t in si.iter(ns + "t")))
+        grid = []
+        for row in ET.fromstring(z.read("xl/worksheets/sheet1.xml")).iter(ns + "row"):
+            cells = {}
+            for c in row.iter(ns + "c"):
+                ref = re.match(r"([A-Z]+)", c.get("r") or "A")
+                col = 0
+                for ch in (ref.group(1) if ref else "A"):
+                    col = col * 26 + (ord(ch) - 64)
+                v = c.find(ns + "v")
+                txt = ""
+                if c.get("t") == "s" and v is not None:
+                    idx = int(v.text)
+                    txt = shared[idx] if idx < len(shared) else ""
+                elif c.get("t") == "inlineStr":
+                    txt = "".join(t.text or "" for t in c.iter(ns + "t"))
+                elif v is not None:
+                    txt = v.text or ""
+                cells[col - 1] = txt.strip()
+            grid.append([cells.get(i, "") for i in range(max(cells) + 1)] if cells else [])
+    except Exception:
+        return []
+
+    out = []
+    for row in grid[1:]:                       # row 0 is the header
+        row = row + [""] * 5
+        firma, kunde = row[0].strip(), row[1].strip()
+        if not firma or not kunde:
+            continue
+        out.append({"firma": firma, "kunde": kunde, "key": norm(kunde),
+                    "projektnr": row[2].strip(), "aktivitet": row[3].strip(),
+                    "task_note": row[4].strip()})
+    return out
+
+
+def resolve_dims(ws_proj_id, ws_activity, rule, sheet_row):
+    """How a line's Proj ID and Activity resolve, from the three places they can come from.
+
+    -> {proj_id, activity, from_sheet, conflict}
+
+    Precedence is the workspace first: the project's own `fno_code` and the task's own
+    `activity:` are the specific answer, and the sheet is the customer-wide fallback. A
+    placeholder on either side is not a value (`is_unset`), so it neither fills a gap nor
+    disagrees with anything -- a `?` in the sheet used to read as both.
+
+    A real disagreement is FLAGGED, never resolved: two different codes for one line is a
+    question for the owner, and silently picking one is how the wrong one gets invoiced.
+
+    One definition, because the entry page and the per-turn attribution check have to agree
+    about whether a line can be typed."""
+    rule = rule or {}
+    sheet_row = sheet_row or {}
+    xl_id = rule.get("proj_id") or sheet_row.get("projektnr") or ""
+    weak, xl_weak = is_unset(ws_proj_id), is_unset(xl_id)
+    return {
+        "proj_id": ws_proj_id if not weak else ("" if xl_weak else xl_id),
+        "activity": (value_or_blank(ws_activity) or rule.get("activity")
+                     or sheet_row.get("aktivitet") or ""),
+        "from_sheet": weak and not xl_weak,
+        "conflict": bool(not weak and not xl_weak and xl_id != ws_proj_id),
+    }
+
+
 def missing(row, rule):
     """Which required F&O fields this entry row still cannot supply.
 

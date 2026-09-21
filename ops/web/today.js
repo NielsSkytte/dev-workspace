@@ -268,6 +268,56 @@ function TaskDetail({ task, onReload, pathOf }) {
 
 /* ---------- page ---------- */
 
+/* What each session is producing, against what it started with.
+ *
+ * A session tags its time with the work-task it holds (ADR-003). When it holds none, or
+ * holds one belonging to another customer, or wanders into a customer node, the turn is
+ * still billed -- just without the dimension that customer requires. Nobody finds out
+ * until the month is entered, which is weeks after the only moment the answer was cheap.
+ *
+ * The verdict is `ops/lib/attribution.drift`, the same call the time hook makes per turn,
+ * so the page and the nudge cannot say different things.
+ */
+function Sessions({ D, onLaunch }) {
+  const rows = (D.active_sessions || []).filter(s => s.turns > 0);
+  if (!rows.length) return null;
+  const bad = rows.filter(s => s.drift.length);
+  const order = rows.slice().sort((a, b) =>
+    (b.drift.length > 0) - (a.drift.length > 0) || b.turns - a.turns);
+
+  return html`
+    <section>
+      <h2>Sessions today${bad.length
+        ? html` — <b class="accentink">${bad.length} not billing cleanly</b>` : ' — all clean'}</h2>
+      <div class="card">
+        <p class="sub" style="margin:0 0 8px">What each session has tagged its time with,
+          against what it started with. A row in accent will produce an F&O line that
+          cannot be entered as it stands.</p>
+        <div style="overflow-x:auto"><table class="autable">
+          <thead><tr><th>Session</th><th>Started with</th><th>Landing on</th>
+            <th class="r">Turns</th><th>State</th><th>Verdict</th></tr></thead>
+          <tbody>${order.map(s => html`
+            <tr key=${s.session} class=${s.drift.length ? 'short' : ''}>
+              <td><code>${s.session}</code></td>
+              <td>${s.slug
+                ? html`<span title=${s.held_project}>${s.slug}</span>`
+                : html`<span class="muted">no task held</span>`}</td>
+              <td>${s.landed.map(l => html`
+                <div key=${l.project}>${l.project}
+                  <span class="muted">x${l.turns}</span></div>`)}</td>
+              <td class="r">${s.turns}</td>
+              <td>${s.state === 'live' ? html`<span class="pill warn">live</span>`
+                : html`<span class="muted">${s.state}</span>`}</td>
+              <td class="sub">${s.drift.length
+                ? s.drift.map((d, i) => html`
+                    <div key=${i}><b class="accentink">${d.why}</b><br/>${d.fix}</div>`)
+                : html`<span class="muted">enterable as written</span>`}</td>
+            </tr>`)}</tbody>
+        </table></div>
+      </div>
+    </section>`;
+}
+
 function App() {
   const data = useData('/api/data');
   const brief = useData('/api/today');
@@ -308,12 +358,20 @@ function App() {
   }, [D]);
 
   const todos = D ? D.todos : [];
-  const sessions = D ? D.active_sessions.length : 0;
+  /* Sessions that produced time today, and how many of them will produce a line that
+     cannot be entered. The count on the tile is the second number, because the first is
+     not a thing to act on. */
+  const sessions = D ? (D.active_sessions || []).filter(s => s.turns > 0) : [];
+  const drifting = sessions.filter(s => s.drift.length);
 
   const tiles = [
     html`<${Tile} key="h" label="Hours today" value=${D ? hrs(D.totals.today) : '—'}
                   foot=${D ? 'week ' + hrs(D.totals.week_billable + D.totals.week_internal) + ' h' : ''}/>`,
-    html`<${Tile} key="s" label="Sessions" value=${D ? sessions : '—'} foot="open right now"/>`,
+    html`<${Tile} key="s" label="Sessions today" value=${D ? sessions.length : '—'}
+                  hot=${drifting.length > 0}
+                  foot=${drifting.length
+                    ? plural(drifting.length, 'not billing cleanly')
+                    : 'all billing cleanly'}/>`,
     html`<${Tile} key="a" label="Unsent asks" value=${model.asks.length}
                   hot=${model.asks.length > 0} foot="waiting on you to send"/>`,
     html`<${Tile} key="t" label="Triage" value=${todos.length} hot=${todos.length > 0}
@@ -344,6 +402,8 @@ function App() {
 
       <${InProgress} groups=${model.groups} onOpen=${setSel} onReload=${reloadAll}
                      pathOf=${pathOf} onLaunch=${(p, mode) => p && launch(p, mode)}/>
+
+      ${D ? html`<${Sessions} D=${D}/>` : null}
 
       <${Drawer} open=${!!sel} onClose=${() => setSel(null)}>
         <${TaskDetail} task=${sel} pathOf=${pathOf}

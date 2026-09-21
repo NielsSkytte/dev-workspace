@@ -223,6 +223,45 @@ def now_z():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _attrib(sid, state_entry, project, task):
+    """Say it when this turn is about to produce a line that cannot be entered.
+
+    `resolve()` already decided the project and whether a task tag survived; the three
+    ways it drops one -- no task held, the held task on another customer, a turn on a
+    customer node -- each produce an F&O line short of something the customer requires,
+    and none of them said anything. The work then gets done, the day gets finalized, and
+    it surfaces at the month close as a line with no Task.
+
+    The judgement is `ops/lib/attribution.drift`, which resolves the dimensions through
+    the same call the entry page makes, so the two cannot disagree about whether a line is
+    enterable.
+
+    Reported ONCE per session per kind per project. A per-turn warning is a warning nobody
+    reads. Fail-silent and ASCII-only, like everything else in this hook: a check that can
+    break time tracking is worse than no check."""
+    try:
+        if not project or not project.startswith("customers/"):
+            return                                  # Dev and own/ are never entered
+        sys.path.insert(0, os.path.join(DEV_WORKSPACE, "ops"))
+        from lib import attribution
+
+        m = load_marker()
+        held = ((m.get("sessions") or {}).get(sid) or {}).get("slug") or ""
+        d = attribution.drift(project, task, held, task_project(held) if held else "",
+                              root=DEV_WORKSPACE)
+        if not d:
+            return
+        seen = state_entry.setdefault("warned", [])
+        key = d["kind"] + ":" + d["project"]
+        if key in seen:
+            return
+        seen.append(key)
+        print("[time] %s\n       %s" % (d["why"].encode("ascii", "replace").decode("ascii"),
+                                        d["fix"].encode("ascii", "replace").decode("ascii")))
+    except Exception:
+        pass
+
+
 def _daybrief(sid, project):
     """Day brief on the first turn of a new day -- AGENTS.md > Continuity loop > Day start.
     The decision (05:00 boundary, once per session per day, dashboard once a day) lives in
@@ -294,9 +333,14 @@ def main():
         project, task = resolve(cwd, sid)
         if project is None:
             return  # outside the workspace -> not tracked
+        prev = state.get(sid) or {}
         state[sid] = {"start": now_z(), "cwd": cwd,
                       "project": project, "task": task,
-                      "last_stop": None, "waits": []}
+                      "last_stop": None, "waits": [],
+                      # what has already been said to this session, so a drift is
+                      # reported once and not on every turn that repeats it
+                      "warned": prev.get("warned") or []}
+        _attrib(sid, state[sid], project, task)
         save_state(state)
         _daybrief(sid, project)   # prints only on the first turn of a new day
         return

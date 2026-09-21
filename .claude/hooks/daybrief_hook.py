@@ -17,7 +17,11 @@ Fail-silent, ASCII-only output, never blocks a turn.
 import os, sys, json, datetime, socket, subprocess
 
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
-STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".daybrief_state.json")
+# Overridable so a test can drive the hook without claiming a real session has already
+# had its brief today -- the same escape hatch track_time.py has for its own state.
+STATE_FILE = os.environ.get(
+    "DAYBRIEF_STATE_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".daybrief_state.json"))
 DAY_STARTS_AT = 5          # local hour; work before 05:00 belongs to the previous day
 DASHBOARD_HOST, DASHBOARD_PORT = "127.0.0.1", 8787
 DASHBOARD_URL = "http://%s:%d/" % (DASHBOARD_HOST, DASHBOARD_PORT)
