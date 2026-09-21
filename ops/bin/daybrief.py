@@ -29,6 +29,11 @@ Pure stdlib. ASCII output. Writes nothing except the generated card section on -
 """
 import os, re, sys, json, glob, datetime, argparse
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lib.substrate import (read, frontmatter, identity, section, clean,
+                           first_sentence, parse_date, bullets_joined)
+from lib.workspace import project_dirs
+
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 TASKS = os.path.join(ROOT, "ops", "tasks")
 STORE = os.path.join(ROOT, "ops", "memory", "store")
@@ -50,75 +55,8 @@ def asciify(s):
     return s.encode("ascii", "replace").decode("ascii")
 
 
-def read(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            return f.read().replace("\r\n", "\n")
-    except Exception:
-        return ""
-
-
 def today_local():
     return datetime.date.today()
-
-
-def parse_date(s):
-    try:
-        return datetime.date.fromisoformat(s.strip()[:10])
-    except Exception:
-        return None
-
-
-def frontmatter(text):
-    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
-    if not m:
-        return {}, text
-    fm = {}
-    for line in m.group(1).split("\n"):
-        mm = re.match(r"^([A-Za-z_]+):(.*)$", line)
-        if mm:
-            val = mm.group(2).split("#", 1)[0].strip()
-            fm[mm.group(1).strip()] = val
-    return fm, text[m.end():]
-
-
-def section(body, header_re):
-    """Text of the first h2 section whose header matches header_re (regex on the header text)."""
-    m = re.search(r"^## (%s)[^\n]*\n(.*?)(?=^## |\Z)" % header_re, body, re.S | re.M)
-    return m.group(2) if m else ""
-
-
-def clean(s, n=None):
-    s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
-    s = re.sub(r"\*\*|__|`", "", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    if n and len(s) > n:
-        s = s[:n - 3].rstrip() + "..."
-    return s
-
-
-def first_sentence(s, n=220):
-    s = clean(s)
-    m = re.match(r"(.+?[.!?])(\s|$)", s)
-    out = m.group(1) if m else s
-    return out if len(out) <= n else out[:n - 3].rstrip() + "..."
-
-
-def bullets(text):
-    """Top-level list items of a section, continuation lines joined."""
-    items, cur = [], None
-    for line in text.split("\n"):
-        if re.match(r"^\s{0,1}(-|\d+\.)\s+", line):
-            if cur is not None:
-                items.append(cur)
-            cur = re.sub(r"^\s{0,1}(-|\d+\.)\s+", "", line)
-        elif cur is not None and line.startswith("  ") and line.strip():
-            cur += " " + line.strip()
-        elif cur is not None and not line.strip():
-            items.append(cur); cur = None
-    if cur is not None:
-        items.append(cur)
-    return [clean(i) for i in items if clean(i)]
 
 
 # ---------------------------------------------------------------- tasks
@@ -140,11 +78,11 @@ def parse_task(path, state, today):
     t["now_date"] = m.group(1) if m else ""
     t["now"] = clean(m.group(2)) if m else ""
     m = re.search(r"\*\*Next:\*\*\s*(.*?)(?=\n\s*\n\*\*|\n## |\Z)", prog, re.S)
-    nxt = bullets(m.group(1)) if m else []
+    nxt = bullets_joined(m.group(1)) if m else []
     if not nxt and m:
         nxt = [clean(m.group(1), 200)] if clean(m.group(1)) else []
     t["next"] = nxt
-    t["needs"] = [b for b in bullets(section(body, "Needs from customer")) if b.lower() not in ("none.", "none")]
+    t["needs"] = [b for b in bullets_joined(section(body, "Needs from customer")) if b.lower() not in ("none.", "none")]
     logdates = re.findall(r"^\s*-\s*(\d{4}-\d{2}-\d{2})", section(body, "Log"), re.M)
     t["last_log_date"] = max(logdates) if logdates else ""
     pdate = parse_date(t["now_date"]) or parse_date(t["last_log_date"]) or parse_date(t["created"])
@@ -174,17 +112,6 @@ def load_tasks(today):
 
 # ---------------------------------------------------------------- projects and cards
 
-def identity(clau):
-    out = {}
-    m = re.search(r"^## Identity\s*$(.*?)(?=^## |\Z)", clau, re.M | re.S)
-    if m:
-        for line in m.group(1).split("\n"):
-            mm = re.match(r"^([a-z_]+):(.*)$", line.strip())
-            if mm:
-                out[mm.group(1)] = mm.group(2).split("#", 1)[0].strip()
-    return out
-
-
 def parse_card(path):
     text = read(path)
     if not text:
@@ -193,14 +120,14 @@ def parse_card(path):
         goal = section(text, "Goal")
         goal = re.split(r"\n\*\*Done when", goal)[0]
         m = re.search(r"^## Where we stand (?:—|-|--)\s*(\d{4}-\d{2}-\d{2})", text, re.M)
-        blocked = bullets(section(text, "Blocked on others"))
+        blocked = bullets_joined(section(text, "Blocked on others"))
         who = []
         for b in blocked:
             mm = re.match(r"([^:]{2,40}):", b)
             if mm:
                 who.append(mm.group(1).strip())
         return {"shape": "card", "goal": first_sentence(goal), "standing_date": m.group(1) if m else "",
-                "blocked_on": who, "open_threads": len(bullets(section(text, "Open threads")))}
+                "blocked_on": who, "open_threads": len(bullets_joined(section(text, "Open threads")))}
     focus = section(text, "Current Focus")
     m = re.search(r"\*\*Last worked:\*\*\s*(\d{4}-\d{2}-\d{2})", text)
     return {"shape": "legacy", "goal": first_sentence(focus) if focus.strip() else "",
@@ -210,12 +137,8 @@ def parse_card(path):
 
 def load_projects():
     out = []
-    for d in sorted(glob.glob(os.path.join(ROOT, "customers", "*", "*")) + glob.glob(os.path.join(ROOT, "own", "*"))):
-        clau = os.path.join(d, "CLAUDE.md")
-        if not os.path.isfile(clau):
-            continue
-        key = os.path.relpath(d, ROOT).replace("\\", "/")
-        ident = identity(read(clau))
+    for key, d in project_dirs(ROOT):
+        ident = identity(read(os.path.join(d, "CLAUDE.md")))
         if not ident:
             continue  # a CLAUDE.md without an Identity block declares a non-project (a wiki mirror)
         card = parse_card(os.path.join(d, "CONTEXT.md"))

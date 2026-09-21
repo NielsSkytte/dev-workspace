@@ -28,7 +28,11 @@ import sys, os, json, glob, re, datetime, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))
 import rollup  # F&O dimension resolution + round_quarter; single-sourced on purpose
+from lib import heartbeats as hbrec           # the raw measurement record
+from lib.heartbeats import parse_ts
+from lib.workspace import customer_name
 
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HEARTBEATS = os.path.join(DEV_WORKSPACE, "ops", "time", "heartbeats")
@@ -112,18 +116,6 @@ def is_research_tool(name):
 
 # ---------------------------------------------------------------- helpers
 
-def parse_ts(s):
-    if not s:
-        return None
-    try:
-        d = datetime.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
-    except Exception:
-        return None
-    if d.tzinfo is None:
-        d = d.replace(tzinfo=datetime.timezone.utc)
-    return d.astimezone(datetime.timezone.utc)
-
-
 def nlines(s):
     if not isinstance(s, str) or not s:
         return 0
@@ -177,13 +169,6 @@ def mutation(name, inp):
         return None
     w, cls = class_of(rel)
     return (rel, int(round(raw * w)), raw, full, cls)
-
-
-def customer_of(project):
-    parts = project.split("/")
-    if parts[0] == "customers" and len(parts) > 1:
-        return parts[1]
-    return None
 
 
 # ---------------------------------------------------------------- transcripts
@@ -279,29 +264,15 @@ def load_turns():
 
 
 def load_heartbeats():
+    """The raw record grouped by session, unbounded and unsplit.
+
+    No MAX_SPAN bound and no midnight split, unlike the timesheet: the value model
+    scores transcript evidence inside a turn, so a long span is a window to look in,
+    not an hour to bill."""
     out = collections.defaultdict(list)
-    for path in sorted(glob.glob(os.path.join(HEARTBEATS, "*.jsonl"))):
-        try:
-            fh = open(path, encoding="utf-8")
-        except Exception:
-            continue
-        with fh as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    o = json.loads(line)
-                    s, e = parse_ts(o["ts_start"]), parse_ts(o["ts_end"])
-                except Exception:
-                    continue
-                if not s or not e:
-                    continue
-                if e < s:
-                    e = s
-                out[(o.get("session") or "")[:8]].append(
-                    {"start": s, "end": e, "project": o.get("project") or "Dev",
-                     "task": o.get("task")})
+    for hb in hbrec.records(HEARTBEATS):
+        out[hb["session"][:8]].append({"start": hb["start"], "end": hb["end"],
+                                       "project": hb["project"], "task": hb["task"]})
     return out
 
 
@@ -500,7 +471,7 @@ def apply_caps(records):
     def cust_day():
         t = collections.defaultdict(float)
         for r in billable:
-            t[(customer_of(r["project"]), r["date"])] += r["weighted_h"]
+            t[(customer_name(r["project"]), r["date"])] += r["weighted_h"]
         return t
 
     guard = 0
@@ -513,7 +484,7 @@ def apply_caps(records):
         (cust, date), total = max(over, key=lambda kv: kv[1])
         excess = total - CUSTOMER_CAP
         pool = [r for r in billable if r["date"] == date
-                and customer_of(r["project"]) == cust and r["weighted_h"] >= SPILL_STEP]
+                and customer_name(r["project"]) == cust and r["weighted_h"] >= SPILL_STEP]
         if not pool:
             break
         src = max(pool, key=lambda r: r["weighted_h"])
@@ -755,7 +726,7 @@ def summarise(records, label):
     for r in records:
         if not r["billable"]:
             continue
-        c = customer_of(r["project"]) or r["project"]
+        c = customer_name(r["project"]) or r["project"]
         agg[c][0] += r["keyboard_h"]; agg[c][1] += r["weighted_h"]
     tk = tw = 0.0
     for c in sorted(agg, key=lambda k: -agg[k][1]):

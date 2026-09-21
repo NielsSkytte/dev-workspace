@@ -26,6 +26,11 @@ Bucketing is by LOCAL date/week; heartbeats are stored UTC. Constants below matc
 """
 import sys, os, json, glob, re, datetime
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lib import heartbeats as hbrec           # the raw measurement record
+from lib.substrate import file_field
+from lib.workspace import billing_entity, task_file
+
 ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HEARTBEATS = os.path.join(ROOT, "heartbeats")
@@ -60,12 +65,6 @@ ABSENCE_KINDS = ("vacation", "holiday", "sick", "offline")
 
 
 # ---------- time helpers ----------
-
-def parse_utc(s):
-    """'2026-06-22T06:14:03Z' -> aware UTC datetime."""
-    return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(
-        tzinfo=datetime.timezone.utc)
-
 
 def to_local(dt):
     return dt.astimezone()  # system local tz (no arg = local)
@@ -116,43 +115,28 @@ def load_heartbeats():
       2. An interval is split at local midnight (see split_local_days).
     """
     out = []
-    for path in sorted(glob.glob(os.path.join(HEARTBEATS, "*.jsonl"))):
-        try:
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        hb = json.loads(line)
-                        start = parse_utc(hb["ts_start"])
-                        end = parse_utc(hb["ts_end"])
-                    except Exception:
-                        continue
-                    if end < start:
-                        end = start
-                    capped = None
-                    if end - start > MAX_SPAN:
-                        capped = end          # kept so the review gate can see what was withheld
-                        end = start + MAX_SPAN
-                    for seg_start, seg_end in split_local_days(start, end):
-                        ls = to_local(seg_start)
-                        iso = ls.isocalendar()
-                        out.append({
-                            "start": seg_start, "end": seg_end,
-                            "project": hb.get("project") or "Dev",
-                            "task": hb.get("task"),
-                            # passthrough only -- the rollup never groups by it (that would fragment
-                            # stretches and add a buffer + 0.5 h floor per session). The dashboard's
-                            # internal-hours triage uses it to join a stretch to its memory record.
-                            "session": hb.get("session") or "",
-                            "date": ls.strftime("%Y-%m-%d"),
-                            "week": "%04d-W%02d" % (iso[0], iso[1]),
-                            "capped": capped,          # None, or the ts_end the bound withheld
-                            "raw_start": start,
-                        })
-        except Exception:
-            pass
+    for hb in hbrec.records(HEARTBEATS):
+        start, end = hb["start"], hb["end"]
+        capped = None
+        if end - start > MAX_SPAN:
+            capped = end                  # kept so the review gate can see what was withheld
+            end = start + MAX_SPAN
+        for seg_start, seg_end in split_local_days(start, end):
+            ls = to_local(seg_start)
+            iso = ls.isocalendar()
+            out.append({
+                "start": seg_start, "end": seg_end,
+                "project": hb["project"],
+                "task": hb["task"],
+                # passthrough only -- the rollup never groups by it (that would fragment
+                # stretches and add a buffer + 0.5 h floor per session). The dashboard's
+                # internal-hours triage uses it to join a stretch to its memory record.
+                "session": hb["session"],
+                "date": ls.strftime("%Y-%m-%d"),
+                "week": "%04d-W%02d" % (iso[0], iso[1]),
+                "capped": capped,          # None, or the ts_end the bound withheld
+                "raw_start": start,
+            })
     return out
 
 
@@ -190,23 +174,11 @@ def group(heartbeats):
 # activity level, some down to task). Resolution is ADDITIVE -- a tagged task adds its activity/task
 # beneath the project's id, it does not replace it.
 
-def _read_field(path, field):
-    try:
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                low = line.strip().lower()
-                if low.startswith(field + ":"):
-                    return line.split(":", 1)[1].strip().split("#", 1)[0].strip() or None
-    except Exception:
-        pass
-    return None
-
-
 def project_id(project):
     """The F&O Project ID for a workspace project folder."""
     if project == "Dev":
         return DEV_CODE
-    return _read_field(os.path.join(DEV_WORKSPACE, project.replace("/", os.sep), "CLAUDE.md"),
+    return file_field(os.path.join(DEV_WORKSPACE, project.replace("/", os.sep), "CLAUDE.md"),
                        "fno_code") or "UNSET"
 
 
@@ -214,10 +186,9 @@ def task_dims(slug):
     """(activity, fno_task) for a task slug -- the F&O activity and the DevOps-linked task id."""
     if not slug:
         return "", ""
-    for state in ("open", "in-progress", "done", "cancelled"):
-        p = os.path.join(DEV_WORKSPACE, "ops", "tasks", state, slug + ".md")
-        if os.path.exists(p):
-            return _read_field(p, "activity") or "", _read_field(p, "fno_task") or ""
+    _, p = task_file(slug, root=DEV_WORKSPACE)
+    if p:
+        return file_field(p, "activity") or "", file_field(p, "fno_task") or ""
     return "", ""
 
 
@@ -409,14 +380,6 @@ DAY_CAP = 12.0          # h per CUSTOMER per date -- the only view a customer ha
                         # dropped and never stacked past the cap (decided 2026-08-19).
 
 
-def customer_of(project):
-    """The billing entity a project rolls up to -- customers/<X> for a customer, else the project.
-    A cap only means something at this grain: 'you billed me 18 hours in one day' is a statement
-    about a customer, not about a folder."""
-    parts = project.split("/")
-    return "/".join(parts[:2]) if project.startswith("customers/") and len(parts) > 1 else project
-
-
 def consolidate_week(entries, period_dates, threshold=None):
     """Reduce small scattered entries. Any day-entry >= MERGE_THRESHOLD stays untouched. For each
     project, its sub-threshold day-entries within an ISO week are summed and placed on ONE day of
@@ -434,7 +397,7 @@ def consolidate_week(entries, period_dates, threshold=None):
     small = [e for e in entries if e["hours"] < thr]
     cust_day = {}
     for e in fixed:
-        k = (customer_of(e["project"]), e["date"])
+        k = (billing_entity(e["project"]), e["date"])
         cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
     groups = {}
     for e in small:
@@ -445,7 +408,7 @@ def consolidate_week(entries, period_dates, threshold=None):
     for key in sorted(groups):
         wk, project, pid, activity, fno_task, billable = key
         es = groups[key]
-        cust = customer_of(project)
+        cust = billing_entity(project)
         total = round_quarter(sum(x["hours"] for x in es))
         own_days = sorted(set(x["date"] for x in es))               # days actually worked
         week_days = sorted(d for d in period_dates if week_key(d) == wk)
@@ -494,7 +457,7 @@ def spill_over_cap(entries, period_dates):
     date outside the period would be worse than an honest over-cap day."""
     cust_day = {}
     for e in entries:
-        k = (customer_of(e["project"]), e["date"])
+        k = (billing_entity(e["project"]), e["date"])
         cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
     moves = []
     for (cust, date), total in sorted(cust_day.items()):
@@ -507,7 +470,7 @@ def spill_over_cap(entries, period_dates):
                    and cust_day.get((cust, d), 0.0) < DAY_CAP - 1e-9]
         # biggest line first: moving one 6 h line beats slicing four small ones
         lines = sorted((e for e in entries
-                        if customer_of(e["project"]) == cust and e["date"] == date),
+                        if billing_entity(e["project"]) == cust and e["date"] == date),
                        key=lambda e: -e["hours"])
         left = excess
         for tgt in targets:
@@ -577,7 +540,7 @@ def render_entries(entries):
     # A day that measured more than it is real and stays; merging can never create one.
     cust_day = {}
     for e in entries:
-        k = (customer_of(e["project"]), e["date"])
+        k = (billing_entity(e["project"]), e["date"])
         cust_day[k] = cust_day.get(k, 0.0) + e["hours"]
     over = sorted(k for k, h in cust_day.items() if h > DAY_CAP + 1e-9)
     if over:
@@ -963,7 +926,7 @@ def over_cap_note(rows):
     because a 22.75 h day finalized silently on 2026-08-27 and was only caught days later."""
     cust_day = {}
     for r in rows:
-        c = customer_of(r["project"])
+        c = billing_entity(r["project"])
         if c:
             cust_day[c] = cust_day.get(c, 0.0) + r["hours"]
     over = sorted((c, h) for c, h in cust_day.items() if h > DAY_CAP + 1e-9)
