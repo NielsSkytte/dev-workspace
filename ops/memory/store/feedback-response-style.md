@@ -56,3 +56,23 @@ The rule is **cut derivation, keep context** — not "be short". Drop how it was
 ruled out, and the downstream implications. Keep what changed, what it means for him, and what is
 needed from him. A first reply in a thread carries more context than a follow-up; right-size to
 what the reader already holds, rather than to a word count.
+
+## 2026-09-21 — fifth instance; the prose rule is replaced by countable ones
+
+Complaint, verbatim: *"why do you give me this much info ... for something so simple. this is by
+far not the first and only time you do this. i have tried many things to make you answer shorter
+and more precise, but obviously its not working."*
+
+The offending reply explained a one-line CSS fix in five sentences: how two stylesheets were
+merged, which rule won, what the symptom was, and that the result had been verified.
+
+**Diagnosis:** the existing rule says "delete every sentence that is not an outcome". That failed
+because the cause of a defect and the evidence for a fix both READ as outcomes when self-assessed.
+The rule needed a check that does not require judgement.
+
+**The four rules now in CLAUDE.md:** one line per thing that changed; a defect gets what broke and
+that it is fixed, never the mechanism; never write a sentence reporting verification (only report
+it when it failed); a reply that answers no question stops at 10 lines.
+
+The third is the one that was silently costing the most — nearly every item carried a trailing
+"Verified …" clause, and none of them changed a decision.
