@@ -1608,9 +1608,9 @@ def todo_mutate(index, action, raw):
 def task_mutate(slug, action, **kwargs):
     """Mechanical task mutations from the day-view without a session.
 
-    action: done | open | in-progress | ask-sent | ask-answered | resume | park | wait
-            | comment | set-dims
-    kwargs: date (park), waiting_on (wait), text (comment),
+    action: done | open | in-progress | ask-sent | ask-answered | ask-dropped | resume
+            | park | wait | comment | set-dims
+    kwargs: date (park), waiting_on (wait), text (comment, ask-dropped reason),
             activity + fno_task (set-dims)
     Returns (ok, message)."""
     if not re.match(r"^[\w-]+$", slug or ""):
@@ -1645,6 +1645,14 @@ def task_mutate(slug, action, **kwargs):
         updates["customer_ask"] = "sent " + datetime.date.today().isoformat()
     elif action == "ask-answered":
         updates["customer_ask"] = "answered"
+    elif action == "ask-dropped":
+        # An ask that is no longer relevant, or was wrong. The flag clears so the day view
+        # stops carrying it; the Log line keeps the fact that it was dropped, because the
+        # bullet under `## Needs from customer` stays and would otherwise read as live.
+        reason = (kwargs.get("text") or "no longer relevant").strip()
+        text = _append_log(text, datetime.date.today().isoformat(),
+                           "Customer ask dropped: %s" % reason)
+        updates["customer_ask"] = "dropped"
     elif action == "resume":
         updates["waiting_on"] = ""
         updates["resume_on"] = ""

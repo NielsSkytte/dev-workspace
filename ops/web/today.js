@@ -142,6 +142,42 @@ function Group({ title, tasks, onOpen, hint }) {
     </section>`;
 }
 
+/* An ask row shows the ask, not the progress note: the row's job is to say what has to
+   go out. A task can hold several asks; the first is shown and the rest are counted. */
+function AskRow({ task, onOpen, onReload }) {
+  const stop = fn => e => { e.stopPropagation(); fn(); };
+  const rest = task.needs.length - 1;
+  return html`
+    <div class="stackrow" onClick=${() => onOpen(task)}>
+      <div class="stackhead">
+        <span class="chip">${task.project ? PROJECT_LABEL(task.project) : 'workspace'}</span>
+        <button class="mini" style="margin-left:auto"
+                title="the ask has gone out -- writes customer_ask: sent <today> to the task file"
+                onClick=${stop(() => taskAct(task.slug, 'ask-sent', null, onReload))}>Ask sent</button>
+        <button class="mini"
+                title="the ask is no longer relevant, or it was wrong -- writes customer_ask: dropped and a dated Log line"
+                onClick=${stop(() => taskAct(task.slug, 'ask-dropped', null, onReload))}>Not relevant</button>
+      </div>
+      <b class="stacktitle">${task.title || task.slug}</b>
+      ${task.needs.length
+        ? html`<p class="stacknote">${task.needs[0]}${rest > 0
+            ? html`<span class="sub"> and ${rest} more on this task</span>` : null}</p>`
+        : html`<p class="stacknote muted">Marked customer_ask: open, but the task lists nothing under Needs from customer.</p>`}
+    </div>`;
+}
+
+function Asks({ tasks, onOpen, onReload }) {
+  if (!tasks.length) return null;
+  return html`
+    <section>
+      <h2>Unsent asks — ${tasks.length}</h2>
+      <div class="card capped">
+        <p class="sub" style="margin:0 0 10px">Each task below has customer_ask: open. The line is the first entry under Needs from customer.</p>
+        ${tasks.map(t => html`<${AskRow} key=${t.slug} task=${t} onOpen=${onOpen} onReload=${onReload}/>`)}
+      </div>
+    </section>`;
+}
+
 function InProgress({ groups, onOpen, onLaunch, onReload, pathOf }) {
   if (!groups.length) {
     return html`
@@ -207,6 +243,11 @@ function TaskActions({ task, onDone, pathOf }) {
           ? html`<button class="act" disabled=${busy} onClick=${run('resume')}>Resume</button>` : null}
         ${task.customer_ask === 'open'
           ? html`<button class="act" disabled=${busy} onClick=${run('ask-sent')}>Ask sent</button>` : null}
+        ${task.customer_ask === 'open'
+          ? html`<button class="act" disabled=${busy}
+                         title="no longer relevant, or wrong -- customer_ask: dropped"
+                         onClick=${run('ask-dropped', note.trim() ? { text: note.trim() } : null)}>Not relevant</button>`
+          : null}
         ${task.customer_ask.startsWith('sent')
           ? html`<button class="act" disabled=${busy} onClick=${run('ask-answered')}>Ask answered</button>` : null}
       </div>
@@ -373,7 +414,7 @@ function App() {
                     ? plural(drifting.length, 'not billing cleanly')
                     : 'all billing cleanly'}/>`,
     html`<${Tile} key="a" label="Unsent asks" value=${model.asks.length}
-                  hot=${model.asks.length > 0} foot="waiting on you to send"/>`,
+                  hot=${model.asks.length > 0} foot="customer_ask: open"/>`,
     html`<${Tile} key="t" label="Triage" value=${todos.length} hot=${todos.length > 0}
                   foot="raw captures"/>`,
   ];
@@ -394,9 +435,8 @@ function App() {
         ${model.dueBack.length || model.asks.length ? html`
           <div>
             <${Group} title="Due back today" tasks=${model.dueBack} onOpen=${setSel}
-                      hint="parked until today. Clear the resume_on once it is moving again."/>
-            <${Group} title="Unsent asks" tasks=${model.asks} onOpen=${setSel}
-                      hint="the task says the customer needs to be asked and it has not gone out."/>
+                      hint="Parked until today. Clear resume_on once the task is moving again."/>
+            <${Asks} tasks=${model.asks} onOpen=${setSel} onReload=${reloadAll}/>
           </div>` : null}
       </div>
 

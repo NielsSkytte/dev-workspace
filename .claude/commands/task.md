@@ -42,7 +42,8 @@ brief and the card's active list until it is due or cleared.
 - `/task postpone <slug> <YYYY-MM-DD|+Nd>` — set `resume_on:` (`+Nd` = N days from today). When the date
   passes the task shows as **due back** until you resume or postpone it again.
 - `/task wait <slug> customer|<name>` — set `waiting_on:`. If we still have to send the ask, set
-  `customer_ask: open`; once sent, `customer_ask: sent YYYY-MM-DD`; when answered, `answered` and resume.
+  `customer_ask: open`; once sent, `customer_ask: sent YYYY-MM-DD`; when answered, `answered` and resume;
+  an ask that stopped being relevant or turned out to be wrong goes to `dropped` with a dated Log line.
 - `/task resume <slug>` — clear `waiting_on:` and `resume_on:`.
 
 Each transition: edit the frontmatter field, append a dated Log line with the reason, then run

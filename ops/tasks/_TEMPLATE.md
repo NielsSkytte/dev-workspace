@@ -8,7 +8,7 @@ priority: normal      # low | normal | high
 blocked_by:           # optional — what is blocking this
 activity:             # optional — F&O activity (WBS) this task rolls under (customer projects)
 fno_task:             # customer projects: the Azure DevOps work item id, or the word `none` — never left blank
-customer_ask: none    # none | open (we need something, not yet sent) | sent YYYY-MM-DD | answered
+customer_ask: none    # none | open (we need something, not yet sent) | sent YYYY-MM-DD | answered | dropped (no longer relevant, or the ask was wrong)
 waiting_on:           # parked: `customer` or a name we wait on; leaves the daily view until cleared (/task wait, /task resume)
 resume_on:            # parked until this date (YYYY-MM-DD); shows as due back when it passes (/task postpone)
 source: direct        # todo | inbox | direct
