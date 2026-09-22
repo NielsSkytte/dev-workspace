@@ -29,6 +29,7 @@ Write paths (the page never edits a file itself):
   /api/task       mechanical task moves; /api/todo ticks a capture
   /api/reassign   move a Dev timesheet line to the project it was really for
   /api/timesheet  correct one line of a finalized day (ops/time/README.md: edit the file)
+  /api/tssplit    split one such line between the work sessions behind it
   /api/fno        set an F&O field on a project's ## Identity or a customer's ## Customer
   /api/xlsx       the visible entry rows as a workbook
 
@@ -47,6 +48,7 @@ from lib import lines as linedesc
 from lib import attribution
 from lib import noinvoice
 from lib import fnotasks
+from lib import sessionlines
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -564,7 +566,9 @@ def memory_index():
 SESSION_WEEKS = 10       # how far back line evidence is carried in the payload
 MIN_TURN_CHARS = 15      # "yes", "push", "do that" -- a turn this short describes nothing
 TIP_LINES = 3            # turns shown per session in a hover
-TIP_BLOCKS = 4           # sessions shown before the hover says "+N more"
+TIP_BLOCKS = 6           # sessions carried per line before the page says "+N more".
+                         # Enough to split a day's line between all of them: one line has
+                         # ever had more than four sessions behind it.
 
 
 def _says_something(text):
@@ -576,14 +580,24 @@ def _says_something(text):
 
 
 def collect_line_sessions(today):
-    """{'<date>|<project>|<activity>|<task>': [{session, turns, hours, task, lines[]}]} (lowercased key)."""
+    """{'<date>|<project>|<activity>|<task>': [{session, turns, hours, from, to, task, lines[]}]}
+    (lowercased key).
+
+    A session that has been SPLIT onto a line of its own is keyed under the dimensions it
+    was split to, not the ones its work-task carries (ops/lib/sessionlines.py). The
+    heartbeats are immutable, so without that both halves of a split line would go on
+    showing all of the day's sessions -- which is the thing the split was for."""
     cutoff = str(datetime.date.fromisoformat(today) - datetime.timedelta(weeks=SESSION_WEEKS))
     mem = memory_index()
+    marks = sessionlines.assigned()
     by = {}
     for hb in rollup.load_heartbeats():
         if hb["date"] < cutoff:
             continue
         activity, fno_task = rollup.task_dims(hb.get("task"))
+        split = marks.get((hb["date"], hb.get("session") or "", hb["project"].lower()))
+        if split:
+            activity, fno_task = split["activity"], split["fno_task"]
         key = ("%s|%s|%s|%s" % (hb["date"], hb["project"], activity, fno_task)).lower()
         by.setdefault(key, {}).setdefault(hb.get("session") or "", []).append(hb)
 
@@ -599,16 +613,23 @@ def collect_line_sessions(today):
             picked = [t for t in (same or [t for _, t in turns]) if _says_something(t)]
             lines = list(dict.fromkeys(picked))[:TIP_LINES]
             slugs = sorted({hb["task"] for hb in group if hb.get("task")})
+            # When it ran, so the sessions behind a line read in the order they
+            # happened -- which is how you recognise which was which.
+            span = [rollup.to_local(hb["start"]) for hb in group]
             blocks.append({
                 "session": sess or "(no session id)",
                 "turns": len(group),
+                "from": min(span).strftime("%H:%M"),
+                "to": max(rollup.to_local(hb["end"]) for hb in group).strftime("%H:%M"),
                 "hours": round(sum(r["hours"] for r in rollup.rows_for(group)), 2),
                 "task": slugs[0] if len(slugs) == 1 else ("; ".join(slugs) if slugs else ""),
                 "lines": lines,
             })
+        # A summary, not a transcript: the biggest sessions are the ones kept, and the
+        # rest are counted. What is kept then reads in the order it happened.
         blocks.sort(key=lambda b: -b["hours"])
-        # The hover is a summary, not a transcript: keep the biggest sessions and count the rest.
-        out[key] = {"blocks": blocks[:TIP_BLOCKS], "total": len(blocks),
+        keep = sorted(blocks[:TIP_BLOCKS], key=lambda b: b["from"])
+        out[key] = {"blocks": keep, "total": len(blocks),
                     "more": max(0, len(blocks) - TIP_BLOCKS)}
     return out
 
@@ -1761,6 +1782,51 @@ def _totals_span(lines):
     return (head, tail) if head is not None and tail is not None and tail > head else None
 
 
+def _line_index(rows, row, date):
+    """The one line in a day file that `row` names -> (index, "") or (None, why).
+
+    `row` is the line as the page was showing it (project + the three F&O dimensions).
+    Anything other than exactly one match means the file moved underneath the page, and
+    a write that guessed which line was meant would correct the wrong one."""
+    def key(r):
+        return (r["project"], (r["proj_id"] or "").strip(),
+                (r["activity"] or "").strip(), (r["fno_task"] or "").strip())
+
+    want = (row.get("project") or "", (row.get("proj_id") or "").strip(),
+            (row.get("activity") or "").strip(), (row.get("fno_task") or "").strip())
+    hits = [i for i, r in enumerate(rows) if key(r) == want]
+    if len(hits) == 1:
+        return hits[0], ""
+    return None, ("that line is no longer in %s -- refresh" % date if not hits
+                  else "%d lines in %s match -- correct the file by hand" % (len(hits), date))
+
+
+def _trail(verb, what, note):
+    return "%s from the dashboard %s: %s%s" % (
+        verb, datetime.date.today().isoformat(), what,
+        (" -- " + re.sub(r"\s+", " ", note).strip()[:300]) if note else "")
+
+
+def _write_day(path, rows, trail):
+    """Re-render a day file's table from `rows` and record the correction underneath.
+
+    The file's own convention (ops/time/README.md) is that a correction says so in the
+    file; everything outside the table and the totals is left exactly as it was, so a
+    /log review note written by hand survives the write."""
+    text, crlf = _read_raw(path)
+    lines = text.split("\n")
+    span = _totals_span(lines)
+    if span is None:
+        return False, "%s does not look like a timesheet file" % os.path.basename(path)
+    table, _, _ = rollup.render_table(rows)
+    body = lines[:span[0]] + table.split("\n") + [""] + [trail] + lines[span[1] + 1:]
+    try:
+        _write_raw(path, "\n".join(body), crlf)
+    except Exception as exc:
+        return False, str(exc)
+    return True, ""
+
+
 def timesheet_edit(date, row, updates, note=""):
     """Correct one line of a finalized `ops/time/timesheet/<YYYY-MM>/<date>.md`.
 
@@ -1779,18 +1845,10 @@ def timesheet_edit(date, row, updates, note=""):
     rows = rollup.parse_daily_file(date)
     if not rows:
         return False, "%s has no timesheet lines" % date
-
-    def key(r):
-        return (r["project"], (r["proj_id"] or "").strip(),
-                (r["activity"] or "").strip(), (r["fno_task"] or "").strip())
-
-    want = (row.get("project") or "", (row.get("proj_id") or "").strip(),
-            (row.get("activity") or "").strip(), (row.get("fno_task") or "").strip())
-    hits = [i for i, r in enumerate(rows) if key(r) == want]
-    if len(hits) != 1:
-        return False, ("that line is no longer in %s -- refresh" % date if not hits
-                       else "%d lines in %s match -- correct the file by hand" % (len(hits), date))
-    target = rows[hits[0]]
+    idx, why = _line_index(rows, row, date)
+    if idx is None:
+        return False, why
+    target = rows[idx]
 
     changed = []
     for field_ in ("proj_id", "activity", "fno_task"):
@@ -1815,22 +1873,112 @@ def timesheet_edit(date, row, updates, note=""):
     if not changed:
         return False, "nothing to change"
 
-    text, crlf = _read_raw(path)
-    lines = text.split("\n")
-    span = _totals_span(lines)
-    if span is None:
-        return False, "%s does not look like a timesheet file" % date
-    table, _, _ = rollup.render_table(rows)
-    stamp = datetime.date.today().isoformat()
-    trail = "Corrected from the dashboard %s: %s%s" % (
-        stamp, "; ".join(changed), (" -- " + re.sub(r"\s+", " ", note).strip()[:300]) if note else "")
-    rest = [x for x in lines[span[1] + 1:]]
-    body = lines[:span[0]] + table.split("\n") + [""] + [trail] + rest
-    try:
-        _write_raw(path, "\n".join(body), crlf)
-    except Exception as exc:
-        return False, str(exc)
+    ok, err = _write_day(path, rows, _trail("Corrected", "; ".join(changed), note))
+    if not ok:
+        return False, err
     return True, "%s: %s" % (date, "; ".join(changed))
+
+
+def timesheet_split(date, row, parts, note=""):
+    """Split one line of a finalized day between the work SESSIONS behind it.
+
+    A timesheet day groups by dimension, so three sessions on one customer with nothing
+    tagged are one line -- and one line takes one F&O task. But the three were a cluster
+    error, a deployment and the Marketo work, and they belong under three different
+    tasks. This is the same act as timesheet_edit (rewrite the day file, record the
+    correction underneath); it just ends with more lines than it started with.
+
+    Each part carries its hours and the dimensions they move to. What is not claimed
+    stays on the original line, so the day's total is unchanged -- a split moves hours
+    between lines, it never creates or drops any. The Proj ID is NOT a part's to change:
+    it belongs to the project, so every part inherits the line's and one act does one
+    thing.
+
+    A part that names its session is also written to the session register
+    (ops/lib/sessionlines.py), so the evidence follows the hours. Without it both halves
+    of a split line keep showing all three sessions -- the heartbeats are immutable and
+    the dimensions they derive have not moved."""
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date or ""):
+        return False, "bad date: %r" % (date,)
+    if not parts:
+        return False, "nothing to split off"
+    path = rollup.daily_path(date)
+    if not os.path.exists(path):
+        return False, ("%s is not finalized yet -- its hours are still a live tally. "
+                       "Run /log or ops/time/rollup.py first." % date)
+    rows = rollup.parse_daily_file(date)
+    if not rows:
+        return False, "%s has no timesheet lines" % date
+    idx, why = _line_index(rows, row, date)
+    if idx is None:
+        return False, why
+    target = rows[idx]
+    home = ((target["activity"] or "").strip(), (target["fno_task"] or "").strip())
+
+    clean, total = [], 0.0
+    for p in parts:
+        try:
+            hrs = round(float(p.get("hours")) * 4) / 4.0
+        except (TypeError, ValueError):
+            return False, "hours must be a number"
+        if hrs <= 0:
+            continue
+        dims = ((p.get("activity") or "").strip(), (p.get("fno_task") or "").strip())
+        for v in dims:
+            if not FNO_VALUE_RE.match(v):
+                return False, "%r has characters that cannot go in the table" % (v,)
+        if dims == home:
+            return False, ("one part is going where the line already is -- give it a task "
+                           "or an activity of its own")
+        clean.append({"session": (p.get("session") or "").strip(), "hours": hrs,
+                      "activity": dims[0], "fno_task": dims[1]})
+        total = round(total + hrs, 2)
+    if not clean:
+        return False, "nothing to split off"
+    if total > target["hours"] + 1e-9:
+        return False, "%.2f h is more than the line has (%.2f h)" % (total, target["hours"])
+
+    # Parts that land on the same dimensions are one line, however they were entered --
+    # and so is a line the day already has there.
+    same = {}
+    for r in rows:
+        if r["project"] == target["project"] and r is not target:
+            same.setdefault(((r["activity"] or "").strip(), (r["fno_task"] or "").strip()), r)
+    want = {}
+    for p in clean:
+        dims = (p["activity"], p["fno_task"])
+        want[dims] = round(want.get(dims, 0.0) + p["hours"], 2)
+    moved = []
+    for dims in sorted(want):
+        hrs = want[dims]
+        into = same.get(dims)
+        if into is not None:
+            into["hours"] = round(into["hours"] + hrs, 2)
+        else:
+            rows.append({"project": target["project"], "proj_id": target["proj_id"],
+                         "activity": dims[0], "fno_task": dims[1], "hours": hrs,
+                         "billable": target["billable"]})
+        moved.append("%.2f h -> %s" % (hrs, dims[1] or dims[0]))
+    left = round(target["hours"] - total, 2)
+    if left > 0:
+        target["hours"] = left
+    else:
+        rows.remove(target)
+
+    what = "%s split, %s%s" % (
+        target["project"], "; ".join(moved),
+        (", %.2f h left where it was" % left) if left > 0 else ", nothing left on it")
+    ok, err = _write_day(path, rows, _trail("Split", what, note))
+    if not ok:
+        return False, err
+
+    # The register is written only after the hours have moved, so it can never claim a
+    # split the file does not have.
+    for p in clean:
+        if p["session"]:
+            sessionlines.record(date, p["session"], target["project"],
+                                p["activity"], p["fno_task"], note)
+    return True, "%s: %s" % (date, "; ".join(moved))
 
 
 # ---------- Excel ----------
@@ -1972,6 +2120,8 @@ POST_ROUTES = {
                                     r.get("field", ""), r.get("value", "")),
     "/api/timesheet": lambda r: timesheet_edit(r.get("date", ""), r.get("row") or {},
                                                r.get("set") or {}, r.get("note", "")),
+    "/api/tssplit": lambda r: timesheet_split(r.get("date", ""), r.get("row") or {},
+                                              r.get("parts") or [], r.get("note", "")),
 }
 
 

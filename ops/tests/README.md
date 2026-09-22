@@ -18,13 +18,14 @@ scripts under test are CLI tools rather than a package, so `_bootstrap.py` puts 
 | `test_frontmatter.py` | `dashboard.py` `_apply_fm` - the task-file write path |
 | `test_lib.py` | `lib/` - the shared read layer: substrate parsing, project discovery, the heartbeat record |
 | `test_dashboard.py` | the `ops/TODO.md` write path, the project band rule, the payload memos, the POST routing table |
-| `test_fno.py` | `lib/fno.py` and the F&O entry surface - the readiness rule, the two write paths, the workbook |
+| `test_fno.py` | `lib/fno.py` and the F&O entry surface - the readiness rule, the write paths (correct a line, split one between its sessions), the workbook |
 | `test_lines.py` | `lib/lines.py` - the line-description file: its key, its round-trip, and a tolerant read |
 | `test_audit.py` | `dashboard.line_rows` - the three-way join behind a week's F&O lines, and that every measured hour lands on exactly one of them |
 | `test_attribution.py` | `lib/attribution.py` - whether a turn is about to produce a line that cannot be entered, and staying quiet when it is not |
 | `test_fnotasks.py` | `lib/fnotasks.py` - what an F&O task id is called, and that the name never reaches a line |
 | `test_noinvoice.py` | `lib/noinvoice.py` - the not-invoiced register, and that the rollup and the entry page both honour it |
 | `test_reassign.py` | moving a line off the invoice, marking one not for registration, and the directions that are refused |
+| `test_sessionlines.py` | `lib/sessionlines.py` - which line a session's time was split onto, and that the evidence follows the split |
 
 Scope is deliberate: a documented rule and a number, or a write that has to leave a hand-maintained
 file intact. Rendering and the HTTP layer are not covered here - the pages are checked under jsdom

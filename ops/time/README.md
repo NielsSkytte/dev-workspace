@@ -517,6 +517,44 @@ a second source for it.
 description on the line and in its panel, puts it in the downloaded workbook as *What it was*,
 and renders the undescribed lines in italic with the first thing said in them instead.
 
+### 6.4 One line, several sessions (added 2026-09-22)
+
+A timesheet day groups by **dimension**, not by session. Three separate sittings on one
+customer with nothing tagged are therefore **one line**:
+
+```
+| customers/Carl-Ras/datahub | 230-02 | - | - | 0.75 | yes |
+```
+
+That is right for billing and wrong for entry. On 2026-09-09 those three were a Fabric
+cluster error, a GTM deployment and the outbound Marketo work — three different F&O tasks,
+and one line takes one.
+
+**The split.** Open the line on `/time` and it lists the sessions behind it: when each ran,
+how many turns, and the first thing said in it. Give any of them a task (or an activity, for
+a customer that registers on one) and **Split** writes them as separate lines of the same
+day. The line's hours are shared out in 0.25 h steps and sum to exactly what the line had —
+a split **moves** hours between lines, it never creates or drops any, and whatever is left
+unassigned stays where it was. The Proj ID is not a session's to change: it belongs to the
+project, so it is inherited and set for the whole line by Save.
+
+**The register — `session-lines.md`.** The hours live in the timesheet, which is
+authoritative once written. The *evidence* behind a line does not: it is rebuilt from the
+heartbeats on every read, and the heartbeats are immutable, so both halves of a split line
+would go on showing all three sessions. So each split is recorded:
+
+```
+| Date | Session | Project | Activity | Task | Note | Recorded |
+| 2026-09-09 | 96e67fec | customers/Carl-Ras/datahub | - | CarlRData-557 | - | 2026-09-22 |
+```
+
+Append-only, a later row winning, and read only by the page (`ops/lib/sessionlines.py`).
+Nothing here is billed, and nothing here is entered into F&O.
+
+**Not the same act as `/log`.** Splitting says *which task* time belongs under. Correcting
+the hours, moving a line to another project, or marking it not for invoicing are the other
+three acts on the same card, and each writes its own trail into the day file.
+
 ## 7. Value model (ADR-004, PROVISIONAL -- re-evaluate end of 2026-08)
 
 Sections 1-6 measure **time**. This section derives a second number, **weighted hours**, from what

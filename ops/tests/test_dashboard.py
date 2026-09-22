@@ -237,7 +237,8 @@ class PostRoutes(unittest.TestCase):
     def test_every_write_path_has_a_route(self):
         self.assertEqual(sorted(dashboard.POST_ROUTES),
                          ["/api/fno", "/api/fnotask", "/api/launch", "/api/noinvoice",
-                          "/api/reassign", "/api/task", "/api/timesheet", "/api/todo"])
+                          "/api/reassign", "/api/task", "/api/timesheet", "/api/todo",
+                          "/api/tssplit"])
 
     def test_a_route_passes_the_body_through_to_its_function(self):
         seen = {}

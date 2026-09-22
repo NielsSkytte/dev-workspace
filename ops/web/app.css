@@ -531,6 +531,15 @@ table.autable.totals td:nth-child(3){text-align:right}
 .never select.mini{font-size:12.5px}
 .daycard .rowacts{margin-top:8px;align-items:baseline}
 .daycard select.mini{flex:1;min-width:0}
+/* the sessions on one line, each with a destination of its own -- a day's line groups by
+   dimension, and three untagged sessions are three different pieces of work */
+.split{margin-top:10px;border-top:1px solid var(--ring);padding-top:8px}
+.splitrow{margin-top:8px;padding-top:8px;border-top:1px solid var(--ring)}
+.splitwhen{font-size:12.5px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.split .tturn{margin:3px 0 0 10px}
+.split .actrow{margin-top:5px}
+.split input.qin{width:4.2em;flex:none;min-width:0;text-align:right}
+.split select.mini{flex:1;min-width:0}
 
 /* one open work-task and the F&O dimensions it lends to every line worked under it */
 .wtask{border-top:1px solid var(--ring);padding:8px 0 4px}

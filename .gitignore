@@ -35,4 +35,7 @@ data/
 /ops/time/not-invoiced.md
 # What each F&O task id is called -- a register too, filled in as the ids are met.
 /ops/time/fno-tasks.md
+# Which line each session's time was split onto. Named customers and sessions, and the
+# page rebuilds nothing from it that the timesheet does not already hold.
+/ops/time/session-lines.md
 /ops/time/active-task

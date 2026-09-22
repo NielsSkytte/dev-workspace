@@ -227,8 +227,28 @@ function lineEvidence(D, row) {
       (b.lines || []).forEach(x => { if (!m.lines.includes(x)) m.lines.push(x); });
     });
   });
-  const blocks = Object.values(merged).sort((a, b) => b.hours - a.hours).slice(0, 4);
+  const blocks = Object.values(merged).sort((a, b) => b.hours - a.hours).slice(0, 6)
+    .sort((a, b) => (a.from || '').localeCompare(b.from || ''));
   return { blocks, more: 0, wide: blocks.length > 0 };
+}
+
+/* The line's hours shared out between the sessions behind it, in 0.25 h steps and
+   summing to EXACTLY the line -- a split moves hours between lines, it never invents a
+   quarter. The session evidence hours are the weight, not the figure: each session is
+   measured on its own there, so it earns its own 5 min buffer and 0.5 h floor and the
+   three of them add up to more than the line they came from. */
+function quarters(total, blocks) {
+  const units = Math.max(0, Math.round((total || 0) / 0.25));
+  const w = blocks.map(b => (b.hours > 0 ? b.hours : 1));
+  const sum = w.reduce((a, b) => a + b, 0);
+  const exact = w.map(x => units * x / sum);
+  const base = exact.map(Math.floor);
+  let left = units - base.reduce((a, b) => a + b, 0);
+  exact.map((x, i) => [x - base[i], i]).sort((a, b) => b[0] - a[0])
+    .forEach(([, i]) => { if (left > 0) { base[i]++; left--; } });
+  const out = {};
+  blocks.forEach((b, i) => { out[b.session] = base[i] * 0.25; });
+  return out;
 }
 
 /* The first thing said about a line. A timesheet row reads "Carl-Ras / – / –" and says
@@ -545,6 +565,115 @@ function TaskName({ id, rec, customer, onDone }) {
     <//>`;
 }
 
+/* The sessions behind one line, and the split that gives each its own F&O task.
+
+ * A timesheet day groups by DIMENSION, so three sessions on one customer with nothing
+ * tagged are one line of 0.75 h -- and one line takes one task. But the three were a
+ * cluster error, a deployment and the Marketo work, and they belong under three
+ * different tasks. So the line is shown as what it is made of: each session with when it
+ * ran and the first thing said in it, and a destination of its own.
+ *
+ * Split writes them as separate lines of the same day. Hours are shared OUT of the line
+ * -- what is not assigned stays where it is and the day's total never moves. The Proj ID
+ * is not a session's to change: it belongs to the project, so Save above still sets it
+ * for all of them.
+ */
+function SessionSplit({ raw, row, D, onDone }) {
+  const ev = lineEvidence(D, raw);
+  const blocks = ev.blocks;
+  const onTask = (row.requires || []).includes('task');
+  const field = onTask ? 'fno_task' : 'activity';
+  const names = (D.entry || {}).task_names || {};
+  const known = knownValues(D, row, field);
+  const [to, setTo] = useState({});
+  const [share, setShare] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setTo({});
+    setShare(quarters(raw.hours, blocks));
+    setBusy(false);
+  }, [rowKey(raw), blocks.map(b => b.session).join()]);
+
+  if (blocks.length < 2) return null;
+
+  const set = (m, s, v) => m(o => Object.assign({}, o, { [s]: v }));
+  const parts = blocks.map(b => ({
+    session: b.session,
+    hours: Number(share[b.session] || 0),
+    activity: onTask ? '' : (to[b.session] || '').trim(),
+    fno_task: onTask ? (to[b.session] || '').trim() : '',
+  })).filter(p => (p.activity || p.fno_task) && p.hours > 0);
+  const moving = Math.round(parts.reduce((s, p) => s + p.hours, 0) * 100) / 100;
+  const left = Math.round((raw.hours - moving) * 100) / 100;
+
+  const split = async () => {
+    setBusy(true);
+    const j = await post('/api/tssplit', {
+      date: raw.date,
+      row: { project: raw.project, proj_id: raw.ws_proj_id, activity: raw.ws_activity,
+             fno_task: raw.ws_fno_task },
+      parts,
+    });
+    setBusy(false);
+    toast(j.message || (j.ok ? 'split' : 'failed'));
+    if (j.ok) onDone();
+  };
+
+  return html`
+    <div class="split">
+      <div class="neverhead"><b>${blocks.length} work sessions are on this one line</b>
+        <span class="sub">${hrs(raw.hours)} h between them</span></div>
+      <p class="sub" style="margin:0 0 2px">${ev.wide
+        ? html`This line's own dimensions matched no session, so these are <b>every
+            session on ${raw.date} for ${shortProject(raw.project)}</b> — check the times
+            before splitting.`
+        : html`Give any of them ${onTask ? 'an F&O task' : 'an activity'} of its own and
+            Split writes it as a separate line of the same day. Unassigned hours stay
+            here.`}</p>
+      ${ev.more ? html`<p class="sub" style="margin:2px 0 0"><b class="accentink">${ev.more}
+        more session${ev.more === 1 ? '' : 's'}</b> on this line are not shown.</p>` : null}
+      ${blocks.map(b => html`
+        <div class="splitrow" key=${b.session}>
+          <div class="splitwhen"><b>${b.from || '--:--'}–${b.to || '--:--'}</b>
+            <span class="muted">${b.turns} turn${b.turns === 1 ? '' : 's'} · ${b.session}</span>
+            ${b.task ? html` <span class="muted">· ${b.task}</span>` : null}</div>
+          <div class="tturn">${(b.lines || [])[0]
+            || 'no memory record for this session'}</div>
+          <div class="actrow">
+            <input class="qin" type="text" value=${String(share[b.session] === undefined
+                     ? '' : share[b.session])}
+                   onInput=${e => set(setShare, b.session, e.target.value)}
+                   aria-label=${'hours for ' + b.session}/>
+            <span class="sub">h</span>
+            ${known.length ? html`
+              <select class="mini" value=${to[b.session] || ''}
+                      aria-label=${'line for ' + b.session}
+                      onChange=${e => set(setTo, b.session, e.target.value)}>
+                <option value="">leave it here…</option>
+                ${known.map(u => html`
+                  <option key=${u.value} value=${u.value}>${knownLabel(u, onTask ? names : {})}</option>`)}
+              </select>` : null}
+            <input type="text" value=${to[b.session] || ''}
+                   onInput=${e => set(setTo, b.session, e.target.value)}
+                   placeholder=${onTask ? 'or type a task id' : 'or type an activity'}
+                   aria-label=${'id for ' + b.session}/>
+          </div>
+        </div>`)}
+      <div class="rowacts">
+        <span class="sub" style="margin-right:auto">${parts.length
+          ? `${hrs(moving)} h moves off this line, ${hrs(left)} h stays`
+          : 'nothing assigned yet'}</span>
+        <button class="act primary"
+                disabled=${busy || !parts.length || left < -0.001}
+                onClick=${split}>Split into ${parts.length + (left > 0 ? 1 : 0)} lines</button>
+      </div>
+      ${left < -0.001 ? html`<p class="sub" style="margin:6px 0 0"><b class="accentink">That
+        is ${hrs(-left)} h more than the line has.</b> A split moves hours, it cannot add
+        them.</p>` : null}
+    </div>`;
+}
+
 /* One timesheet line: its F&O dimensions, and the write that puts them there.
  *
  * This is the entry act. It rewrites one row of one finalized day file and records the
@@ -677,6 +806,7 @@ function DayFix({ raw, row, D, onDone, only }) {
                 onClick=${correct}>Save ${raw.date}</button>
       </div>
 
+      <${SessionSplit} raw=${raw} row=${row} D=${D} onDone=${onDone}/>
       <${NeverInvoice} raw=${raw} D=${D} onDone=${onDone}/>
     </div>`;
 }

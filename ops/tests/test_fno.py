@@ -329,6 +329,174 @@ class TimesheetEdit(unittest.TestCase):
             self.assertFalse(ok, bad)
 
 
+class TimesheetSplit(unittest.TestCase):
+    """One day's line between the work sessions behind it.
+
+    A timesheet day groups by dimension, so three sessions with nothing tagged are one
+    line -- and one line takes one F&O task. Splitting it moves hours between lines of
+    the same day; it never creates or drops any."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.month = os.path.join(self.tmp, "timesheet", "2026-09")
+        os.makedirs(self.month)
+        self.path = os.path.join(self.month, "2026-09-15.md")
+        with io.open(self.path, "w", encoding="utf-8", newline="") as f:
+            f.write(DAY)
+        self._ts = dashboard.rollup.TIMESHEET
+        self._sl = dashboard.sessionlines.ROOT
+        dashboard.rollup.TIMESHEET = os.path.join(self.tmp, "timesheet")
+        dashboard.sessionlines.ROOT = self.tmp
+
+    def tearDown(self):
+        dashboard.rollup.TIMESHEET = self._ts
+        dashboard.sessionlines.ROOT = self._sl
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def read(self):
+        with io.open(self.path, encoding="utf-8", newline="") as f:
+            return f.read()
+
+    ROW = {"project": "customers/Widget/portal", "proj_id": "UNSET",
+           "activity": "", "fno_task": ""}
+
+    def parts(self, *specs):
+        return [{"session": s, "hours": h, "fno_task": task} for s, h, task in specs]
+
+    def total(self):
+        return round(sum(r["hours"] for r in dashboard.rollup.parse_daily_file("2026-09-15")), 2)
+
+    def test_one_session_becomes_its_own_line(self):
+        ok, msg = dashboard.timesheet_split(
+            "2026-09-15", self.ROW, self.parts(("947f60fa", 0.75, "WID-12")))
+        self.assertTrue(ok, msg)
+        text = self.read()
+        self.assertIn("| customers/Widget/portal | UNSET | - | - | 2.25 | yes |", text)
+        self.assertIn("| customers/Widget/portal | UNSET | - | WID-12 | 0.75 | yes |", text)
+
+    def test_the_day_totals_exactly_what_it_did(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 1.0, "WID-12"),
+                                             ("e5f6a7b8", 0.5, "WID-13")))
+        self.assertEqual(self.total(), 4.5)
+        self.assertIn("**Billable total:** 3.00 h", self.read())
+
+    def test_claiming_all_of_it_leaves_no_empty_line(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 3.0, "WID-12")))
+        text = self.read()
+        self.assertNotIn("| customers/Widget/portal | UNSET | - | - |", text)
+        self.assertIn("| customers/Widget/portal | UNSET | - | WID-12 | 3.00 | yes |", text)
+        self.assertEqual(self.total(), 4.5)
+
+    def test_two_sessions_going_to_one_task_are_one_line(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 0.5, "WID-12"),
+                                             ("e5f6a7b8", 0.75, "WID-12")))
+        self.assertIn("| customers/Widget/portal | UNSET | - | WID-12 | 1.25 | yes |",
+                      self.read())
+
+    def test_it_folds_into_a_line_the_day_already_has(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 0.5, "WID-12")))
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("e5f6a7b8", 0.25, "WID-12")))
+        text = self.read()
+        self.assertIn("| customers/Widget/portal | UNSET | - | WID-12 | 0.75 | yes |", text)
+        self.assertEqual(text.count("| WID-12 |"), 1)
+        self.assertEqual(self.total(), 4.5)
+
+    def test_the_billable_column_is_inherited(self):
+        dashboard.timesheet_split(
+            "2026-09-15", {"project": "Dev", "proj_id": "INTERNAL-RND",
+                           "activity": "", "fno_task": ""},
+            self.parts(("a1b2c3d4", 0.5, "DEV-1")))
+        self.assertIn("| Dev | INTERNAL-RND | - | DEV-1 | 0.50 | no |", self.read())
+        self.assertIn("**Internal total:** 1.50 h", self.read())
+
+    def test_more_hours_than_the_line_has(self):
+        ok, msg = dashboard.timesheet_split("2026-09-15", self.ROW,
+                                            self.parts(("a1b2c3d4", 4.0, "WID-12")))
+        self.assertFalse(ok)
+        self.assertIn("more than the line has", msg)
+        self.assertEqual(self.read(), DAY)
+
+    def test_a_part_going_where_the_line_already_is(self):
+        ok, msg = dashboard.timesheet_split("2026-09-15", self.ROW,
+                                            self.parts(("a1b2c3d4", 0.5, "")))
+        self.assertFalse(ok)
+        self.assertEqual(self.read(), DAY)
+
+    def test_every_session_lands_on_the_register(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 0.5, "WID-12"),
+                                             ("e5f6a7b8", 0.5, "WID-13")), "three sessions")
+        got = dashboard.sessionlines.assigned(self.tmp)
+        self.assertEqual(got[("2026-09-15", "a1b2c3d4", "customers/widget/portal")],
+                         {"activity": "", "fno_task": "WID-12"})
+        self.assertEqual(got[("2026-09-15", "e5f6a7b8", "customers/widget/portal")],
+                         {"activity": "", "fno_task": "WID-13"})
+
+    def test_nothing_is_registered_when_nothing_moved(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 9.0, "WID-12")))
+        self.assertEqual(dashboard.sessionlines.entries(self.tmp), [])
+
+    def test_a_part_with_no_session_still_splits(self):
+        # The evidence is a convenience; the hours are the point.
+        ok, msg = dashboard.timesheet_split(
+            "2026-09-15", self.ROW, [{"hours": 0.5, "fno_task": "WID-12"}])
+        self.assertTrue(ok, msg)
+        self.assertEqual(dashboard.sessionlines.entries(self.tmp), [])
+
+    def test_an_activity_only_split(self):
+        ok, msg = dashboard.timesheet_split(
+            "2026-09-15", self.ROW,
+            [{"session": "a1b2c3d4", "hours": 0.5, "activity": "400760"}])
+        self.assertTrue(ok, msg)
+        self.assertIn("| customers/Widget/portal | UNSET | 400760 | - | 0.50 | yes |",
+                      self.read())
+
+    def test_the_file_says_what_was_split(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 0.5, "WID-12")), "the cluster error")
+        text = self.read()
+        self.assertIn("Split from the dashboard", text)
+        self.assertIn("0.50 h -> WID-12", text)
+        self.assertIn("the cluster error", text)
+        self.assertIn("Reviewed at /log 2026-09-15: nothing to correct.", text)
+
+    def test_an_unfinalized_day_says_so(self):
+        ok, msg = dashboard.timesheet_split("2026-09-16", self.ROW,
+                                            self.parts(("a1b2c3d4", 0.5, "WID-12")))
+        self.assertFalse(ok)
+        self.assertIn("not finalized", msg)
+
+    def test_a_row_that_moved_is_refused(self):
+        ok, msg = dashboard.timesheet_split("2026-09-15", dict(self.ROW, proj_id="999"),
+                                            self.parts(("a1b2c3d4", 0.5, "WID-12")))
+        self.assertFalse(ok)
+        self.assertIn("refresh", msg)
+        self.assertEqual(self.read(), DAY)
+
+    def test_what_it_refuses_outright(self):
+        for date, parts in (("", self.parts(("a1b2c3d4", 0.5, "WID-12"))),
+                            ("2026-9-15", self.parts(("a1b2c3d4", 0.5, "WID-12"))),
+                            ("2026-09-15", []),
+                            ("2026-09-15", self.parts(("a1b2c3d4", 0, "WID-12"))),
+                            ("2026-09-15", self.parts(("a1b2c3d4", "x", "WID-12"))),
+                            ("2026-09-15", self.parts(("a1b2c3d4", 0.5, "WID|12")))):
+            ok, _ = dashboard.timesheet_split(date, self.ROW, parts)
+            self.assertFalse(ok, (date, parts))
+        self.assertEqual(self.read(), DAY)
+
+    def test_hours_are_rounded_to_the_quarter(self):
+        dashboard.timesheet_split("2026-09-15", self.ROW,
+                                  self.parts(("a1b2c3d4", 0.6, "WID-12")))
+        self.assertIn("| WID-12 | 0.50 | yes |", self.read())
+        self.assertEqual(self.total(), 4.5)
+
+
 class EntryRows(unittest.TestCase):
     """What the row shows is resolved; what the file holds is what an edit must name."""
 
