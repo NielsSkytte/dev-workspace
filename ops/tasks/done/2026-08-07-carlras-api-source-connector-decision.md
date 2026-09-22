@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — decide the "connector" abstraction for API sources (CVR / GTM / Marketo) vs Atomic
-status: open
+status: done
 created: 2026-08-07
 project: customers/Carl-Ras/datahub
 owner: architect
@@ -92,3 +92,4 @@ something proven, not from a design.
     and if it lands it could make this decision moot. Worth a direct ask before committing.
 - 2026-08-07 — created (handoff from the Marketo ingest build)
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-21 — check-in: done. Decision: skip the connector abstraction; push each source to PROD as-is. Per-source bespoke extraction stays.

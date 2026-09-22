@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — BudgetLedger (AX09) into curated — a new fact through raw → enriched → curated
-status: in-progress
+status: done
 created: 2026-08-19
 project: customers/Carl-Ras/datahub
 owner: fabric-back
@@ -248,3 +248,4 @@ for us yet.
   the git sync needed two commits. Both in one selection reproduces the failure, and a failed
   warehouse import leaves an orphan that makes the retry fail with "already exists".
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-21 — check-in: done. BudgetLedger through enriched and curated in DEV and TEST; model 2010 confirmed. Promotion to PROD is part of the general curated release.

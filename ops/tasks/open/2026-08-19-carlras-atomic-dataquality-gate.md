@@ -7,7 +7,7 @@ owner: fabric-back
 priority: normal
 blocked_by:
 activity:
-fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+fno_task: CarRData-555
 customer_ask: open
 source: session
 ---
@@ -29,7 +29,7 @@ Three parts, in the order they matter:
 
 ## Progress
 
-**Now (2026-08-31):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
+**Now (2026-09-21):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
 activity; `transform.sp_RowCheck` logs only). The triggering AX09 row was still uncorrected on 08-31. The
 model-side retype is live in DEV's and TEST's `Model`; `Model_OneLake`'s copy of `Forecast Quantity` is still
 `decimal` and must be fixed before that model is promoted. TEST's row-check log shows six red and nobody acts
@@ -37,10 +37,18 @@ on it.
 
 **Tried and dropped:** nothing yet; not started.
 
+**Scope narrowed 2026-09-18 (Niels): reporting only.** Data quality must not stop or alter a load.
+Parts 1 and 3 stay (rules, notification); part 2 — quarantine, `reject.<Table>`, any diversion of a row —
+is **deferred, not cancelled**. Revisit once the reporting has run long enough to show which rules would
+have been worth acting on. The reporting half is MetaAtomic's DQ module, not a new Atomic build, so this
+task now covers what MetaAtomic does not: rules inside the load path, and the notification that reaches
+the source-system owner.
+
 **Next:**
-1. Settle the shape: where rules are evaluated, what "held back" means per layer, `reject.<Table>` tables,
-   one digest notification per run.
-2. This is an Atomic framework change — align with Simon before building.
+1. Deploy the MetaAtomic DQ gate to Carl Ras DEV as a plain notebook activity — no If Condition, no Fail
+   activity (blocked on: the Fabric SQL database for the store, and Niels's review of the declarations).
+2. Decide what this task still owns once the reporting runs, and whether it closes into
+   `2026-09-09-carlras-metaatomic-implementation`.
 3. Fix `Model_OneLake`'s `Forecast Quantity` type before promotion.
 
 ## Needs from customer
@@ -147,5 +155,8 @@ not the answer here either. Notification is part of the feature, not a follow-up
   - Currency sweep across 65 curated columns, both environments: exactly **one** violation, the known
     row. `fact.InventoryTransactions.CostAmountPostedMST` sits at 484,633,785,324,405 = **52.5%** of
     the ceiling — unchanged, no new risk.
+- 2026-09-18 — **reporting only, by decision.** Niels: data quality observes and publishes, it never stops
+  or alters a data load. Quarantine deferred (see Progress). Recorded in
+  `customers/Carl-Ras/datahub/CONTEXT_DECISIONS.md` and `own/MetaAtomic/CONTEXT_DECISIONS.md`.
 - 2026-08-19 — created after the Currency overflow took down the TEST model refresh.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

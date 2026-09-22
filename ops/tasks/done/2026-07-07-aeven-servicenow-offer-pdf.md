@@ -1,6 +1,6 @@
 ---
 title: Aeven — formal ServiceNow POC offer in PDF
-status: in-progress
+status: done
 created: 2026-07-07
 project: customers/Aeven/ServiceNowPOC
 owner: content
@@ -53,3 +53,4 @@ The offer is the gate to the Q3 engagement; `fno_code:` is created only after si
   content unchanged from v1.0) packaged with General Terms and Conditions + new-customer
   appendix, sent to Aeven. Now awaiting signed SoW returned from Aeven.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task none, customer_ask none); no facts changed. Card: CONTEXT.md converted to the resume card.
+- 2026-09-21 — closed done; ServiceNowPOC archived (superseded by AtomicServiceNow)

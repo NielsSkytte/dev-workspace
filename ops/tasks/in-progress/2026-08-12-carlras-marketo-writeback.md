@@ -6,7 +6,7 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
+activity:
 fno_task: CarlRData-553
 customer_ask: open
 source: session
@@ -22,11 +22,11 @@ Full derivation, validation and every source-column decision:
 
 ## Progress
 
-**Now (2026-09-09):** the push (`NB_Outbound_Marketo` + `PL_Outbound_Marketo`) and the delta state
-(`Lakehouse_Util.MarketoPushState`) are in git (`52653d9`, `f1fe9f2`); DEV dry runs Completed 2026-09-09
-(218,490 sendable, 141 non-ASCII e-mails rejected). Nothing has been written to Marketo from Fabric.
-Inbound chain proven once end to end (08-21); the daily `PL_Ingest_Marketo` schedule is disabled, so no
-fresh Marketo data lands anywhere.
+**Now (2026-09-21):** Push (`NB_Outbound_Marketo` + `PL_Outbound_Marketo`) and delta state
+(`Lakehouse_Util.MarketoPushState`) are in git; DEV dry runs Completed 09-09 (218,490 sendable, 141
+non-ASCII e-mails rejected). Nothing has been written to Marketo from Fabric. Verified with Benno (Impact):
+shared LaunchPoint credentials are not a blocker — our activity is separable from theirs. No dedicated API
+user needed immediately.
 
 **Tried and dropped:** full push -> delta push (Fivetran keeps a change table; Benno, 09-09); Bulk Lead
 Import -> `syncLead updateOnly` (Bulk is upsert and returns no per-record result); "emit NULL, never a
@@ -35,17 +35,14 @@ coalesced 0" -> three states with omission, because a null on a numeric/boolean 
 account fields already equal Marketo's (they are not AX09 contacts).
 
 **Next:**
-1. First live run on three real leads (Niels runs the command; the auto-mode classifier blocked it 09-09),
-   then read back `MarketoOutboundLog` / `MarketoPushState` and check the leads' activities by `RequestId`.
-2. Decide: seed `MarketoPushState` from Marketo's own values, and filter the push to e-mails Marketo has
-   (drops ~627 wasted calls a run). Both recommended, both undecided.
-3. Our own LaunchPoint API user, then rotate Impact's pair, before any scheduled run.
-4. Send the Impact mail (below). Then goal doc section 17.4 items 4-8.
+1. Fully verify delta state between Marketo and `MarketoPushState` / `outbound.Marketo_Lead`.
+2. First live run on three real leads (Niels runs the command), then read back `MarketoOutboundLog` /
+   `MarketoPushState` and check leads' activities by `RequestId`.
+3. Decide: seed `MarketoPushState` from Marketo's own values, and filter the push to e-mails Marketo has.
+4. Then goal doc section 17.4 items 4-8.
 
 ## Needs from customer
 
-- **Impact (Benno): a LaunchPoint API user of our own** — the only credentials we hold are
-  `ben+carlras@impact.dk`'s pair, so no production write is possible without stopping them too. **Not asked.**
 - **Impact (Benno): three questions** — which integration creates the leads (Census only updates); what
   `Inferred_Country` is sourced from; confirm the four unseen mapping rows. **Not sent** (a Danish draft from
   08-21 was never saved).
@@ -53,6 +50,9 @@ account fields already equal Marketo's (they are not AX09 contacts).
   extract size, whose Logic App failed 9/7 and its error text. **Not sent** (raised by Benno 09-09).
 - **Carl Ras (Kasper):** none current.
 
+
+## Log
+- 2026-09-21 — check-in: LaunchPoint credentials confirmed not a blocker by Benno (Impact); activity separable. Focus shifts to delta state verification. Needs from customer updated.
 
 ## Done
 - **Source mapping derived from data alone**, no Impact involvement — `silver_order` =

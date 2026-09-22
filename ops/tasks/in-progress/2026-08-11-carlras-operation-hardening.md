@@ -8,7 +8,7 @@ priority: normal
 blocked_by:
 activity:
 fno_task: CarlRData-555
-customer_ask: open
+customer_ask: none
 source: direct
 ---
 
@@ -75,32 +75,22 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
-**Now (2026-09-09):** TEST's Raw stage ran green 2026-09-09 (`PL_Execute_Raw` `66b7792f`, all four
-streams) after `PL_Ingest_Lakehouse_Raw_Marketo` was re-stamped to the SPN. Scale Up/Down in TEST now fails
-at `getSecret` until TEST's workspace identity is in `Fabric_Key_Vault_Users`; the run degrades to the idle
-SKU and still builds the data. TEST's schedule is owned by `EXT_NSKC` again since 08-30 (hardening
-regression). Every PROD lakehouse SQL endpoint refuses queries (MWC token), so enriched cannot run in PROD;
-PROD's chain is disabled deliberately (09-09).
+**Now (2026-09-21):** Carl Ras added TEST's identity (`85553fa2`) to `Fabric_Key_Vault_Users` on
+2026-09-21. PROD lakehouse SQL endpoints (MWC token) resolved. TEST's Raw stage was green 09-09 (all four
+streams).
 
 **Tried and dropped:** model ownership (`TakeOver`) as the cause of the refresh 403 -> disproved 08-11, the
 cause is the Fabric-minted notebook token; sempy / semantic-link-labs in the refresh -> REST enhanced refresh
 with a Key Vault-minted token; a fixed wait after the scale -> the scale inside `PL_MainExecution` (08-20).
 
 **Next:**
-1. Carl Ras adds TEST's identity to the Key Vault group, then verify the 06:30 run end to end
-   (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
-2. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (no step recorded yet; `tools/fabric_release.py`
-   runs as the SPN and is the documented route).
-3. Raise the PROD lakehouse endpoint failure with Carl Ras (not investigated on our side).
-4. Decide `PL_ScaleProcess_SP`: strip its refresh step or retire it.
+1. Verify the 06:30 run completes end to end (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
+2. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (`tools/fabric_release.py`).
+3. `PL_ScaleProcess_SP` kept as manual scale-and-process trigger; retirement not planned.
 
 ## Needs from customer
 
-- **Carl Ras: add object id `85553fa2-1343-4d6e-89e4-433fd51ba6a6` (Fabric-ETL-TEST workspace identity)
-  to `Fabric_Key_Vault_Users`.** Asked 08-27; DEV and PROD identities were added instead (measured 08-31).
-  Whether the correction was sent is not recorded.
-- **Carl Ras: PROD lakehouse SQL endpoints** (`Raw_AX09`, `Raw_CVR`, `Raw_Marketo`, `Util`) refuse every
-  query with "Retrieval of MWC token used for accessing storage failed 0xa" (09-09). **Not raised.**
+- None.
 
 
 ## Why
@@ -129,6 +119,7 @@ classes will keep recurring until they are closed deliberately.
 - 2026-08-17 — MERGED: `2026-08-14-carlras-semanticmodel-currency-overflow` folded in as the
   current blocker — it is the last stage of this same chain and was created stating so.
   `blocked_by` now carries the semantic-model-developer consult.
+- 2026-09-21 — check-in: TEST Key Vault identity added by Carl Ras; PROD SQL endpoints resolved. Progress rewritten. Needs from customer cleared.
 - 2026-08-19 — UNBLOCKED: the Currency overflow is closed. Cause was one AX09 row
   (`crcampaignforecast.RecId` 5638443880, `ForecastQuantity` 2222222222222222, entered by `SOUR`
   2026-08-18 09:03), not a model or Curated defect. `Campaign Forecasts[Forecast Quantity]` retyped

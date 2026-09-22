@@ -6,8 +6,8 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
-fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+activity:
+fno_task: CarRData-555
 customer_ask: none
 source: direct
 ---
@@ -89,8 +89,7 @@ it with `tools/wh_drift.py` for warehouses.
 
 ## Needs from customer
 
-- **Carl Ras: read access to the `fabric-test` repo for `EXT_NSKC@carl-ras.dk`** — an access gap, not an
-  API error (08-31). **Not raised.**
+- None. (The `fabric-test` repo does not exist as a standalone repo; it is the Fabric deployment pipeline connection to Fabric-TEST. Ask dropped 2026-09-21.)
 
 
 ## To do

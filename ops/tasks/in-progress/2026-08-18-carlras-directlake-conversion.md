@@ -6,8 +6,9 @@ project: customers/Carl-Ras/datahub
 owner: semantic
 priority: high
 blocked_by:
-activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
-fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+waiting_on: decision
+activity:
+fno_task: CarRData-555
 customer_ask: none
 source: session
 ---
@@ -24,22 +25,25 @@ they carry the two calculated columns and the Power Query timestamp), 6 calculat
 
 ## Progress
 
-**Now (2026-08-31):** `Model_OneLake` is pure Direct Lake in DEV — 38 tables, 177 measures, 60
-relationships, one `AzureStorage.DataLake` source, Budget Ledger answering queries (verified 08-31).
-TEST prerequisites 1-3 are done (GEN-008/009 columns live, both dims populated, Contributor grant).
-`Model_OneLake` has never been paired to TEST; DEV's Import `Model` has 42 tables against TEST's 38, so
-both models are behind. The Import refresh still works intermittently (OOM failures, 08-21).
+**Now (2026-09-21):** `Model_OneLake` built and verified in DEV — 38 tables, 177 measures, 60 relationships,
+one `AzureStorage.DataLake` source, Budget Ledger answering queries. Direct Lake production go/no-go
+undecided; task parked until the decision is made.
+
+Merged from `2026-08-18-carlras-atomic-ctas-merge`: all five CTAS procedures (transform, facttransform,
+dimtransform, bridgetransform, outboundtransform) still drop-then-create in the live warehouses. The
+framing race (~25 s per table, self-repairs) is measured and acceptable at nightly cadence. A MERGE/append
+fix for the large facts will be needed once Direct Lake is committed to for PROD; that is a framework change
+(Simon's generator).
 
 **Tried and dropped:** the composite model with three Import tables -> pure Direct Lake (08-19); the claim
 that seven partitions were still Import -> a TMDL misread, calculated tables always serialise as
 `mode: import` (08-31).
 
-**Next:**
-1. Deploy `Model_OneLake` DEV -> TEST (pair it), then rebind Sales-TEST's reports.
-2. Keep the ADLS/OneLake data-source deployment rule; it cannot be read back through the API, so verify by
-   the deployed model's source after the first deployment.
-3. The post-rebuild framing race (`DirectLake_TableNotFound`, 08-21) belongs to
-   `2026-08-18-carlras-atomic-ctas-merge`.
+**Next (when unparked):**
+1. Niels decides Direct Lake for PROD.
+2. If yes: deploy `Model_OneLake` DEV -> TEST (pair it), then rebind Sales-TEST's reports.
+3. Design MERGE/append for the large facts before the first PROD deployment (frame-race window).
+4. Keep the ADLS/OneLake data-source deployment rule; verify by the deployed model's source after deploy.
 
 ## Needs from customer
 
@@ -182,3 +186,4 @@ dims. Deploying the model first would fail on framing.
   from the Direct Lake assessment onward belongs to this task. The session tag was switched here on
   08-19 17:25Z, so the earlier hours need reassigning at the review gate.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-21 — check-in: parked (waiting_on: decision). DEV work complete. CTAS-merge content merged in. Production Direct Lake go/no-go undecided.

@@ -9,6 +9,7 @@ blocked_by:
 fno_task: CarlRData-557
 customer_ask: none
 source: session
+activity:
 ---
 
 ## What
@@ -29,7 +30,7 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
 
 ## Progress
 
-**Now (2026-09-14):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
+**Now (2026-09-21):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
 44,526 contacts, every contact parent-bound); the delta push is proven (50 sent, immediate rerun 0);
 token-expiry (`e852ac4`) and percent-encoded parent key (`54ffbda`) fixes are in git and await one sync.
 
@@ -45,9 +46,7 @@ status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-0
 
 ## Needs from customer
 
-- **Carl Ras:** none.
-- **Patrick (Pingala, internal):** confirm the app is ready for a daily delta and whether push failures
-  should land in his `cr_processerrorlog` — status not recorded.
+- None. Patrick (Pingala) confirmed the app is ready for a daily delta (2026-09-21).
 
 
 ## Done

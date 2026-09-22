@@ -9,7 +9,7 @@ blocked_by:
 activity:
 fno_task: none
 customer_ask: open
-waiting_on:
+waiting_on: customer
 resume_on:
 source: todo
 ---
@@ -47,3 +47,4 @@ checked off 2026-07-06). Pairs with the design-doc review in the Tystofte INBOX 
 ## Log
 - 2026-07-07 — created (promoted from TODO 2026-07-06 at the day-start routing pass)
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, fno_task none, customer_ask open); no facts changed. Card: CONTEXT.md converted to the resume card.
+- 2026-09-21 — set waiting_on: customer (ask not yet sent)

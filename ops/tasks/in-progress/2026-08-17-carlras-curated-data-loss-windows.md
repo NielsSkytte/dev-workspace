@@ -6,8 +6,8 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: high
 blocked_by:
-activity:             # Carl Ras: task always, activity never (CLAUDE.md, 2026-08-31); F&O derives it from the task
-fno_task: none        # no Azure DevOps work item yet; Carl Ras bills task-always (CLAUDE.md), so time here cannot be registered until one exists
+activity:
+fno_task: CarlRData-480
 customer_ask: open
 source: direct
 ---
@@ -60,20 +60,17 @@ ownership problem as GEN-002/003/005 (`design/ATOMIC_GENERATOR_CHANGES.md`, owne
 
 ## Progress
 
-**Now (2026-09-07):** `viewfacttransform.GeneralLedgerTransactions` carries a 13-month rolling window, in
-git and live in DEV (verified identical 09-07, 66 of 66 objects). TEST (558,529 rows, current month) and
-PROD (353 rows of July) were last measured 08-31 with the original bug. Items 4 and 5 are closed: no second
-window in the model, and nothing compares Curated to Enriched.
+**Now (2026-09-21):** GL 13-month rolling window in git and live in DEV (verified 09-07). Scope expanded:
+task covers all curated tables with data-window filters, not GL alone. TEST and PROD were last measured with
+the original GL bug (08-31).
 
 **Tried and dropped:** "DEV `Warehouse_Curated` diverges from git" -> falsified 09-07 by direct comparison;
 the 2026-09-03 recommendation to commit from the workspace before syncing was withdrawn with it.
 
 **Next:**
-1. Confirm the intended GL history window with the business; 13 months is ad hoc, not a requirement.
-2. Audit every curated window against a stated need: Sales/Inventory -3 years, Forecasts -5, SalesOrder and
-   SalesToCampaigns -5, four facts with no filter at all.
-3. Let the fix reach TEST and PROD through the normal release, then re-measure.
-4. A Curated-vs-Enriched row check belongs to `2026-08-19-carlras-atomic-dataquality-gate`.
+1. Audit every curated table for its window definition and confirm the intended window per table with the
+   business (Finance / Kasper). GL ask still unsent.
+2. Let fixes reach TEST and PROD through the normal release, then re-measure.
 
 ## Needs from customer
 

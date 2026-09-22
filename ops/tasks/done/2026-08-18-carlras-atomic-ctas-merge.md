@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — Atomic curated drop-create deletes the files Direct Lake reads; move to merge/append
-status: open
+status: done
 created: 2026-08-18
 project: customers/Carl-Ras/datahub
 owner: fabric-back
@@ -114,3 +114,4 @@ the drop-create, and nothing else.
     `2026-08-19-carlras-ax09-budgetledger-curated` to-do 4, not on this task.
 - 2026-08-18 — created from the drop-create test during the Direct Lake trial.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-21 — check-in: done. Merged into 2026-08-18-carlras-directlake-conversion (parked). CTAS content and framing-race measurement carried there; MERGE/append design work deferred with Direct Lake production go/no-go.
