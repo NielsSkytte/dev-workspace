@@ -75,7 +75,9 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
-**Now (2026-09-21):** Carl Ras added TEST's identity (`85553fa2`) to `Fabric_Key_Vault_Users` on
+**Now (2026-09-23):** `PL_MainExecution` runs. The refresh started at rung 2: `PL_Update_SemanticModel` passes `NB_Refresh_SemanticModel_Full` no parameters, so it runs `start_at_rung=0, max_rung=2`, and `should_probe()` skipped rung 1 because the newest `Rung=1` log row is a memory failure less than `probe_every_days` (7) old. Decided to keep `max_rung=2` — the fallback is the point; the 2026-08-20 `max_rung=1` decision is superseded in `CONTEXT_DECISIONS.md`. There is no rung state to reset: forcing rung 1 is a one-off run of the notebook with `start_at_rung=1`, `max_rung=2`. Niels runs it himself later — users are on the TEST model now.
+
+**Then (2026-09-21):** Carl Ras added TEST's identity (`85553fa2`) to `Fabric_Key_Vault_Users` on
 2026-09-21. PROD lakehouse SQL endpoints (MWC token) resolved. TEST's Raw stage was green 09-09 (all four
 streams).
 
@@ -84,9 +86,11 @@ cause is the Fabric-minted notebook token; sempy / semantic-link-labs in the ref
 with a Key Vault-minted token; a fixed wait after the scale -> the scale inside `PL_MainExecution` (08-20).
 
 **Next:**
-1. Verify the 06:30 run completes end to end (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
-2. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (`tools/fabric_release.py`).
-3. `PL_ScaleProcess_SP` kept as manual scale-and-process trigger; retirement not planned.
+1. Run `NB_Refresh_SemanticModel_Full` with `start_at_rung=1`, `max_rung=2` once, off-hours, to take a
+   fresh rung-1 measurement (Niels).
+2. Verify the 06:30 run completes end to end (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
+3. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (`tools/fabric_release.py`).
+4. `PL_ScaleProcess_SP` kept as manual scale-and-process trigger; retirement not planned.
 
 ## Needs from customer
 
@@ -187,3 +191,4 @@ classes will keep recurring until they are closed deliberately.
 - 2026-09-09 — TEST Raw failure root-caused: PL_Ingest_Lakehouse_Raw_Marketo ran on a person's refresh token that Conditional Access rejects (AADSTS530036, since 09-04). Re-stamped to the SPN with fabric_identity.py, ran clean in TEST (a2764ae3, 3 min). Scale Up/Down: CON-WI-Notebook filled by the 10:09 DEV->TEST deployment; next failure moves to getSecret until TEST's workspace identity 85553fa2 joins Fabric_Key_Vault_Users (Carl Ras). New: PROD lakehouse SQL endpoints refuse every query (MWC token); first PROD raw load of AX09 completed 16:59 UTC.
 - 2026-09-09 evening — PL_Execute_Raw ran green in TEST (66b7792f, 24 min, all four streams incl. GTM). Fail GTM added to the chain (8fae15f). PROD: all four raw layers loaded by hand (AX09 50 min, CVR, GTM, Marketo after NB_Table_PrimaryKeyMap_Marketo). Gate for enriched in PROD: lakehouse SQL endpoints refuse every query (MWC token).
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-23 — rung-2 start diagnosed; max_rung=2 kept, reset is a per-run start_at_rung=1
