@@ -234,6 +234,35 @@ Update from git is also **all-or-nothing across the branch**: you cannot update 
 And: commit is offered only to a **new branch** when the workspace is behind. That is normal
 Fabric behaviour, not a fault - stop investigating it.
 
+### 8. The deployment-pipeline build cannot see a lakehouse's columns (`SQL71561` / `SQL71508`)
+
+**Symptom.** A deployment-pipeline deploy of a warehouse fails with `DmsImportDatabaseException
+... SQL Project build failed` and a wall of `SQL71561` ("could refer to any of the following
+objects", naming tables that do not even have that column, e.g. `sqldictionary.ACCOUNTNUM`)
+and/or `SQL71508` ("The model already has an element that has the same name cte.Column").
+Update from git accepts the same SQL, and it runs.
+
+**Cause.** The deploy builds the warehouse as a SQL project without the schema of any lakehouse
+it reads by three-part name. It infers those objects' columns from how the SQL uses them, so:
+- an **unprefixed column with 2+ possible owners in its SELECT** (a lakehouse table can own any
+  name) is ambiguous -> `SQL71561`;
+- **`alias.*` over a lakehouse table** expands to every name ever used with that alias,
+  including derived columns written next to the `*` -> `SQL71508` duplicates.
+Carl Ras, 2026-09-25: with the real Raw schema a local DacFx build reports 0 errors on the same
+SQL. The same SQL passed a TEST->PROD deploy on 2026-09-09 and failed from 2026-09-14 with no
+change to source, target or deployer - why the tolerance changed is not established.
+
+**Rule** (holds for this route and for a later DevOps/`sqlpackage` route):
+1. Prefix every column with its table whenever the SELECT has two or more sources.
+2. No `*` over a lakehouse or other database - name the columns. `SELECT * FROM <cte in the same
+   view>` and the `sp_Create*TableAsSelect` procs are fine.
+
+**Check before push, not at deploy.** Carl Ras `tools/wh_rules.py` (sqlglot, offline, seconds)
+reproduces every AX09 failure of 2026-09-24/25 from the pre-fix commit and finds nothing on the
+fixed tree; it runs in the `Fabric-ETL` pre-push hook. Known gap: the Curated failures GEN-013
+fixed (unprefixed columns next to `[Warehouse_Enriched_AX09].[Identity].[SalesToCampaigns]`)
+are not reproduced - the check treats another warehouse's tables as known from the repo.
+
 ---
 
 ## The data-loss decision rule
