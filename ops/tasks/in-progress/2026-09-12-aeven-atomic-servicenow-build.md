@@ -6,8 +6,8 @@ project: customers/Aeven/AtomicServiceNow
 owner: fabric-back
 priority: normal
 blocked_by:
-activity: 1
-fno_task: 400760
+activity: 400760
+fno_task: none
 customer_ask: open
 waiting_on:
 resume_on:
