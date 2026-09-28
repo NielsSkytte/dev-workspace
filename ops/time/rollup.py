@@ -114,9 +114,11 @@ def load_heartbeats():
          with the hours withheld, and `value.py --stalls` shows what the transcript says
          happened in the gap. The decision is the review gate's.
       2. An interval is split at local midnight (see split_local_days).
+      3. A session given only one prompt is dropped (owner rule 2026-09-28, see
+         lib/heartbeats.without_single_prompt): work that never started is not time.
     """
     out = []
-    for hb in hbrec.records(HEARTBEATS):
+    for hb in hbrec.without_single_prompt(hbrec.records(HEARTBEATS)):
         start, end = hb["start"], hb["end"]
         capped = None
         if end - start > MAX_SPAN:

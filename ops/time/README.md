@@ -208,6 +208,13 @@ immutable record and past days heal on any re-read:
 - **An interval is split at local midnight.** The rollup buckets by date, so a span crossing midnight
   is attributed to each date it covers. Before this it landed wholly on its `ts_start` date --
   2026-08-27 finalized at 22.75 h while 2026-08-28 read as empty.
+- **A session given only one prompt is not time** (owner rule 2026-09-28). One prompt and the session
+  closed is work that never started; from the second prompt on it is work. Counted per session over
+  the whole record as distinct `ts_start` values on heartbeats with length (a double `Stop` shares its
+  start; a point heartbeat from a `!` bash-input or a late notification is not a prompt; an answer
+  after a long wait is). Applied on read in both `rollup.py` and `value.py`
+  (`lib/heartbeats.without_single_prompt`). Finalized September days were corrected by hand on
+  2026-09-28; June-August were already entered in F&O and were left.
 
 Known edge: bouncing between two projects inside 15 min can let one project's stretch span the other's
 detour (slight overcount); and a stretch crossing local midnight is split into two (two buffers). Both

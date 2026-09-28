@@ -268,9 +268,10 @@ def load_heartbeats():
 
     No MAX_SPAN bound and no midnight split, unlike the timesheet: the value model
     scores transcript evidence inside a turn, so a long span is a window to look in,
-    not an hour to bill."""
+    not an hour to bill. A session given only one prompt is dropped, as in the timesheet
+    (lib/heartbeats.without_single_prompt)."""
     out = collections.defaultdict(list)
-    for hb in hbrec.records(HEARTBEATS):
+    for hb in hbrec.without_single_prompt(hbrec.records(HEARTBEATS)):
         out[hb["session"][:8]].append({"start": hb["start"], "end": hb["end"],
                                        "project": hb["project"], "task": hb["task"]})
     return out

@@ -19,7 +19,7 @@ import glob
 import json
 import os
 
-__all__ = ["parse_ts", "records", "dir_for"]
+__all__ = ["parse_ts", "records", "dir_for", "prompts_per_session", "without_single_prompt"]
 
 
 def dir_for(root=None):
@@ -78,3 +78,30 @@ def records(dirpath):
                             "task": o.get("task"),
                             "session": o.get("session") or ""})
     return out
+
+
+def prompts_per_session(recs):
+    """-> {session[:8]: number of times the owner gave the session input}.
+
+    A heartbeat carries no turn id, so a prompt is counted as a distinct `ts_start` on a
+    record with length:
+      - a turn that Stops twice writes the same ts_start twice -> one prompt;
+      - an answer to a question after a long wait starts a new segment -> one more input;
+      - a Stop with no prompt before it (a `!` bash-input, a background notification long
+        after the turn) is written as a point, start == end -> not a prompt."""
+    starts = {}
+    for r in recs:
+        if r["end"] > r["start"]:
+            starts.setdefault(r["session"][:8], set()).add(r["start"])
+    return {s: len(v) for s, v in starts.items()}
+
+
+def without_single_prompt(recs):
+    """The records minus every session the owner gave at most one prompt.
+
+    Owner rule 2026-09-28: a session that got one prompt and was then closed is work that
+    never started, and is not time. Two prompts or more, it is work. Counted over the whole
+    record, so a session resumed on a later day keeps its first day. A session still on its
+    first prompt is therefore not counted until the second one."""
+    n = prompts_per_session(recs)
+    return [r for r in recs if n.get(r["session"][:8], 0) > 1]

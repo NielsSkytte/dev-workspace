@@ -342,5 +342,42 @@ class HeartbeatRecord(unittest.TestCase):
         self.assertEqual((r[0]["end"] - r[0]["start"]).total_seconds() / 3600.0, 9.0)
 
 
+class SinglePromptSessions(unittest.TestCase):
+    """Owner rule 2026-09-28: one prompt and closed is not work; two prompts is."""
+
+    T = datetime.datetime(2026, 9, 28, 8, 0, tzinfo=datetime.timezone.utc)
+
+    def rec(self, session, start_min, end_min):
+        m = datetime.timedelta(minutes=1)
+        return {"start": self.T + start_min * m, "end": self.T + end_min * m,
+                "project": "customers/A/p", "task": None, "session": session}
+
+    def kept(self, recs):
+        return sorted({r["session"] for r in heartbeats.without_single_prompt(recs)})
+
+    def test_one_prompt_is_dropped(self):
+        self.assertEqual(self.kept([self.rec("aaaa1111", 0, 20)]), [])
+
+    def test_two_prompts_are_work(self):
+        self.assertEqual(self.kept([self.rec("aaaa1111", 0, 2), self.rec("aaaa1111", 5, 6)]),
+                         ["aaaa1111"])
+
+    def test_a_turn_that_stops_twice_is_still_one_prompt(self):
+        self.assertEqual(self.kept([self.rec("aaaa1111", 0, 2), self.rec("aaaa1111", 0, 9)]), [])
+
+    def test_a_point_heartbeat_is_not_a_prompt(self):
+        # a `!` bash-input or a late background notification after the only prompt
+        self.assertEqual(self.kept([self.rec("aaaa1111", 0, 20), self.rec("aaaa1111", 90, 90)]),
+                         [])
+
+    def test_a_resumed_session_counts_its_prompts_across_days(self):
+        self.assertEqual(self.kept([self.rec("aaaa1111", 0, 2),
+                                    self.rec("aaaa1111", 24 * 60, 24 * 60 + 3)]), ["aaaa1111"])
+
+    def test_sessions_are_judged_one_by_one(self):
+        recs = [self.rec("aaaa1111", 0, 2), self.rec("bbbb2222", 0, 2), self.rec("bbbb2222", 4, 6)]
+        self.assertEqual(self.kept(recs), ["bbbb2222"])
+
+
 if __name__ == "__main__":
     unittest.main()
