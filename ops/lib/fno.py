@@ -8,7 +8,7 @@ against it. It now lives where the customer lives: the `## Customer` block of
 project `## Identity` block already uses for `fno_code`.
 
     fno_firma: Power                        the internal company that invoices this customer
-    fno_code: 4058-1                        default Proj ID for the customer's projects
+    fno_code: 4058                          default Proj ID for the customer's projects
     fno_activity: 111749                    default Activity
     fno_requires: task                      comma list: task, activity, description
     fno_billable: no                        the F&O line carries `Linjeegenskab: No charge`

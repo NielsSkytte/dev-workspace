@@ -16,7 +16,7 @@ source: session
 
 ## What
 Build the Aeven Fabric POC as a ServiceNow add-on to Pingala Atomic — REST API extract (Zurich)
-to raw, then curated layer and semantic model. Single activity for all project work (F&O 4058-1).
+to raw, then curated layer and semantic model. Single activity for all project work (F&O 4058 / 400760).
 
 ## Progress
 

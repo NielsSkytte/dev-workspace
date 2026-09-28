@@ -46,3 +46,18 @@ Documented, not encoded.
 `CarlRData-555` and `-524` both read as missing until Niels created them mid-session. And only
 `Kategori` auto-fills once Opgave resolves; `Timer` never recomputes from Starttidspunkt /
 Sluttidspunkt and must be typed. Fill date, project-id, task and hours; nothing else.
+
+**Aeven (`4058`, company PDK4 = Pingala Power ApS) — Activity `400760` "ServiceNow POC", no task
+(2026-09-29).** The `4058-1` in `ops/TidsregInfo.xlsx` and the project files does not exist in F&O:
+the line was rejected with *"Værdien '4058-1' i feltet 'Projekt-id' findes ikke"*. `4058` "Aeven A/S"
+is the only Aeven project; on it `400760` resolves and F&O fills Kategori `N`, Beskrivelse
+"ServiceNow POC" and Linjeegenskab `Charge`. Tystofte's `4048-1` is probably wrong the same way —
+F&O has `4048-01` and `4048-02` — unverified.
+
+**Validating task ids before entry, without the grid (2026-09-29).** From any F&O page, the
+browser's own session can read `/data/DevOpsIntegrationV2_PIN?cross-company=true` filtered on
+`CustomTaskId eq '<id>'` (or `WorkItemId`). A task the journal will accept has a row with
+`CustomTaskId` and `CustomProjectId` set. September's close found `CarlRData-557` and `-666` absent
+entirely, and Matas `65904` / `72114` present as DevOps work items with no `CustomTaskId` /
+`CustomProjectId` — not linked to `212-01`, which is the "Opgaven eksisterer ikke" case.
+`/data/Projects?cross-company=true` lists project ids per company the same way.

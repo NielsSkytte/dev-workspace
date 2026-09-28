@@ -263,8 +263,8 @@ An absent field means nothing extra is required. The table below stays the recor
 | **Matas** | `212-01` | Task | Filled automatically by F&O | 2026-08-31 |
 | Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
 | Element Logic | `6001-01` | Activity `600003` | **+ `Beskrivelse` required** — see below | 2026-09-02 |
-| Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet |
-| **Aeven** | `4058-1` (always) | **Activity** — no tasks | **number not recorded yet** | 2026-09-21 |
+| Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet — **unverified: F&O (PDK4) has `4048-01` Datamigration SOW1 and `4048-02` Power Portal SOW1, no `4048-1`** (2026-09-29) |
+| **Aeven** | `4058` (always), company **PDK4** | **Activity** `400760` "ServiceNow POC" — no tasks | F&O fills Kategori `N` and Linjeegenskab `Charge` | 2026-09-29 — `4058-1` does not exist in F&O |
 | Finansforbundet | `4053-01` | Activity `Møder` | from the sheet | sheet |
 
 **Element Logic, in full (2026-09-02):** the lines go in company **PNO1** (Pingala Norge AS), not

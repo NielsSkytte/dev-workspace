@@ -56,6 +56,12 @@ it.
 
 Validate **every** id in the period **before** entering the first line, not as you hit it.
 
+The fast way to do that (2026-09-29): from any F&O page, read
+`/data/DevOpsIntegrationV2_PIN?cross-company=true&$filter=CustomTaskId eq '<id>'` in the browser's
+own session. A usable task has `CustomTaskId` and `CustomProjectId` set; a DevOps work item without
+them is not linked to the project and F&O will refuse it. `/data/Projects?cross-company=true`
+checks a project id the same way -- Aeven's `4058-1` did not exist; the project is `4058` in PDK4.
+
 ---
 
 ## 1. Transport - paste, do not drive the grid

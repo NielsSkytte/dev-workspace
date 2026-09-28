@@ -155,7 +155,7 @@ drift - read the table, every run.
 | Vestforbraending | `222` | Activity `111749` | **Not billable** - F&O books it `No charge` |
 | Element Logic | `6001-01` | Activity `600003` | **Company PNO1**, `Opgave` blank, `Beskrivelse` required |
 | Tystofte | `4048-1` | Activity `datakilder` | |
-| Aeven | `4058-1` | Activity | activity number not recorded yet |
+| Aeven | `4058` (company PDK4) | Activity | `400760` |
 | Finansforbundet | `4053-01` | Activity `Moeder` | |
 
 The three that were **errors**, and so do not change with the table:
