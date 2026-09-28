@@ -14,20 +14,36 @@ decision is written down here, the same kind of register as `not-invoiced.md`:
     |------------|----------------|-----------------------------|------------------------------|------|------------|
     | 2026-09-09 | own/MetaAtomic | customers/Carl-Ras/datahub  | CarlRData-666, CarlRData-555 | ...  | 2026-09-28 |
 
-Applied by dashboard.line_rows only to measurement on `From` that has no line of its own
-that date, spread over the `To` lines named in `Tasks` (every `To` line when `-`) in
-proportion to their registered hours. Hours are conserved.
+Written by dashboard.reassign whenever a line changes project, and by hand for a move made
+in the timesheet file directly. Applied by dashboard.line_rows only to measurement on
+`From` that has no line of its own that date, spread over the `To` lines named in `Tasks`
+(every `To` line when `-`) in proportion to their registered hours. Hours are conserved.
 
 Pure stdlib, ASCII-only.
 """
+import datetime
 import io
 import os
 import re
 
-__all__ = ["path_for", "entries", "for_date"]
+__all__ = ["path_for", "entries", "for_date", "record", "HEADER"]
 
 ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+HEADER = """# Measurement moves
+
+Where a timesheet line was moved to another project at /log, the measurement follows it.
+The heartbeats stay on the project the session ran in; this register says where that
+day's measurement belongs instead. Read by the Time page (dashboard.line_rows via
+lib/measuremoves.py); written by the page's reassign and by hand. Applied only to
+measurement on `From` that has no line of its own that date, spread over the `To` lines
+named in `Tasks` (`-` = every `To` line) by their registered hours. Nothing here changes
+billed hours.
+
+| Date | From | To | Tasks | Note | Recorded |
+|---|---|---|---|---|---|
+"""
 
 
 def path_for(root=None):
@@ -55,3 +71,33 @@ def entries(root=None):
 
 def for_date(date, rows=None, root=None):
     return [e for e in (entries(root) if rows is None else rows) if e["date"] == date]
+
+
+def _clean(v):
+    return re.sub(r"\s+", " ", re.sub(r"[|\n\r]+", " ", v or "")).strip()
+
+
+def record(date, from_project, to_project, tasks=(), note="", root=None):
+    """Append one move. -> (ok, message). A row already saying the same is not repeated."""
+    date = (date or "").strip()
+    src, dst = _clean(from_project), _clean(to_project)
+    if not DATE_RE.match(date):
+        return False, "bad date: %r" % (date,)
+    if not src or not dst or src == dst:
+        return False, "a move needs two different projects"
+    tasks = [_clean(t) for t in tasks if _clean(t)]
+    for e in entries(root):
+        if (e["date"], e["from"], e["to"], e["tasks"]) == (date, src, dst, tasks):
+            return True, "already recorded"
+    path = path_for(root)
+    try:
+        exists = os.path.exists(path)
+        with io.open(path, "a" if exists else "w", encoding="utf-8", newline="") as f:
+            if not exists:
+                f.write(HEADER)
+            f.write("| %s | %s | %s | %s | %s | %s |\n"
+                    % (date, src, dst, ", ".join(tasks) or "-", _clean(note)[:200] or "-",
+                       datetime.date.today().isoformat()))
+    except Exception as exc:
+        return False, str(exc)
+    return True, "measurement on %s follows to %s" % (src, dst)

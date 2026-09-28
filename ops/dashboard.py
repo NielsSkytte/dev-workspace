@@ -1564,6 +1564,11 @@ def reassign(date, row, to_project="", billable=None, note=""):
                 out.append(json.dumps(v, sort_keys=True))
         with open(vpath, "w", encoding="utf-8") as f:
             f.write("\n".join(out) + "\n")
+    # The measurement is rebuilt from the heartbeats, which stay on the project the work
+    # ran in -- so it only follows the hours if the move is written down (lib/measuremoves).
+    if to_project != src_project:
+        measuremoves.record(date, src_project, to_project, [fno_task] if fno_task else [],
+                            "reassigned from the dashboard" + (" -- " + note if note else ""))
     what = ("marked %.2f h on %s not for registration" % (moved, src_project)
             if to_project == src_project
             else "moved %.2f h from %s to %s" % (moved, src_project, to_project))

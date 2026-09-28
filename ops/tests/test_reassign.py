@@ -60,10 +60,13 @@ class Reassign(unittest.TestCase):
         dashboard.ROOT = dashboard.rollup.DEV_WORKSPACE = self.tmp
         dashboard.rollup.TIMESHEET = os.path.join(self.tmp, "timesheet")
         dashboard.VALUE = os.path.join(self.tmp, "value")
+        self._mm = dashboard.measuremoves.ROOT
+        dashboard.measuremoves.ROOT = self.tmp
 
     def tearDown(self):
         dashboard.ROOT, dashboard.rollup.TIMESHEET = self._root, self._ts
         dashboard.rollup.DEV_WORKSPACE, dashboard.VALUE = self._dw, self._vd
+        dashboard.measuremoves.ROOT = self._mm
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def read(self):
@@ -76,6 +79,26 @@ class Reassign(unittest.TestCase):
     def find(self, project, task=None):
         return [r for r in self.rows()
                 if r["project"] == project and (task is None or r["fno_task"] == task)]
+
+    # ---- the measurement follows the hours
+
+    def test_a_move_writes_the_measure_moves_row(self):
+        ok, _ = dashboard.reassign("2026-09-15", LINE, "own/MetaAtomic")
+        self.assertTrue(ok)
+        got = dashboard.measuremoves.entries(self.tmp)
+        self.assertEqual(len(got), 1)
+        self.assertEqual((got[0]["from"], got[0]["to"]),
+                         ("customers/Widget/portal", "own/MetaAtomic"))
+        # the task is a customer dimension; it does not travel onto own/
+        self.assertEqual(got[0]["tasks"], [])
+
+    def test_a_move_inside_the_customer_names_the_task(self):
+        dashboard.reassign("2026-09-15", LINE, "customers/Widget")
+        self.assertEqual(dashboard.measuremoves.entries(self.tmp)[0]["tasks"], ["WID-1"])
+
+    def test_marking_a_line_unbillable_in_place_writes_no_move(self):
+        dashboard.reassign("2026-09-15", LINE, "", billable=False)
+        self.assertEqual(dashboard.measuremoves.entries(self.tmp), [])
 
     # ---- moving off the invoice
 
