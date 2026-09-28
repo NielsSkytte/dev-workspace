@@ -147,7 +147,11 @@ function clipWeek(w, allowed, today) {
    measured beside what will be typed without the two being able to disagree. */
 function scaleRows(rows, scale) {
   if (!scale) return rows;
-  const dk = r => `${r.project}|${r.activity || ''}|${r.fno_task || ''}`;
+  /* The audit lines are keyed on the dimensions AS THE TIMESHEET HOLDS THEM. A row's shown
+     activity can come from the customer sheet instead (Aeven 400760, Element Logic 600003),
+     and keying on that left the row with no measurement and no value -- entry fell to work. */
+  const dk = r => `${r.project}|${r.ws_activity !== undefined ? (r.ws_activity || '')
+    : (r.activity || '')}|${r.ws_fno_task !== undefined ? (r.ws_fno_task || '') : (r.fno_task || '')}`;
   const out = rows.map(r => Object.assign({}, r, { work: r.hours }));
   const groups = {};
   out.forEach(r => { (groups[dk(r)] || (groups[dk(r)] = [])).push(r); });
@@ -1163,17 +1167,22 @@ function MonthCheck({ D, per, back }) {
   const rows = scaleRows((D.entry.rows || []).filter(r => inR.has(r.date)),
                          scaleFrom(linesInMonth(D, per.key)));
   const by = {};
+  const slot = k => by[k] || (by[k] = { cust: k, measured: 0, work: 0, entry: 0, reclaim: 0 });
   let unmeasured = 0;
+  (D.entry.reclaim || []).filter(x => inR.has(x.date)).forEach(x => {
+    slot(x.project.split('/')[1] || x.project).reclaim += x.hours;
+  });
   rows.filter(r => r.firma !== 'INTERNAL').forEach(r => {
-    const c = by[custOf(r)] || (by[custOf(r)] = { cust: custOf(r), measured: 0, work: 0, entry: 0 });
+    const c = slot(custOf(r));
     if (r.measured === undefined) unmeasured += r.hours;
     c.measured += r.measured || 0;
     c.work += r.work !== undefined ? r.work : r.hours;
     c.entry += r.hours;
   });
-  const list = Object.values(by).sort((a, b) => b.entry - a.entry);
-  const tot = list.reduce((t, c) => ({ measured: t.measured + c.measured,
-    work: t.work + c.work, entry: t.entry + c.entry }), { measured: 0, work: 0, entry: 0 });
+  const list = Object.values(by).filter(c => c.entry).sort((a, b) => b.entry - a.entry);
+  const tot = list.reduce((t, c) => ({ measured: t.measured + c.measured, work: t.work + c.work,
+    entry: t.entry + c.entry, reclaim: t.reclaim + c.reclaim }),
+    { measured: 0, work: 0, entry: 0, reclaim: 0 });
   const r2 = v => Math.round(v * 100) / 100;
   const line = (name, c, strong) => html`
     <tr key=${name} style=${strong ? 'font-weight:600' : ''}>
@@ -1181,7 +1190,8 @@ function MonthCheck({ D, per, back }) {
       <td class="r">${hrs(r2(c.measured))}</td>
       <td class="r">${hrs(r2(c.work))}</td>
       <td class="r">${hrs(r2(c.entry))}</td>
-      <td class="r">${auX(c.entry, c.measured)}</td>
+      <td class="r">${c.reclaim ? hrs(r2(c.reclaim)) : html`<span class="muted">–</span>`}</td>
+      <td class="r">${auX(c.entry - c.reclaim, c.measured)}</td>
     </tr>`;
   return html`
     <div class="card ausec" style="margin-bottom:14px">
@@ -1190,11 +1200,13 @@ function MonthCheck({ D, per, back }) {
         Measured: heartbeat time, 15+5 rule.<br/>
         Work: the timesheet.<br/>
         F&O entry: what the entry blocks put into F&O.<br/>
-        Multiplier: F&O entry ÷ measured.</p>
+        Reclaim: hours from an earlier month placed on these days (ops/time/reclaim.md); measured then, not now.<br/>
+        Multiplier: (F&O entry − reclaim) ÷ measured.</p>
       ${!list.length ? html`<${Empty}>No billable time in ${per.label}.<//>` : html`
         <div style="overflow-x:auto"><table class="autable">
           <thead><tr><th>Customer</th><th class="r">Measured</th><th class="r">Work</th>
-            <th class="r">F&O entry</th><th class="r">Multiplier</th></tr></thead>
+            <th class="r">F&O entry</th><th class="r">Reclaim</th>
+            <th class="r">Multiplier</th></tr></thead>
           <tbody>
             ${list.map(c => line(c.cust, c))}
             ${line('Total', tot, true)}

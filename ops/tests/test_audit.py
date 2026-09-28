@@ -154,6 +154,23 @@ class NoRegisteredLine(unittest.TestCase):
         self.assertEqual(mine["measured"], 0.0)
         self.assertEqual(mine["weighted"], 0.0)
 
+    def test_a_move_inside_one_customer_takes_the_evidence_with_it(self):
+        # 2026-09-12 Aeven: the line was moved ServiceNowPOC -> AtomicServiceNow at /log.
+        out = rows([sheet_row("customers/Aeven/AtomicServiceNow", activity="1", hours=2.0)],
+                   [sheet_row("customers/Aeven/ServiceNowPOC", task="none", hours=2.5)],
+                   [value("customers/Aeven/ServiceNowPOC", task="none", weighted=6.0)])
+        self.assertEqual(len(out), 1, [r["project"] for r in out])
+        self.assertEqual(out[0]["project"], "customers/Aeven/AtomicServiceNow")
+        self.assertEqual(out[0]["measured"], 2.5)
+        self.assertEqual(out[0]["weighted"], 6.0)
+        self.assertTrue(out[0]["shared"])
+
+    def test_across_customers_nothing_moves(self):
+        out = rows([sheet_row("customers/A/p", task="X", hours=2.0)],
+                   [sheet_row("customers/B/q", task="Y", hours=1.0)], [])
+        self.assertEqual(by_task(out)["X"]["measured"], 0.0)
+        self.assertEqual(by_task(out)["Y"]["measured"], 1.0)
+
     def test_several_stale_keys_give_one_line_not_several(self):
         out = rows([], [sheet_row("customers/A/p", task="X", hours=2.0)],
                    [value("customers/A/p", task="Y", weighted=12.0)])

@@ -370,6 +370,30 @@ def line_rows(date, sheet, measured_rows, values):
             slots[kk]["shared"] = True
         agg_by.pop(k)
 
+    # A project with no line that date whose CUSTOMER has one was moved between that
+    # customer's projects at /log (2026-09-12 Aeven: ServiceNowPOC -> AtomicServiceNow; a
+    # datahub line moved to the Carl Ras node). The measurement follows the move, spread
+    # the same way. Across customers nothing is inferred.
+    def cust(k):
+        p = k.split("|", 1)[0].split("/")
+        return "/".join(p[:2]) if p[0] == "customers" and len(p) > 1 else None
+    by_cust = {}
+    for k in slots:
+        if cust(k):
+            by_cust.setdefault(cust(k), []).append(k)
+    for src in (meas_by, agg_by):
+        for k in list(src):
+            keys = by_cust.get(cust(k)) if cust(k) else None
+            if not keys:
+                continue
+            for kk, f in _weights(slots, keys):
+                if src is meas_by:
+                    slots[kk]["meas"] = round(slots[kk]["meas"] + src[k] * f, 2)
+                else:
+                    _merge_agg(slots[kk]["agg"], _scale_agg(src[k], f))
+                slots[kk]["shared"] = True
+            src.pop(k)
+
     # Whatever is still homeless is work measured on a project with no registered line that
     # date -- reassigned at /log, usually. There is no timesheet dimension to preserve, so
     # one line per project says it once instead of once per stale key.
@@ -923,7 +947,28 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
         "unmapped": sorted(({"customer": k, "hours": v} for k, v in unmapped.items()),
                            key=lambda x: -x["hours"]),
         "no_project": sorted(c["kunde"] for c in comp if c["key"] not in ws_keys),
+        "reclaim": reclaim_placed(),
     }
+
+
+def reclaim_placed():
+    """Reclaimed hours placed on a later day (ops/time/reclaim.md, consumption log) ->
+    [{date, project, hours}]. Registered on that date, not worked on it, so a check of
+    what was billed against what was measured has to hold them apart."""
+    out = []
+    try:
+        with open(os.path.join(ROOT, "ops", "time", "reclaim.md"), encoding="utf-8") as f:
+            text = f.read()
+    except Exception:
+        return out
+    for line in text.split("Consumption log:", 1)[-1].splitlines():
+        c = [x.strip() for x in line.strip().strip("|").split("|")]
+        if len(c) >= 3 and re.match(r"^\d{4}-\d{2}-\d{2}$", c[0]):
+            try:
+                out.append({"date": c[0], "project": c[1], "hours": float(c[2])})
+            except ValueError:
+                pass
+    return out
 
 
 def _turns_today(today):
