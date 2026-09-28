@@ -1366,3 +1366,30 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Tasks:** none created or moved.
 - **Next:** Answer the overlap question; fix the `AGENTS.md` > Time tracking bullet to ADR-005 v2 (measured by default, top-up deliberate).
 - **Time:** rollup finalized 2026-09-22 at 3.75 h (Carl-Ras 1.00 h - 0.50 h untagged, 0.50 h on CarlRData-555; Matas 1.25 h on 111953/Task-72114; Dev 1.50 h internal). W38 stays 21.50 h of 37.50 (57%), W39 14.00 h of 22.50 so far, month 120.00 h of 120.00 (100%), no topup. `value.py --stalls`: no new findings. Value derived for 09-22 (Carl-Ras 0.03 keyboard / 1.00 weighted). Lines written for 09-22: all four described. Sentinel on today's 5 records: 2 flags, both the same capture defect (a `/switch-task` body and a raw task-notification payload stored as the User field); neither distilled. Distilled: `eval-20260923-time-skill-scope-was-entry-only`.
+
+### customers/Carl-Ras/datahub - pipelines re-stamped to the SPN; CVR band traced (entry written 2026-09-28 from the daily stream)
+- **Did:** `PL_ScaleProcess_SP` and `PL_MainExecution` failed on `AADSTS530036`: a pipeline runs as its default identity (the last modifier), and a new Conditional Access policy refuses that user's stored token. Re-stamped all DEV pipelines and schedule owners to the SPN (29 items, all ok). Traced the report's raw `ANTAL_...` CVR employee-band codes: the enriched CVR view has passed the CVR code through since 2026-05-07; readable labels were never in git and their earlier existence is not proven.
+- **Decided:** `max_rung=2` kept; forcing rung 1 is a one-off `start_at_rung=1` run (`CONTEXT_DECISIONS.md`, `3d3eb6e`).
+- **Tasks:** `2026-08-11-carlras-operation-hardening` Progress rewritten (`c086159`).
+
+## 2026-09-24
+
+### customers/Carl-Ras/datahub - CVR band decoded; TEST deploy failures traced to table and SQL drift (entry written 2026-09-28 from the daily stream)
+- **Did:** GEN-012: CVR band decoded to `Antal ...` labels in Enriched `viewtransform.CentralCompanyRegister`, blank = NULL; pushed (`a7c34e0`), DEV transforms and the `Model` Customer refresh green. Fixed four unqualified column references in Curated (`3cfc3a1`). Found 4 of 65 CTAS tables whose `.sql` drifted from their view. MetaAtomic: rule `consistency.sort_order_single` (`8cc1224`), build 0.7.0, not deployed.
+- **Decided (owner):** blank band is NULL, not `Unknown`; the decode belongs in Enriched.
+- **Tasks:** none moved; MetaAtomic time split out at the review gate (below).
+
+## 2026-09-25
+
+### customers/Carl-Ras/datahub - Fabric-ETL aligned DEV -> TEST -> PROD (entry written 2026-09-28 from the daily stream)
+- **Did:** Curated table files matched to their views (`3d3c70d`, type fix `f0ca063`), Curated deployed to TEST. AX09 deploy-build rejects fixed (GEN-014 `ed158d6`, GEN-015 `8ed2333`); `tools/wh_rules.py` in pre-push; `fabric-warehouse-git` failure 8 (`cccfde6`). AX09 to TEST 15:05 UTC; TEST chain `9b63f26c` green. TEST -> PROD in full by Niels (empty GTM/Marketo shells deleted after `TargetArtifactNameConflict`; Curated redeployed after CVR); PROD seed ran, identities on the SPN.
+- **Decided:** table file must match its CTAS view in the same commit; Marketo (and GTM after Part 3) never committed from the workspace (datahub `CLAUDE.md`, `d52c6dc`; 4 rows in `CONTEXT_DECISIONS.md`).
+- **Tasks:** operation-hardening Progress rewritten; GTM ingest task Log line.
+- **Next:** create `CON_Notebook_WI_PROD` and the WI SQL connection to PROD `Warehouse_Enriched_Marketo`, then `VL_ConnectionId` Prod.json; commit `VL_DatastoreId` Prod.json. PROD schedule is ON - first PROD run Mon 2026-09-28 06:30.
+
+## 2026-09-28
+
+### Dev - catch-up /log for 2026-09-23..25
+- **Did:** Finalized 09-23, 09-24, 09-25; wrote session-log entries for the three days from the daily stream (no /log was run for them). Fixed `fno_task: CarRData-555` -> `CarlRData-555` on 4 Carl Ras tasks and merged the 09-23 split line. Split 0.50 h MetaAtomic work out of 09-24 CarlRData-555 (per that task's Log line). Line descriptions written for all 7 lines.
+- **Time:** 09-23 2.00 h, 09-24 2.50 h (2.00 billable + 0.50 MetaAtomic), 09-25 4.50 h. W39 22.00 h of 37.50 (59%); month 128.00 of 142.50 (90%); no topup. `value.py --stalls`: no new findings. Value derived for 09-23, 09-24 (Carl-Ras 0.79 keyboard / 4.75 weighted). Backup exit 1 (copied). Sentinel: 12 flags (all truncate-before-distil: command/skill bodies, task-notifications and `pasted_content` tags in the User field) + 8 reversal caveats; distilled final states only. Distilled: `fabric-pipeline-runs-as-default-identity`, `fabric-deploy-build-cannot-see-lakehouse-columns`, `carlras-warehouse-ddl-matches-ctas-view`, `carlras-prod-fabric-etl-deployed-20260925`, `eval-20260925-carlras-deploy-reversals`.
+- **Next:** check the first PROD `PL_MainExecution` run (today 06:30); the three untagged 0.50 h Carl Ras opening lines (09-23..25) cannot be entered in F&O as they stand.

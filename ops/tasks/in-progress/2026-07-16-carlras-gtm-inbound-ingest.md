@@ -110,6 +110,11 @@ notebook. Note `Warehouse_Enriched_GTM` already carries a hand-written
 through `notebookutils.data.connect_to_artifact` is undocumented and unproven
 (`design/MARKETO_INGEST_DESIGN.md` §5, open item 2).
 
+**Git after Part 3** (decided 2026-09-25): once the views are generated, `Warehouse_Enriched_GTM`
+is never committed from the workspace, same as Marketo, and the hand-written `Events.sql` is
+removed from git. Until then, the first CTAS of `enriched.Events` must be followed by a
+`Tables/Events.sql` in git that matches the view. See the datahub `CLAUDE.md` Conventions.
+
 ## Log
 - 2026-09-09 — **PROD deploy unblocked.** `Warehouse_Enriched_GTM` failed to deploy to PROD
   (`DmsImportDatabaseException`, `Invalid object name 'Lakehouse_Raw_GTM.dbo.events'`): the
@@ -150,3 +155,4 @@ through `notebookutils.data.connect_to_artifact` is undocumented and unproven
   it, then generate its views. Both were handoffs from the Marketo ingest build and neither has
   been started.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-09-25 — decided: after Part 3, `Warehouse_Enriched_GTM` is never committed from the workspace (same as Marketo); until then `enriched.Events` needs a matching `Tables/Events.sql`

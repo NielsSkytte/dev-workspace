@@ -75,22 +75,21 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
-**Now (2026-09-23):** `PL_MainExecution` runs. The refresh started at rung 2: `PL_Update_SemanticModel` passes `NB_Refresh_SemanticModel_Full` no parameters, so it runs `start_at_rung=0, max_rung=2`, and `should_probe()` skipped rung 1 because the newest `Rung=1` log row is a memory failure less than `probe_every_days` (7) old. Decided to keep `max_rung=2` — the fallback is the point; the 2026-08-20 `max_rung=1` decision is superseded in `CONTEXT_DECISIONS.md`. There is no rung state to reset: forcing rung 1 is a one-off run of the notebook with `start_at_rung=1`, `max_rung=2`. Niels runs it himself later — users are on the TEST model now.
+**Now (2026-09-25):** DEV->TEST: `Warehouse_Curated` deployed 09-25 07:14 after its table files were matched to the CTAS views (`3d3c70d`, `f0ca063`); DEV refilled by `PL_Transform_Curated`, TEST tables full. `Warehouse_Enriched_AX09` failed to TEST 09-24 11:21, 09-25 08:40 and 09:44 (`SQL71561`/`SQL71508`): the deploy build cannot see `Lakehouse_Raw_AX09`'s columns. Fixed by GEN-014 (7 prefixes, `ed158d6`) + GEN-015 (4 Raw `*` -> named lists, `8ed2333`); deployed to TEST 09-25 15:05 UTC, succeeded. TEST's Curated/AX09/CVR/GTM views now equal git view-for-view (32/60/1/1). `tools/wh_rules.py` now runs in pre-push. The error class changed between 09-09 (import-time `Invalid object name`) and 09-14 (`SQL Project build failed` SQL715xx); inference: Fabric added a SQL-project build before import in that window.
+**TEST->PROD (measured 09-25):** PROD last took a full deploy 09-09 10:33 (50 items ok; `Warehouse_Enriched_GTM`/`_Marketo` failed `Invalid object name` on the PROD raw tables, not loaded yet then). 09-14 Curated->PROD failed with the SQL71501 since fixed. PROD warehouses: Curated 0 tables, AX09 3, CVR 0, GTM/Marketo empty shells. Not yet checked (read blocked by auto mode): PROD raw tables `events`/`leads`/`activities`, PROD value sets, PROD workspace identity.
 
-**Then (2026-09-21):** Carl Ras added TEST's identity (`85553fa2`) to `Fabric_Key_Vault_Users` on
-2026-09-21. PROD lakehouse SQL endpoints (MWC token) resolved. TEST's Raw stage was green 09-09 (all four
-streams).
+**Then (2026-09-23):** refresh starts at rung 2; `max_rung=2` kept; forcing rung 1 is a one-off notebook run with `start_at_rung=1`.
 
 **Tried and dropped:** model ownership (`TakeOver`) as the cause of the refresh 403 -> disproved 08-11, the
 cause is the Fabric-minted notebook token; sempy / semantic-link-labs in the refresh -> REST enhanced refresh
-with a Key Vault-minted token; a fixed wait after the scale -> the scale inside `PL_MainExecution` (08-20).
+with a Key Vault-minted token; a fixed wait after the scale -> the scale inside `PL_MainExecution` (08-20); GEN-014 CTE aliasing `cit`/`sl` (reverted `c99c477`, not the fix); Raw SQL endpoint metadata refresh (all 90 tables `NotRun`, already in sync, 09-25); DacFx 2.3.0 as the trigger (same local results as 2.2.0).
 
 **Next:**
-1. Run `NB_Refresh_SemanticModel_Full` with `start_at_rung=1`, `max_rung=2` once, off-hours, to take a
-   fresh rung-1 measurement (Niels).
-2. Verify the 06:30 run completes end to end (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
-3. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (`tools/fabric_release.py`).
-4. `PL_ScaleProcess_SP` kept as manual scale-and-process trigger; retirement not planned.
+1. Run the AX09 enriched transform in TEST and check row counts (deploy done 09-25 15:05). Measured 09-25: DEV=TEST for all 47 notebooks/pipelines/libraries (ids aside; only the schedule flag differs) and all warehouse views; TEST tables still from the 09-24 04:30 run (e.g. `outbound.Dataverse_Contact` 5000 = the old TOP). No TEST scheduled run on 09-25 although the Mon-Fri schedule is enabled; cause not established. `enriched.DeliveryAddress` is empty in DEV and TEST: table file in git, no view builds it.
+1b. TEST->PROD done 09-25 (portal, Niels): all Fabric-ETL items incl. 5 warehouses (old GTM/Marketo shells deleted; Curated needed a second deploy - it imports before CVR creates `enriched.CentralCompanyRegister`, so deploy Enriched first, Curated second). TEST run 9b63f26c green 15:34-17:08 UTC. PROD seed ran (GetEnums fails: Pingala's own Key Vault/D365, no stage has an enums table), NB_Metadata_Marketo ran, identities re-stamped to the SPN. PROD `PL_MainExecution` schedule is ON (came with the deploy). Open: PROD connections `CON_Notebook_WI_PROD` + a WI SQL connection to PROD `Warehouse_Enriched_Marketo` (creation blocked for Claude by auto mode - Niels), then `VL_ConnectionId` Prod.json; `VL_DatastoreId` Prod.json fixed locally (CVR pointed at Curated's id), not committed.
+2. Run `NB_Refresh_SemanticModel_Full` once with `start_at_rung=1`, `max_rung=2`, off-hours (Niels).
+3. Verify the 06:30 run completes end to end (`CapacitySku = F32` rows in `Lakehouse_Util.SemanticModelRefreshLog`).
+4. Re-stamp TEST's `PL_MainExecution` schedule to the SPN (`tools/fabric_release.py`).
 
 ## Needs from customer
 
@@ -194,3 +193,4 @@ classes will keep recurring until they are closed deliberately.
 - 2026-09-23 — rung-2 start diagnosed; max_rung=2 kept, reset is a per-run start_at_rung=1
 - 2026-09-24 - CVR employee band. Report "Omsaetning pr. stoerrelse" shows the raw codes (ANTAL_20_49) and two (Tom) bars. Cause: the enriched CVR view has passed employees_interval through unchanged since 500acb5 (2026-05-07); a decode existed only as DEV drift on 08-12 and was erased when the view was rebuilt from git. The two (Tom) bars are data, not a visual setting: NULL (142,630 customers with no CVR row) and '' (11,192 matched with a blank band) both render as (Tom). Fixed in Fabric-ETL d659a2e/3db439b [GEN-012] - decode to Antal-prefixed band labels in viewtransform.CentralCompanyRegister, both empties collapse to one Unknown. Committed, NOT pushed; needs push + Update from git (Niels).
 - 2026-09-24 - time to split at the review gate. This session is tagged here, but part of it was work in own/MetaAtomic (the consistency.sort_order_single DQ rule, commit 8cc1224) - an internal product change, not Carl Ras delivery. The CVR band fix and the DEV transform/model runs belong here; the MetaAtomic rule does not. Split it out of this task's line when 2026-09-24 is rolled up.
+- 2026-09-25 — Curated table DDL matched to its views, Curated deployed to TEST; Enriched_AX09 deploy-build rejects fixed (GEN-014/015, `8ed2333`), wh_rules.py in pre-push; AX09 deploy pending
