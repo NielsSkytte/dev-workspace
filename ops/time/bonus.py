@@ -54,7 +54,7 @@ BASIS = 155.5     # "Timer per maaned" -- PER MONTH, read it off the F&O page. S
 # "Timer per maaned" per month, as read off the F&O utilisation page. A month not listed has
 # no known basis: read it in F&O and add it here -- never compute or assume one.
 BASES = {"2026-05": 140.00, "2026-06": 163.00, "2026-07": 170.00, "2026-08": 155.50,
-         "2026-09": 163.00}
+         "2026-09": 163.00}   # 2026-09 confirmed in F&O by the owner, 2026-09-28
 RATE = 1200.0     # "gennemsnitsats" -- average hourly rate feeding Grundlag
 
 THIN = 2.0        # h. Below this above a boundary, the tier is one correction away from dropping.
