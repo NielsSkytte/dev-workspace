@@ -169,6 +169,8 @@ Constants: idle timeout **15 min**, tail buffer **5 min**, one-heartbeat bound *
 **0.25 h**, floor **0.5 h**. Bucketing is by **local** date; heartbeats are stored in UTC, and an
 interval crossing local midnight is **split** and attributed to both dates. Before that split,
 2026-08-27 finalized at 22.75 h while 2026-08-28 read as empty.
+A session the owner gave only **one prompt** is dropped on read - work never started is not time;
+from the second prompt it counts (`lib/heartbeats.without_single_prompt`, README section 3).
 
 Known edges, both small: bouncing between two projects inside 15 min lets one stretch span the
 other's detour, and a stretch crossing midnight pays two tail buffers. The daily review gate is
