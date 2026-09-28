@@ -43,6 +43,10 @@ reduced basis would read ~118 h, but F&O shows the full 155.50. A vacation week 
 harder, and that should be known going in, not at the close.** Not confirmed with HR whether the
 bonus rule adjusts separately — the page does not.
 
+**All three companies count.** "Fakturerbare timer" on the PING utilisation page includes the
+PNO1 lines (August: PING 138.75 + PNO1 6.25 = 145.00 h) and the Power lines (Aeven, Tystofte,
+Finansforbundet) - confirmed in F&O by the owner 2026-09-29.
+
 **Two percentages on that page, and only one pays.** *Nytte til stede* uses **Normtimer** (141.00 in
 August), which **is** absence-adjusted, giving a flattering 102.84%. The bonus does not use it. The
 workspace's own coverage check behaves like Normtimer — `absence.md` removes vacation from its

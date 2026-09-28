@@ -24,6 +24,9 @@ THE BASIS IS NOT A CONSTANT. faktureringsprocent = "Fakturerbare timer" / "Timer
 Observed 2026: May 140.00, Jun 163.00, Jul 170.00, Aug 155.50, Sep 163.00. A wrong basis moves the
 answer by a whole tier -- assuming a flat 160 put August at 90.6% when it is 93.25%.
 
+ALL THREE COMPANIES COUNT. "Fakturerbare timer" includes the PING, PNO1 and Power lines -- PNO1
+seen in the August close, Power confirmed in F&O by the owner 2026-09-29.
+
 FERIE DOES NOT LOWER THE TARGET. August 2026 has 21 arbejdsdage and Niels took a week off; had the
 basis been reduced it would read ~118 h, but F&O shows the full 155.50. So a vacation week costs
 about 5 x 7.4 = 37 h of billing capacity while the bonus target stays put -- a month with holiday in
