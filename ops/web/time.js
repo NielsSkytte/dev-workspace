@@ -1162,41 +1162,66 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate, check
    The whole month's F&O entry per customer beside what was measured, for checking the
    bill in overall terms before it is typed. Built with the same scaleFrom / scaleRows as
    the whole-month entry blocks, so its totals are theirs -- whichever week chip is lit. */
-function MonthCheck({ D, per, back }) {
+function monthFigures(D, per, back) {
   const inR = new Set(((D.entry || {}).ranges || {})['month' + back] || []);
   const rows = scaleRows((D.entry.rows || []).filter(r => inR.has(r.date)),
-                         scaleFrom(linesInMonth(D, per.key)));
+                         scaleFrom(linesInMonth(D, per.key)))
+    .filter(r => r.firma !== 'INTERNAL');
+  const blank = () => ({ measured: 0, work: 0, entry: 0, reclaim: 0 });
+  const add = (t, c) => { ['measured', 'work', 'entry', 'reclaim'].forEach(f => { t[f] += c[f] || 0; }); };
+  /* The F&O line is what gets typed: Proj ID + activity + task, as the row shows them. */
+  const dimOf = r => [r.proj_id || '', r.activity || '', r.fno_task || ''].join('|');
   const by = {};
-  const slot = k => by[k] || (by[k] = { cust: k, measured: 0, work: 0, entry: 0, reclaim: 0 });
+  const cust = k => by[k] || (by[k] = Object.assign({ cust: k, dims: {} }, blank()));
+  const dim = (c, r) => c.dims[dimOf(r)] || (c.dims[dimOf(r)] = Object.assign(
+    { proj_id: r.proj_id, activity: r.activity, fno_task: r.fno_task }, blank()));
   let unmeasured = 0;
-  (D.entry.reclaim || []).filter(x => inR.has(x.date)).forEach(x => {
-    slot(x.project.split('/')[1] || x.project).reclaim += x.hours;
-  });
-  rows.filter(r => r.firma !== 'INTERNAL').forEach(r => {
-    const c = slot(custOf(r));
+  rows.forEach(r => {
+    const c = cust(custOf(r)), d = dim(c, r);
     if (r.measured === undefined) unmeasured += r.hours;
-    c.measured += r.measured || 0;
-    c.work += r.work !== undefined ? r.work : r.hours;
-    c.entry += r.hours;
+    const v = { measured: r.measured || 0, work: r.work !== undefined ? r.work : r.hours,
+                entry: r.hours };
+    add(c, v); add(d, v);
+  });
+  (D.entry.reclaim || []).filter(x => inR.has(x.date)).forEach(x => {
+    const c = cust(x.project.split('/')[1] || x.project);
+    c.reclaim += x.hours;
+    const on = rows.find(r => r.date === x.date && r.project === x.project);
+    if (on) dim(c, on).reclaim += x.hours;
   });
   const list = Object.values(by).filter(c => c.entry).sort((a, b) => b.entry - a.entry);
-  const tot = list.reduce((t, c) => ({ measured: t.measured + c.measured, work: t.work + c.work,
-    entry: t.entry + c.entry, reclaim: t.reclaim + c.reclaim }),
-    { measured: 0, work: 0, entry: 0, reclaim: 0 });
+  list.forEach(c => { c.lines = Object.values(c.dims).sort((a, b) => b.entry - a.entry); });
+  const tot = blank();
+  list.forEach(c => add(tot, c));
+  const basis = ((D.entry.bases || {})[per.key]) || null;
+  return { list, tot, unmeasured, basis, pct: basis ? tot.entry / basis : null };
+}
+
+/* faktureringsprocent against the bonus tiers (ops/time/bonus.py): the tier reached and the
+   hours to the next boundary that pays more. */
+function tierOf(D, pct, basis, entry) {
+  const tiers = (D.entry.tiers || []).slice().sort((a, b) => a[0] - b[0]);
+  const hit = tiers.filter(t => t[0] <= pct + 1e-9).pop();
+  const bonus = hit ? hit[1] : 0;
+  const next = tiers.find(t => t[0] > pct + 1e-9 && t[1] > bonus);
+  return { tier: hit ? hit[0] : null, bonus,
+           next: next ? next[0] : null, need: next ? next[0] * basis - entry : null };
+}
+
+function MonthCheck({ D, per, F }) {
+  const { list, tot, unmeasured } = F;
   const r2 = v => Math.round(v * 100) / 100;
-  const line = (name, c, strong) => html`
-    <tr key=${name} style=${strong ? 'font-weight:600' : ''}>
-      <td>${name}</td>
+  const cells = c => html`
       <td class="r">${hrs(r2(c.measured))}</td>
       <td class="r">${hrs(r2(c.work))}</td>
       <td class="r">${hrs(r2(c.entry))}</td>
       <td class="r">${c.reclaim ? hrs(r2(c.reclaim)) : html`<span class="muted">–</span>`}</td>
-      <td class="r">${auX(c.entry - c.reclaim, c.measured)}</td>
-    </tr>`;
+      <td class="r">${auX(c.entry - c.reclaim, c.measured)}</td>`;
+  const dimName = d => [d.proj_id, d.activity, d.fno_task].filter(Boolean).join(' · ') || '–';
   return html`
     <div class="card ausec" style="margin-bottom:14px">
       <h3>Month per customer — ${per.label}</h3>
-      <p class="sub">Billable lines only.<br/>
+      <p class="sub">Billable lines only. Indented rows: one per F&O line (Proj ID · activity · task).<br/>
         Measured: heartbeat time, 15+5 rule.<br/>
         Work: the timesheet.<br/>
         F&O entry: what the entry blocks put into F&O.<br/>
@@ -1204,12 +1229,18 @@ function MonthCheck({ D, per, back }) {
         Multiplier: (F&O entry − reclaim) ÷ measured.</p>
       ${!list.length ? html`<${Empty}>No billable time in ${per.label}.<//>` : html`
         <div style="overflow-x:auto"><table class="autable">
-          <thead><tr><th>Customer</th><th class="r">Measured</th><th class="r">Work</th>
+          <thead><tr><th>Customer / F&O line</th><th class="r">Measured</th><th class="r">Work</th>
             <th class="r">F&O entry</th><th class="r">Reclaim</th>
             <th class="r">Multiplier</th></tr></thead>
           <tbody>
-            ${list.map(c => line(c.cust, c))}
-            ${line('Total', tot, true)}
+            ${list.map(c => html`
+              <${Fragment} key=${c.cust}>
+                <tr style="font-weight:600"><td>${c.cust}</td>${cells(c)}</tr>
+                ${c.lines.map(d => html`
+                  <tr key=${dimName(d)} class="muted"><td style="padding-left:18px">${dimName(d)}</td>
+                    ${cells(d)}</tr>`)}
+              <//>`)}
+            <tr style="font-weight:700"><td>Total</td>${cells(tot)}</tr>
           </tbody>
         </table></div>`}
       ${unmeasured ? html`<p class="sub" style="margin:8px 0 0">No measurement:
@@ -1770,6 +1801,7 @@ function App() {
   const tipRef = useRef(null);
 
   const per = useMemo(() => (D ? periodDays(D.today, back) : null), [D, back]);
+  const F = useMemo(() => (D ? monthFigures(D, per, back) : null), [D, per, back]);
 
   /* The weeks the month filter leaves standing. F&O closes a month at a time, so entering
      hours is always "this month" — or "last month" when you are late. */
@@ -1899,8 +1931,18 @@ function App() {
     <//>`;
 
   const shortNow = (gateRows || rows).filter(r => (r.missing || []).length).length;
+  const pctTile = () => {
+    if (!F.basis) return html`<${Tile} key="p" label="Billable %" value="?" hot=${true}
+      foot=${`no basis for ${per.label} -- read Timer per maaned in F&O`}/>`;
+    const t = tierOf(D, F.pct, F.basis, F.tot.entry);
+    return html`<${Tile} key="p" label="Billable %" value=${Math.round(F.pct * 1000) / 10 + '%'}
+      foot=${`of ${hrs(F.basis)} h · tier ${t.tier === null ? 'none' : Math.round(t.tier * 100) + '%'}`
+        + (t.next === null ? ' · top' : ` · ${hrs(Math.round(t.need * 100) / 100)} h to ${Math.round(t.next * 100)}%`)}/>`;
+  };
   const tiles = D ? [
-    html`<${Tile} key="1" label="Billable this month" value=${hrs(D.totals.month_billable)} foot="h"/>`,
+    html`<${Tile} key="1" label="F&O entry" value=${hrs(Math.round(F.tot.entry * 100) / 100)}
+                  foot=${`h billable · ${per.label} · work ${hrs(Math.round(F.tot.work * 100) / 100)} h`}/>`,
+    pctTile(),
     html`<${Tile} key="2" label="Internal this month" value=${hrs(D.totals.month_internal)} foot="Dev and own/"/>`,
     html`<${Tile} key="3" label="Not ready to enter" value=${shortNow} hot=${shortNow > 0}
                   foot=${view ? view.label : ''}/>`,
@@ -1924,7 +1966,7 @@ function App() {
             : html`
               <${Fragment}>
                 <${EntryBlocks} D=${D} rows=${rows} lead=${lead}
-                                check=${html`<${MonthCheck} D=${D} per=${per} back=${back}/>`}
+                                check=${html`<${MonthCheck} D=${D} per=${per} F=${F}/>`}
                                 gate=${html`<${Ready} rows=${gateRows || rows}
                                                       periodLabel=${view.label}
                                                       scaled=${!!view.scale} D=${D}

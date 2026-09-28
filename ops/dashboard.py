@@ -77,6 +77,17 @@ def _load_rollup():
 rollup = _load_rollup()
 
 
+def _load_bonus():
+    path = os.path.join(ROOT, "ops", "time", "bonus.py")
+    spec = importlib.util.spec_from_file_location("bonus", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+bonus = _load_bonus()
+
+
 _daybrief_mod = None
 
 
@@ -948,6 +959,9 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
                            key=lambda x: -x["hours"]),
         "no_project": sorted(c["kunde"] for c in comp if c["key"] not in ws_keys),
         "reclaim": reclaim_placed(),
+        # faktureringsprocent = billable F&O hours / "Timer per maaned" (ops/time/bonus.py)
+        "bases": bonus.BASES,
+        "tiers": [list(t) for t in bonus.TIERS],
     }
 
 
