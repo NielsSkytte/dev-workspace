@@ -49,6 +49,7 @@ from lib import attribution
 from lib import noinvoice
 from lib import fnotasks
 from lib import sessionlines
+from lib import measuremoves
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -313,7 +314,7 @@ def _weights(slots, keys):
     return [(k, 1.0 / len(keys)) for k in keys]
 
 
-def line_rows(date, sheet, measured_rows, values):
+def line_rows(date, sheet, measured_rows, values, moves=()):
     """One date's F&O lines: the timesheet row, with the measurement and the evidence.
 
     Three sources, keyed three ways:
@@ -380,6 +381,24 @@ def line_rows(date, sheet, measured_rows, values):
             _merge_agg(slots[kk]["agg"], _scale_agg(agg_by[k], f))
             slots[kk]["shared"] = True
         agg_by.pop(k)
+
+    # A line moved to ANOTHER project at /log, written down in ops/time/measure-moves.md
+    # (lib/measuremoves.py): its measurement goes where the hours went, over the named
+    # tasks' lines. Only measurement with no line of its own on its project gets here.
+    for mv in moves:
+        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
+                and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
+        if not keys:
+            continue
+        for src in (meas_by, agg_by):
+            for k in [k for k in src if k.split("|", 1)[0] == mv["from"]]:
+                for kk, f in _weights(slots, keys):
+                    if src is meas_by:
+                        slots[kk]["meas"] = round(slots[kk]["meas"] + src[k] * f, 2)
+                    else:
+                        _merge_agg(slots[kk]["agg"], _scale_agg(src[k], f))
+                    slots[kk]["shared"] = True
+                src.pop(k)
 
     # A project with no line that date whose CUSTOMER has one was moved between that
     # customer's projects at /log (2026-09-12 Aeven: ServiceNowPOC -> AtomicServiceNow; a
@@ -476,6 +495,7 @@ def collect_audit(today):
 
 def _audit_week(wk, hbs_by_date, absence, today):
     dates = rollup.week_dates(wk)
+    moves = measuremoves.entries()
     days, lines, spill = [], [], []
     target = 0.0
     for d in dates:
@@ -521,7 +541,8 @@ def _audit_week(wk, hbs_by_date, absence, today):
         })
 
         # One date's F&O lines, joined from the three sources (see line_rows).
-        lines.extend(line_rows(d, rollup.parse_daily_file(d), rollup.rows_for(dh), vals))
+        lines.extend(line_rows(d, rollup.parse_daily_file(d), rollup.rows_for(dh), vals,
+                               measuremoves.for_date(d, moves)))
 
     tot = lambda f: round(sum(x[f] for x in days), 2)
     claimed = tot("claimed")

@@ -171,6 +171,24 @@ class NoRegisteredLine(unittest.TestCase):
         self.assertEqual(by_task(out)["X"]["measured"], 0.0)
         self.assertEqual(by_task(out)["Y"]["measured"], 1.0)
 
+    def test_a_recorded_move_takes_the_evidence_to_the_named_lines(self):
+        # 2026-09-09: a session rooted in own/MetaAtomic, moved to two Carl Ras tasks at /log.
+        sheet = [sheet_row("customers/Carl-Ras/datahub", task="CarlRData-666", hours=4.25),
+                 sheet_row("customers/Carl-Ras/datahub", task="CarlRData-555", hours=5.75),
+                 sheet_row("customers/Carl-Ras/datahub", task="CarlRData-553", hours=1.5)]
+        out = dashboard.line_rows(
+            "2026-09-09", sheet, [sheet_row("own/MetaAtomic", hours=10.0)],
+            [value("own/MetaAtomic", weighted=20.0)],
+            [{"date": "2026-09-09", "from": "own/MetaAtomic",
+              "to": "customers/Carl-Ras/datahub", "tasks": ["CarlRData-666", "CarlRData-555"]}])
+        got = by_task(out)
+        self.assertNotIn("", got)                        # no homeless MetaAtomic line left
+        self.assertEqual(got["CarlRData-666"]["measured"], 4.25)
+        self.assertEqual(got["CarlRData-555"]["measured"], 5.75)
+        self.assertEqual(got["CarlRData-553"]["measured"], 0.0)
+        self.assertAlmostEqual(got["CarlRData-666"]["weighted"] + got["CarlRData-555"]["weighted"],
+                               20.0, places=2)
+
     def test_several_stale_keys_give_one_line_not_several(self):
         out = rows([], [sheet_row("customers/A/p", task="X", hours=2.0)],
                    [value("customers/A/p", task="Y", weighted=12.0)])
