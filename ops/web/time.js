@@ -959,7 +959,7 @@ function LineEditor({ row, behind, D, onDone }) {
 
 /* ---------- the entry surface ---------- */
 
-function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
+function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate, check,
                        off, setOff, custOff, setCustOff, onPick }) {
   const allFirmas = [...new Set(rows.map(r => r.firma))]
     .sort((a, b) => (a === 'INTERNAL') - (b === 'INTERNAL') || (a === '') - (b === '')
@@ -1128,6 +1128,7 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
                 title="one workbook of every visible line">Excel</button>
       </div></div>
 
+      ${check}
       ${gate}
 
       ${!rows.length ? html`<div class="card"><${Empty}>No time in this period.<//></div>` : html`
@@ -1151,6 +1152,58 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate,
           ${firmas.map(block)}
         <//>`}
     <//>`;
+}
+
+/* ---------- the month per customer ----------
+   The whole month's F&O entry per customer beside what was measured, for checking the
+   bill in overall terms before it is typed. Built with the same scaleFrom / scaleRows as
+   the whole-month entry blocks, so its totals are theirs -- whichever week chip is lit. */
+function MonthCheck({ D, per, back }) {
+  const inR = new Set(((D.entry || {}).ranges || {})['month' + back] || []);
+  const rows = scaleRows((D.entry.rows || []).filter(r => inR.has(r.date)),
+                         scaleFrom(linesInMonth(D, per.key)));
+  const by = {};
+  let unmeasured = 0;
+  rows.filter(r => r.firma !== 'INTERNAL').forEach(r => {
+    const c = by[custOf(r)] || (by[custOf(r)] = { cust: custOf(r), measured: 0, work: 0, entry: 0 });
+    if (r.measured === undefined) unmeasured += r.hours;
+    c.measured += r.measured || 0;
+    c.work += r.work !== undefined ? r.work : r.hours;
+    c.entry += r.hours;
+  });
+  const list = Object.values(by).sort((a, b) => b.entry - a.entry);
+  const tot = list.reduce((t, c) => ({ measured: t.measured + c.measured,
+    work: t.work + c.work, entry: t.entry + c.entry }), { measured: 0, work: 0, entry: 0 });
+  const r2 = v => Math.round(v * 100) / 100;
+  const line = (name, c, strong) => html`
+    <tr key=${name} style=${strong ? 'font-weight:600' : ''}>
+      <td>${name}</td>
+      <td class="r">${hrs(r2(c.measured))}</td>
+      <td class="r">${hrs(r2(c.work))}</td>
+      <td class="r">${hrs(r2(c.entry))}</td>
+      <td class="r">${auX(c.entry, c.measured)}</td>
+    </tr>`;
+  return html`
+    <div class="card ausec" style="margin-bottom:14px">
+      <h3>Month per customer — ${per.label}</h3>
+      <p class="sub">Billable lines only.<br/>
+        Measured: heartbeat time, 15+5 rule.<br/>
+        Work: the timesheet.<br/>
+        F&O entry: what the entry blocks put into F&O.<br/>
+        Multiplier: F&O entry ÷ measured.</p>
+      ${!list.length ? html`<${Empty}>No billable time in ${per.label}.<//>` : html`
+        <div style="overflow-x:auto"><table class="autable">
+          <thead><tr><th>Customer</th><th class="r">Measured</th><th class="r">Work</th>
+            <th class="r">F&O entry</th><th class="r">Multiplier</th></tr></thead>
+          <tbody>
+            ${list.map(c => line(c.cust, c))}
+            ${line('Total', tot, true)}
+          </tbody>
+        </table></div>`}
+      ${unmeasured ? html`<p class="sub" style="margin:8px 0 0">No measurement:
+        ${hrs(r2(unmeasured))} h F&O entry. These lines have no heartbeat line behind them
+        and count as 0 measured.</p>` : null}
+    </div>`;
 }
 
 /* ---------- the week behind the numbers ----------
@@ -1859,6 +1912,7 @@ function App() {
             : html`
               <${Fragment}>
                 <${EntryBlocks} D=${D} rows=${rows} lead=${lead}
+                                check=${html`<${MonthCheck} D=${D} per=${per} back=${back}/>`}
                                 gate=${html`<${Ready} rows=${gateRows || rows}
                                                       periodLabel=${view.label}
                                                       scaled=${!!view.scale} D=${D}
