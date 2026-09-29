@@ -175,6 +175,78 @@ function scaleRows(rows, scale) {
   return out;
 }
 
+/* A normal registered day, and the most any customer is shown for one date (owner,
+   2026-09-29: "7,5 max 9 hours per day"). */
+const DAY_NORMAL = 7.5, DAY_MAX = 9;
+
+/* Lay consolidated entry rows out as normal days: per customer and ISO week, fill each
+   weekday of the range to DAY_NORMAL, then to DAY_MAX, preferring the days a line already
+   sits on. Runs AFTER scaleRows, because scaling up to the F&O entry figure is what pushed
+   days past the cap. Hours never leave their week or the range, and a dimension's total is
+   unchanged. What still does not fit under DAY_MAX stays on its first day and is marked
+   `overCap`. Only for consolidated rows: their dates have already moved; an unconsolidated
+   row is one real day and keeps it. */
+function packDays(rows, rangeDates) {
+  const wk = d => { const t = new Date(d + 'T12:00:00Z'); const day = (t.getUTCDay() + 6) % 7;
+                    t.setUTCDate(t.getUTCDate() - day); return t.toISOString().slice(0, 10); };
+  const weekday = d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return w > 0 && w < 6; };
+  const q = v => Math.round(v * 4) / 4;
+  const out = [], by = {};
+  rows.forEach(r => {
+    if (r.firma === 'INTERNAL') { out.push(r); return; }
+    const k = custOf(r) + '|' + wk(r.date);
+    (by[k] || (by[k] = [])).push(r);
+  });
+  const dimKey = r => [r.firma, r.project, r.proj_id, r.activity, r.fno_task, r.description].join('|');
+  for (const k in by) {
+    const g = by[k], week = wk(g[0].date);
+    const inWeek = [...rangeDates].filter(d => wk(d) === week).sort();
+    const days = inWeek.filter(weekday).length ? inWeek.filter(weekday) : inWeek;
+    const dims = {};
+    g.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(r => {
+      const d = dims[dimKey(r)] || (dims[dimKey(r)] = { tpl: r, rows: [], hours: 0, own: [] });
+      d.rows.push(r); d.hours += r.hours; if (!d.own.includes(r.date)) d.own.push(r.date);
+    });
+    const load = {}; days.forEach(d => { load[d] = 0; });
+    const list = Object.values(dims);
+    /* First every line keeps its own weekday, up to a normal day -- the least movement. */
+    list.forEach(dm => {
+      dm.plan = {}; dm.left = 0;
+      dm.rows.forEach(r => {
+        const keep = r.date in load ? Math.min(q(r.hours), q(DAY_NORMAL - load[r.date])) : 0;
+        if (keep > 0) { dm.plan[r.date] = (dm.plan[r.date] || 0) + keep; load[r.date] += keep; }
+        dm.left = q(dm.left + q(r.hours) - Math.max(keep, 0));
+      });
+      dm.left = q(dm.left + q(dm.hours) - dm.rows.reduce((s, r) => s + q(r.hours), 0));
+    });
+    /* Then what is left fills other weekdays to a normal day, then to the maximum. */
+    list.forEach(dm => {
+      const order = dm.own.filter(d => d in load).concat(days.filter(d => !dm.own.includes(d)));
+      [DAY_NORMAL, DAY_MAX].forEach(level => order.forEach(d => {
+        const take = Math.min(dm.left, q(level - load[d]));
+        if (take <= 0) return;
+        dm.plan[d] = (dm.plan[d] || 0) + take; load[d] += take; dm.left = q(dm.left - take);
+      }));
+    });
+    list.forEach(dm => {
+      const plan = dm.plan;
+      if (dm.left > 0) { const d = dm.own[0]; plan[d] = (plan[d] || 0) + dm.left; load[d] = (load[d] || 0) + dm.left; }
+      const f = (x, p) => Math.round(dm.rows.reduce((s, r) => s + (r[x] || 0), 0) * p * 100) / 100;
+      Object.keys(plan).sort().forEach(d => {
+        const p = plan[d] / (dm.hours || 1);
+        out.push(Object.assign({}, dm.tpl, {
+          date: d, hours: Math.round(plan[d] * 100) / 100, merged: true,
+          measured: f('measured', p), work: f('work', p), value: f('value', p) }));
+      });
+    });
+    Object.keys(load).forEach(d => {
+      if (load[d] > DAY_MAX + 1e-9) out.filter(r => r.date === d && custOf(r) === k.split('|')[0])
+        .forEach(r => { r.overCap = true; });
+    });
+  }
+  return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
 /* Every audit line in one calendar month. The weeks do not overlap, and a line is per
    date, so a week straddling the boundary contributes only its own days -- which is what
    makes a month total exact rather than clipped. */
@@ -1094,7 +1166,8 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate, check
                     <td class="r muted">${hrs(r.measured || 0)}</td>
                     <td class="r muted">${hrs(r.work || 0)}</td>
                   <//>` : null}
-                <td class="r"><b>${hrs(r.hours)}</b>${r.work
+                <td class="r"><b>${hrs(r.hours)}</b>${r.overCap
+                  ? html` <span class="pill warn" title=${`${custOf(r)} is over ${DAY_MAX} h on this date and the week has no room left`}>over ${DAY_MAX} h</span>` : null}${r.work
                   ? html` <span class="muted" title="F&O entry against work time"
                           >${Math.round(100 * r.hours / r.work)}%</span>` : null}</td>
               </tr>`)}</tbody>
@@ -1871,7 +1944,8 @@ function App() {
       : raw;
     const raws = {};
     raw.forEach(r => { raws[rowKey(r)] = r; });
-    return { rows: scaleRows(base, view.scale), rawByKey: raws, rawRows: raw,
+    const scaled = scaleRows(base, view.scale);
+    return { rows: merge ? packDays(scaled, inR) : scaled, rawByKey: raws, rawRows: raw,
              gateRows: merge ? scaleRows(raw, view.scale) : null };
   }, [D, view, merge]);
 
@@ -1941,7 +2015,7 @@ function App() {
           })}
           <span class="fsep"></span>
           <button class=${'chip' + (merge ? ' on' : '')} onClick=${() => setMerge(m => !m)}
-                  title="Fewest lines: per F&O line, day-entries under 5 h are summed within an ISO week and packed onto as few days as possible, max 9 h a day. Totals never change — only how many lines you type. A consolidated line cannot be corrected, because its date has moved.">
+                  title="Fewest lines: per F&O line, day-entries under 5 h are summed within an ISO week, then laid out per customer over the week's weekdays: 7.5 h a normal day, never over 9 h. Totals never change — only how many lines you type. A consolidated line cannot be corrected, because its date has moved.">
             Consolidated</button>
         <//>`}
     <//>`;
