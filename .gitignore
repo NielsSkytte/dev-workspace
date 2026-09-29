@@ -41,3 +41,4 @@ data/
 # Which project a moved line's measurement follows to. Names customers and sessions.
 /ops/time/measure-moves.md
 /ops/time/active-task
+/ops/time/fno-journals.md

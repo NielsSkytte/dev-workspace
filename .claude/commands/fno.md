@@ -148,6 +148,11 @@ expected.
 
 ### 6. Report and record
 
+- **Write `ops/time/fno-journals.md`** -- one row per journal line, from what F&O showed (the
+  line after saving, the journal total, the approval message), never from the prepared rows.
+  Status `Created` until *"Kladden har aendret status til Finished"* is seen, then `Finished`;
+  `Posted` once Niels has posted. The Time page reads it: the *In F&O* column (red where it
+  differs from the F&O entry) and the *Registered %* tile, the percentage F&O actually holds.
 - Journal ids with hours per company plus the grand total, in the August form:
   `PING 021924 W31 3,50 / 021926 W32 33,00 / … = 138,75 h; PNO1 004431 6,25 h. 145,00 h.`
 - State plainly that the journals are **approved, not posted**.

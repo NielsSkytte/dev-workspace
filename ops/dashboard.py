@@ -50,6 +50,7 @@ from lib import noinvoice
 from lib import fnotasks
 from lib import sessionlines
 from lib import measuremoves
+from lib import fnojournals
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -980,6 +981,8 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
                            key=lambda x: -x["hours"]),
         "no_project": sorted(c["kunde"] for c in comp if c["key"] not in ws_keys),
         "reclaim": reclaim_placed(),
+        # what F&O holds, as read back after entry (ops/time/fno-journals.md)
+        "registered": fnojournals.entries(),
         # faktureringsprocent = billable F&O hours / "Timer per maaned" (ops/time/bonus.py)
         "bases": bonus.BASES,
         "tiers": [list(t) for t in bonus.TIERS],

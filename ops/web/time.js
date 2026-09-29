@@ -1167,14 +1167,17 @@ function monthFigures(D, per, back) {
   const rows = scaleRows((D.entry.rows || []).filter(r => inR.has(r.date)),
                          scaleFrom(linesInMonth(D, per.key)))
     .filter(r => r.firma !== 'INTERNAL');
-  const blank = () => ({ measured: 0, work: 0, entry: 0, reclaim: 0 });
-  const add = (t, c) => { ['measured', 'work', 'entry', 'reclaim'].forEach(f => { t[f] += c[f] || 0; }); };
-  /* The F&O line is what gets typed: Proj ID + activity + task, as the row shows them. */
-  const dimOf = r => [r.proj_id || '', r.activity || '', r.fno_task || ''].join('|');
+  const blank = () => ({ measured: 0, work: 0, entry: 0, reclaim: 0, registered: 0, pending: 0 });
+  const add = (t, c) => { ['measured', 'work', 'entry', 'reclaim', 'registered', 'pending']
+    .forEach(f => { t[f] += c[f] || 0; }); };
+  /* The F&O line is what gets typed: Proj ID + activity + task, as the row shows them.
+     `-` and empty both mean none, so the register and the timesheet key alike. */
+  const nd = v => (v === '-' ? '' : (v || ''));
+  const dimOf = r => [nd(r.proj_id), nd(r.activity), nd(r.fno_task)].join('|');
   const by = {};
   const cust = k => by[k] || (by[k] = Object.assign({ cust: k, dims: {} }, blank()));
   const dim = (c, r) => c.dims[dimOf(r)] || (c.dims[dimOf(r)] = Object.assign(
-    { proj_id: r.proj_id, activity: r.activity, fno_task: r.fno_task }, blank()));
+    { proj_id: nd(r.proj_id), activity: nd(r.activity), fno_task: nd(r.fno_task) }, blank()));
   let unmeasured = 0;
   rows.forEach(r => {
     const c = cust(custOf(r)), d = dim(c, r);
@@ -1189,12 +1192,21 @@ function monthFigures(D, per, back) {
     const on = rows.find(r => r.date === x.date && r.project === x.project);
     if (on) dim(c, on).reclaim += x.hours;
   });
-  const list = Object.values(by).filter(c => c.entry).sort((a, b) => b.entry - a.entry);
+  /* What F&O holds, as read back after entry (ops/time/fno-journals.md). Matched on the F&O
+     line, not the date: a registered line may sit on another day of the same week. */
+  (D.entry.registered || []).filter(x => inR.has(x.date)).forEach(x => {
+    const c = cust(x.customer), d = dim(c, x);
+    c.registered += x.hours; d.registered += x.hours;
+    if (x.status === 'Created') { c.pending += x.hours; d.pending += x.hours; }
+  });
+  const list = Object.values(by).filter(c => c.entry || c.registered)
+    .sort((a, b) => b.entry - a.entry);
   list.forEach(c => { c.lines = Object.values(c.dims).sort((a, b) => b.entry - a.entry); });
   const tot = blank();
   list.forEach(c => add(tot, c));
   const basis = ((D.entry.bases || {})[per.key]) || null;
-  return { list, tot, unmeasured, basis, pct: basis ? tot.entry / basis : null };
+  return { list, tot, unmeasured, basis, pct: basis ? tot.entry / basis : null,
+           regPct: basis ? tot.registered / basis : null };
 }
 
 /* faktureringsprocent against the bonus tiers (ops/time/bonus.py): the tier reached and the
@@ -1215,6 +1227,9 @@ function MonthCheck({ D, per, F }) {
       <td class="r">${hrs(r2(c.measured))}</td>
       <td class="r">${hrs(r2(c.work))}</td>
       <td class="r">${hrs(r2(c.entry))}</td>
+      <td class="r" style=${Math.abs(c.registered - c.entry) > 0.005 ? 'color:var(--accent);font-weight:600' : ''}
+          title=${c.pending ? `${hrs(r2(c.pending))} h in a journal that is not approved yet` : ''}>
+        ${c.registered ? hrs(r2(c.registered)) : html`<span class="muted">–</span>`}${c.pending ? ' *' : ''}</td>
       <td class="r">${c.reclaim ? hrs(r2(c.reclaim)) : html`<span class="muted">–</span>`}</td>
       <td class="r">${auX(c.entry - c.reclaim, c.measured)}</td>`;
   const dimName = d => [d.proj_id, d.activity, d.fno_task].filter(Boolean).join(' · ') || '–';
@@ -1225,12 +1240,13 @@ function MonthCheck({ D, per, F }) {
         Measured: heartbeat time, 15+5 rule.<br/>
         Work: the timesheet.<br/>
         F&O entry: what the entry blocks put into F&O.<br/>
+        In F&O: what F&O holds, read back after entry (ops/time/fno-journals.md). Red where it differs from F&O entry. * = in a journal that is not approved yet.<br/>
         Reclaim: hours from an earlier month placed on these days (ops/time/reclaim.md); measured then, not now.<br/>
         Multiplier: (F&O entry − reclaim) ÷ measured.</p>
       ${!list.length ? html`<${Empty}>No billable time in ${per.label}.<//>` : html`
         <div style="overflow-x:auto"><table class="autable">
           <thead><tr><th>Customer / F&O line</th><th class="r">Measured</th><th class="r">Work</th>
-            <th class="r">F&O entry</th><th class="r">Reclaim</th>
+            <th class="r">F&O entry</th><th class="r">In F&O</th><th class="r">Reclaim</th>
             <th class="r">Multiplier</th></tr></thead>
           <tbody>
             ${list.map(c => html`
@@ -1939,10 +1955,21 @@ function App() {
       foot=${`of ${hrs(F.basis)} h · tier ${t.tier === null ? 'none' : Math.round(t.tier * 100) + '%'}`
         + (t.next === null ? ' · top' : ` · ${hrs(Math.round(t.need * 100) / 100)} h to ${Math.round(t.next * 100)}%`)}/>`;
   };
+  const regTile = () => {
+    if (!F.basis) return null;
+    const t = tierOf(D, F.regPct, F.basis, F.tot.registered);
+    const r2 = v => Math.round(v * 100) / 100;
+    return html`<${Tile} key="r" label="Registered %" value=${Math.round(F.regPct * 1000) / 10 + '%'}
+      hot=${F.tot.registered + 0.005 < F.tot.entry}
+      foot=${`${hrs(r2(F.tot.registered))} h in F&O · tier ${t.tier === null ? 'none' : Math.round(t.tier * 100) + '%'}`
+        + (F.tot.pending ? ` · ${hrs(r2(F.tot.pending))} h not approved` : '')
+        + (t.next === null ? '' : ` · ${hrs(r2(t.need))} h to ${Math.round(t.next * 100)}%`)}/>`;
+  };
   const tiles = D ? [
     html`<${Tile} key="1" label="F&O entry" value=${hrs(Math.round(F.tot.entry * 100) / 100)}
                   foot=${`h billable · ${per.label} · work ${hrs(Math.round(F.tot.work * 100) / 100)} h`}/>`,
     pctTile(),
+    regTile(),
     html`<${Tile} key="2" label="Internal this month" value=${hrs(D.totals.month_internal)} foot="Dev and own/"/>`,
     html`<${Tile} key="3" label="Not ready to enter" value=${shortNow} hot=${shortNow > 0}
                   foot=${view ? view.label : ''}/>`,
