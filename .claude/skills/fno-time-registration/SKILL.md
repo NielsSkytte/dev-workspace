@@ -147,7 +147,7 @@ Nothing else.
 
 | Field | Rule |
 |---|---|
-| `Timer` (hours) | **Typed directly.** It does **not** recompute from `Starttidspunkt` / `Sluttidspunkt`, and those two are not used at all. |
+| `Timer` (hours) | **Typed directly, always.** It does **not** recompute from `Starttidspunkt` / `Sluttidspunkt`, and it **pre-fills from the task** (10,50 and 14,25 seen on 2026-09-29) -- a line saved without typing it registers that number. |
 | `Kategori` | **Leave it.** It auto-fills once `Opgave` resolves. It is not a field you fill explicitly. |
 | `Aktivitet` | Only where the customer registers on activity (section 4). On a task-registering customer, **do not write one**. |
 | `Opgave` (task) | The ADO work-item id. An empty lookup means the task does not exist (Rule 0). |
@@ -157,6 +157,10 @@ Nothing else.
 
 Grouping follows the finest dimension present: rows sharing the full (project id, activity, task)
 key merge. See `ops/time/README.md` section 4.
+
+**Day rule (owner, 2026-09-29): per customer per date, 7,5 h a normal day and never over 9 h**, on
+weekdays of the same ISO week. The Time page's consolidated rows follow it (`packDays`); a row marked
+*over 9 h* means the week has no room and is a question for Niels, not a line to type.
 
 ---
 
@@ -214,6 +218,9 @@ and stopped by Niels: *"tror bare du skal godkende dem"*.
   OK returns *"Kladden har aendret status til Finished."*
 - The journals **stay under "Ikke bogfoert"**. Finished is an approval state.
 - **Posting is a separate, later decision and it is Niels's.** Never initiate it.
+- **Approved is not a resting state.** On 2026-09-29 all six approved journals were posted by someone
+  else within hours, and a planned correction became impossible. Make every correction -- dates,
+  the day rule below, ids -- **before** approving.
 
 **Consequence for reporting:** the utilisation page counts only **posted** lines. A low utilisation
 figure right after a close is expected and is **not** evidence of missing registration - August read

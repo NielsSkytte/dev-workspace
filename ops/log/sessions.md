@@ -1393,3 +1393,56 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Did:** Finalized 09-23, 09-24, 09-25; wrote session-log entries for the three days from the daily stream (no /log was run for them). Fixed `fno_task: CarRData-555` -> `CarlRData-555` on 4 Carl Ras tasks and merged the 09-23 split line. Split 0.50 h MetaAtomic work out of 09-24 CarlRData-555 (per that task's Log line). Line descriptions written for all 7 lines.
 - **Time:** 09-23 2.00 h, 09-24 2.50 h (2.00 billable + 0.50 MetaAtomic), 09-25 4.50 h. W39 22.00 h of 37.50 (59%); month 128.00 of 142.50 (90%); no topup. `value.py --stalls`: no new findings. Value derived for 09-23, 09-24 (Carl-Ras 0.79 keyboard / 4.75 weighted). Backup exit 1 (copied). Sentinel: 12 flags (all truncate-before-distil: command/skill bodies, task-notifications and `pasted_content` tags in the User field) + 8 reversal caveats; distilled final states only. Distilled: `fabric-pipeline-runs-as-default-identity`, `fabric-deploy-build-cannot-see-lakehouse-columns`, `carlras-warehouse-ddl-matches-ctas-view`, `carlras-prod-fabric-etl-deployed-20260925`, `eval-20260925-carlras-deploy-reversals`.
 - **Next:** check the first PROD `PL_MainExecution` run (today 06:30); the three untagged 0.50 h Carl Ras opening lines (09-23..25) cannot be entered in F&O as they stand.
+
+## 2026-09-29
+
+### September registered in F&O -- 166.25 h, 101.99%, all posted
+
+- **Did:**
+  - **Registered September in F&O, seven journals across three companies:** PING `022315` W36 32,50 /
+    `022312` W37 46,75 / `022316` W38 15,00 / `022317` W39 18,00 = 112,25; PNO1 `004576` W38 15,25;
+    PDK4 `005292` W37 36,50 / `005293` W39 2,25 = 38,75. **166,25 h of 163,00 = 101,99%, 100% tier.**
+    Entered by browser (the Excel add-in path was not tried); every line read back after saving,
+    every journal reconciled against the Time page. All seven are **posted** -- the six approved ones
+    were posted by someone else the same day, W39 after Niels's own edits.
+  - **Niels edited W39 directly in F&O after approval:** Matas Task-72114 2,50 -> 4,50, Carl Ras 555
+    22-09 7,25 -> 7,50 and 23-09 7,25 -> 6,00 (net +1,00). Read back from F&O; not yet mirrored in the
+    timesheets.
+  - **Pre-flight found the ids wrong or missing:** Aeven's `4058-1` does not exist -- the project is
+    **4058 in PDK4** (Pingala Power ApS), activity 400760 "ServiceNow POC" resolves on it. CarlRData-557
+    and -666 were not in F&O until Niels created them; Matas 65904 and 72114 existed in DevOps without
+    F&O fields until Niels set them. **Task-72114 books to activity 110383 (consultant)**, not 111953.
+    Validation method found: `/data/DevOpsIntegrationV2_PIN` from the F&O session shows whether a work
+    item carries `CustomTaskId`/`CustomProjectId` -- written into the `fno-time-registration` skill.
+  - **Built "what F&O holds":** `ops/time/fno-journals.md` (gitignored, robocopy-backed) -- one row per
+    journal line, written only from what F&O showed -- read by `lib/fnojournals.py`; the Time page's
+    *Month per customer* gains an **In F&O** column (red where it differs from the F&O entry, `*` for
+    unapproved) and a **Registered %** tile. `/fno` step 6 now writes the register.
+  - **F&O entry rows now follow 7,5 h / max 9 h per customer per date:** `packDays` in `ops/web/time.js`
+    lays consolidated rows out on weekdays after scaling (scaling was what pushed lines past the cap).
+    September went out before the rule and keeps Carl Ras 02-09 9,50 and 09-09 12,75, Matas 07-09
+    11,25 / 08-09 10,75, Aeven 12-09 / 13-09 12,00 -- posted before they could be corrected.
+  - Corrected: Aeven proj_id 4058-1 -> 4058 in five timesheets, both Aeven project files, the customer
+    node and README 4.1; 09-21 Matas Task-65904 -> 72114; 72114 activity 111953 -> 110383 in the 09-21
+    and 09-22 timesheets and the task file; 09-28 stray Aeven 0,50 h -> Dev.
+- **Decided:**
+  - **7,5 h normal / 9 h max per customer per date applies to F&O entry** (owner); the timesheet cap
+    (`rollup.DAY_CAP` 12 h, ADR-005) is unchanged. Memory `fno-entry-day-rule-7-5-max-9`.
+  - **September's posted over-9 h days stay as posted** (owner) -- a correction journal would add
+    reversal entries to the project ledger.
+  - Carl Ras 557/666 and Matas 72114 dates spread within the ISO week at entry (days had reached 24,25 h).
+- **Tasks:** none moved. `2026-09-21-matas-datacompare-production` -> `activity: 110383`.
+- **Next:**
+  - **Mirror Niels's W39 F&O edits into the timesheets** (Matas 72114 +2,00 on 09-21/22, Carl Ras 555
+    -1,00) so the Time page's In F&O column goes back to matching -- offered, not confirmed.
+  - 09-29 stray Aeven 0,50 h (this session's `cd` into customers/Aeven) is marked not invoiced; move it
+    to Dev when 09-29 finalizes.
+  - Tystofte's `4048-1` is probably wrong the same way as Aeven's -- F&O (PDK4) has `4048-01` and
+    `4048-02`; unverified, recorded in README 4.1.
+  - W40 (28-30 Sep) has only internal time so far; any billable hours there need their own W40 journals.
+  - The Aeven customer repo has uncommitted work from other sessions besides this session's
+    `fno_code: 4058` edits.
+  - 46 September F&O lines are still undescribed (`linedesc.py --check 2026-09`); transcripts age out
+    after ~30 days.
+- **Time:** rollup finalized nothing new (09-28 finalized earlier today: Dev 2,00 h after the Aeven
+  move). `value.py --stalls`: nothing new. Value: nothing to derive. Month 165,75 h of 150,00 target.

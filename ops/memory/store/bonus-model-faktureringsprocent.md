@@ -82,3 +82,5 @@ piling all the vacation into one month risks.
 and gets *compressed* rather than lost — in which case vacation costs no billable hours and its
 timing is irrelevant to the bonus. The truth is likely between the two models; 9.06 h/day is
 probably not sustainable across a full month.
+
+"Power" is F&O company **PDK4** (Pingala Power ApS); PNO1 is Pingala Norge AS (2026-09-29).
