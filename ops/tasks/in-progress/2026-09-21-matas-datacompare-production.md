@@ -6,7 +6,7 @@ project: customers/Matas/DataCompare
 owner: self
 priority: normal
 blocked_by:
-activity: 111953        # the activity for 212-01 (owner, 2026-09-21)
+activity: 110383        # consultant activity on Task-72114 -- F&O derives it from the task (owner, 2026-09-29; was 111953)
 fno_task: Task-72114
 customer_ask: open
 waiting_on:
@@ -45,7 +45,7 @@ Task-72114 is the F&O task for all Matas work after 2026-09-14 (owner, 2026-09-2
 including 2026-09-14 books to Task-65904.
 
 ## Context
-- F&O: project 212-01, activity 111953, Task-72114.
+- F&O: project 212-01, activity 110383 (consultant), Task-72114. Task-65904 books to 111953.
 - Before this: `2026-09-08-matas-datacompare-engine-app` (Task-65904), closed 2026-09-21.
 
 ## Log

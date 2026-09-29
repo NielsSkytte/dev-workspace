@@ -25,3 +25,5 @@ two overlapping owner statements ("all work this month and the reclaim on 65904"
 the 14th on 72114"), which the owner accepted without correction. Task file:
 `2026-09-21-matas-datacompare-production`. Reclaim had to sit before 2026-09-10, the first PoC demo:
 between that demo and the approval no development time was allowed.
+
+**2026-09-29 (owner): Task-72114 books to activity 110383 (consultant), not 111953.** F&O derives it from the task once the DevOps work item carries project 212-01 and the activity; verified on a journal line. Task-65904 stays on 111953.
