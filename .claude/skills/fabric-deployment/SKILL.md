@@ -224,6 +224,50 @@ Consequences worth knowing before debugging any 403 in a notebook:
 
 Semantic-model refresh behaviour otherwise belongs to the `semantic` agent.
 
+### 7. First deploy into an EMPTY workspace by git sync: everything fails in sequence
+
+**Symptom.** Items that run fine in DEV fail one after another when a new workspace is
+connected to git and synced. Seen at Aeven (AtomicServiceNow, 2026-10-02), each one a
+separate failure on the customer's screen:
+`DmsImportDatabaseException` / `Invalid object name 'Warehouse_Enriched_X.enriched.Y'` on
+Update from git; "multiple conflicts" after a retry; a metadata notebook that needs a table
+only the ingest lands, while the ingest needs a table the metadata notebook writes; shortcuts
+to tables not landed yet; a model whose Direct Lake path names DEV's workspace and warehouse;
+variable libraries holding DEV ids.
+
+**Cause.** The repo content was whatever the DEV workspace had committed back - not a package
+designed to be deployed. DEV was built by `fab import` and notebook runs, so a git sync into
+an empty workspace had never been exercised. The bootstrap order lived in people's heads.
+
+**Cure - design for it before the first customer push:**
+1. **Warehouses ship as shells** (`.platform`, `.sqlproj`, `.gitignore`). The notebooks own
+   all DDL and create schemas, procedures, views and tables when missing; the workspace commits
+   them back after the first run. Never push warehouse objects from one workspace's git into
+   another (failure 1, at first-deploy scale).
+2. **Every environment value in variable-library value sets**, one set per environment,
+   generated from one environments file. Every workspace gets identical files; the active value
+   set is chosen once per workspace. No per-environment file rewriting.
+3. **Anything derived from DEV data is regenerated per environment**: shortcut lists (from the
+   enabled-table config, not DEV's tables), a model's Direct Lake path (environment ids).
+4. **One bootstrap / master pipeline** that brings an empty workspace to a loaded state in one
+   run, in dependency order (light metadata -> ingest -> full metadata -> enriched -> curated ->
+   model refresh), idempotent.
+5. **A preflight run before the first load**: per source table, can the integration user read
+   it, how many rows, how many pages. Catches denied tables, tables that read as 0 rows under an
+   ACL, and tables too big for the default page size - before they fail a load.
+6. **Failure isolated per unit** (table, view): one failure never stops the rest; the run ends
+   Failed naming each one; every error carries its real cause (never a swallowed exception
+   reported as "not there"); a load that returns 0 rows says so.
+7. **Rehearse first**: git-sync into an empty internal workspace, running as a source user with
+   minimal rights, before any customer push.
+
+**To wipe and resync a workspace with conflicts:** disconnect git first (deleting while
+connected only creates more uncommitted changes), delete every item, permanently empty the
+recycle bin (a held item can still block its name - inference), keep the folders, reconnect:
+an empty workspace syncs git -> workspace.
+
+**Rule.** "It runs in DEV" is not "it deploys". A first deploy is its own test.
+
 ---
 
 ## Pre-flight: before promoting anything
@@ -237,6 +281,9 @@ Semantic-model refresh behaviour otherwise belongs to the `semantic` agent.
 4. **Does it read a seeded table?** Then the target needs seeding (failure 5).
 5. **Will it run on a schedule?** Then it must be re-stamped to the service principal
    (failure 6).
+6. **Is the target workspace empty or new?** Then run the first-deploy design check: shell
+   warehouses, value sets, regenerated shortcuts and model path, a bootstrap pipeline, a
+   preflight access/size run (failure 7).
 
 ## Post-deploy: what to check before promoting further
 
