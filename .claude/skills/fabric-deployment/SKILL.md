@@ -14,7 +14,9 @@ description: >
   the wrong workspace, a missing seeded table in a new environment, or a scheduled run
   that stopped when someone's account was disabled. Also trigger on "is this item
   portable", "can I hardcode this id", item ownership / LastModifiedBy / takeover, and
-  on reviewing a change for environment portability before it ships.
+  on reviewing a change for environment portability before it ships. Also trigger on a
+  FIRST deploy into an empty or new workspace (a new customer, a new stage, "connect the
+  workspace to the repo", "wipe and resync"), and before the first push to a customer repo.
   This skill owns deployment MECHANICS and FAILURE MODES. The delivery architecture
   around it - workspace structure, branch model, three-stage strategy, roles, and the
   git-not-fab-import authoring rule - lives in `pingala-fabric-platform`. Getting a
