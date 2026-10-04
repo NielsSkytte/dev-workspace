@@ -37,9 +37,20 @@ from lib.workspace import customer_name
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HEARTBEATS = os.path.join(DEV_WORKSPACE, "ops", "time", "heartbeats")
 VALUEDIR = os.path.join(DEV_WORKSPACE, "ops", "time", "value")
-TRANSCRIPTS = os.environ.get(
-    "CLAUDE_TRANSCRIPTS",
-    os.path.join(os.path.expanduser("~"), ".claude", "projects"))
+# Every Claude Code account on this machine keeps its own transcripts: the enterprise account in
+# ~/.claude, the private one in ~/.claude-priv (CLAUDE_CONFIG_DIR, ops/bin/claude-accounts.ps1).
+# Reading only one of them left every private-account day without a value record (found
+# 2026-10-04). CLAUDE_TRANSCRIPTS overrides: several roots separated by os.pathsep.
+_ROOTS = (os.environ["CLAUDE_TRANSCRIPTS"].split(os.pathsep) if os.environ.get("CLAUDE_TRANSCRIPTS")
+          else [os.path.join(os.path.expanduser("~"), d, "projects") for d in (".claude", ".claude-priv")])
+TRANSCRIPT_ROOTS = [r for r in _ROOTS if os.path.isdir(r)]
+
+
+def transcript_files():
+    """Every session transcript under every account's projects folder."""
+    for root in TRANSCRIPT_ROOTS:
+        for path in glob.glob(os.path.join(root, "*", "*.jsonl")):
+            yield path
 
 # ---------------------------------------------------------------- constants
 
@@ -197,7 +208,7 @@ def load_turns():
     pending permission prompt or a long-running tool call is not keyboard time. Verified
     2026-08-05 on a 131-minute turn that contained 8.8 minutes of activity."""
     out = collections.defaultdict(list)
-    for path in glob.glob(os.path.join(TRANSCRIPTS, "*", "*.jsonl")):
+    for path in transcript_files():
         s8 = os.path.basename(path)[:-6][:8]
         cur = None
         try:
@@ -697,6 +708,33 @@ def render_day(date, records, moves, flags):
     return "\n".join(out) + "\n"
 
 
+def unbacked_days(today, window_days=35):
+    """Timesheet days in the window with hours but no value record. An offline day claimed from
+    absence.md has no sessions by design and is left out. The guard asked for on 2026-09-08
+    (memory time-value-records-die-with-the-transcripts): while the transcript exists the day
+    can still be derived; once it is gone it never can."""
+    start = (datetime.date.fromisoformat(today) - datetime.timedelta(days=window_days)).isoformat()
+    out = []
+    for path in sorted(glob.glob(os.path.join(DEV_WORKSPACE, "ops", "time", "timesheet", "*", "*.md"))):
+        d = os.path.basename(path)[:-3]
+        if not (start <= d < today) or os.path.exists(os.path.join(VALUEDIR, d + ".md")):
+            continue
+        text = open(path, encoding="utf-8").read()
+        if "Offline day" in text:
+            continue
+        hours = 0.0
+        for line in text.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) == 6 and cells[0] not in ("Project", "---"):
+                try:
+                    hours += float(cells[4])
+                except ValueError:
+                    pass
+        if hours > 0:
+            out.append((d, hours))
+    return out
+
+
 def write_day(date, records, moves, flags):
     if not os.path.isdir(VALUEDIR):
         os.makedirs(VALUEDIR)
@@ -786,7 +824,7 @@ def session_events(s8):
     have no transcript file left), which is why this runs at /log and appends its finding
     to stalls.md rather than being re-derivable later."""
     out = []
-    for path in glob.glob(os.path.join(TRANSCRIPTS, "*", "*.jsonl")):
+    for path in transcript_files():
         if os.path.basename(path)[:8] != s8:
             continue
         try:
@@ -926,9 +964,8 @@ def main(argv):
             print(__doc__)
             return 0
 
-    if not os.path.isdir(TRANSCRIPTS):
-        sys.stderr.write("value.py: no transcripts at %s -- cannot derive evidence.\n"
-                         % TRANSCRIPTS)
+    if not TRANSCRIPT_ROOTS:
+        sys.stderr.write("value.py: no transcript folder found -- cannot derive evidence.\n")
         return 2
 
     if mode == "stalls":
@@ -969,6 +1006,13 @@ def main(argv):
         sel = [r for r in records if r["date"] in todo]
         print()
         print(summarise(sel, "DERIVED"))
+    unbacked = unbacked_days(today)
+    if unbacked:
+        print()
+        for d, hours in unbacked:
+            print("  NO VALUE RECORD %s: %.2f h on the timesheet, no transcript evidence found -- "
+                  "a session outside these accounts (another tool or LLM) or a lost transcript"
+                  % (d, hours))
     if flags:
         print()
         for f in flags:
