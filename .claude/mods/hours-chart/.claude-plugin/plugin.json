@@ -1,0 +1,6 @@
+{
+  "name": "hours-chart",
+  "version": "0.1.0",
+  "description": "Per day and project: keyboard time, measured time and the weighted add-on as bars (C:\\Dev\\ops\\time)",
+  "types": "./types/index.d.ts"
+}

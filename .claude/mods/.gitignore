@@ -1,0 +1,3 @@
+# laid by the engine when a mod loads
+*/.claude-plugin/types/
+*/tsconfig.json
