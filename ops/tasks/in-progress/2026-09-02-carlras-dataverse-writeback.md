@@ -92,5 +92,6 @@ status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-0
   would have to generate a deterministic GUID column.
 
 ## Log
+- 2026-10-01 — F&O now has `230-04` "Power Platform PoC" (PING), activity `112744` "PowerPOC Dataverse-demo-miljø" (no DevOps task under it). Niels wanted September's 557 hours (24,75 h) moved there; left on `230-02`/`CarlRData-557` because the journals are posted and his role has no access to Projektjustering / Bogførte projekttransaktioner, and no line-level Tilbagefør exists. Going-forward routing not yet decided.
 - 2026-09-17 — scope: Customer Insights - Data segmentation (CI trial env) is part of the same app delivery and billed here for now, per Niels; may be split out later (Niels will say). Set up 2026-09-16/17: lakehouse view `dbo.CI_SalesInvoice` over shortcuts to TEST `enriched.SalesInvoiceTransactions` + `dim.Customer` (invoice-journal grain, key `DataArea|RecId_CustInvoiceJour`, verified unique in DEV and TEST), loaded via Power Query; Customer via OneLake; SalesOrder activity; RFM + measure-based suggestions. Not in any repo by choice.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

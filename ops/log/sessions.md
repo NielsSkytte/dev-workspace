@@ -1447,6 +1447,18 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Time:** rollup finalized nothing new (09-28 finalized earlier today: Dev 2,00 h after the Aeven
   move). `value.py --stalls`: nothing new. Value: nothing to derive. Month 165,75 h of 150,00 target.
 
+## 2026-10-01 (Dev -- Carl Ras 557 hours to 230-04, session 5de03716; entry written 2026-10-04)
+- **Did:** looked up the new F&O entry: `230-04` "Power Platform PoC" (PING), activity `112744`
+  "PowerPOC Dataverse-demo-miljø"; no DevOps task under 230-04 (activities 112743-112747). Confirmed
+  in F&O that the September `CarlRData-557` lines (24,75 h in PING-022315/022312/022316) are posted.
+- **Decided:** the 24,75 h stay on `230-02`/`CarlRData-557`. Niels's role is denied on
+  Projektjustering and Bogførte projekttransaktioner; Tilbagefør exists only per journal (would
+  reverse all 32,50 h of PING-022315), not per line. Negative hour lines unverified in this F&O.
+- **Tasks:** dated Log line on `2026-09-02-carlras-dataverse-writeback`.
+- **Next:** Niels decides October routing for the write-back task: `230-04`/`112744` (activity,
+  breaks the Carl Ras task-always rule; needs README 4.1) or stay on `230-02`/`CarlRData-557`.
+- **Time:** 10-01 is final as Dev 0,50 h internal (F&O lookup for Carl Ras); not moved.
+
 ## 2026-10-04 (own/MetaAtomic -- GitHub backup, session 34f5bcaf from 10-02)
 - **Did:** found `C:\Dev\own` (one repo for all own projects) has no remote. Installed `gh`
   2.102.0, created the private repo `atompower4us/AAI`, pushed `MetaAtomic/` (131 commits) and
