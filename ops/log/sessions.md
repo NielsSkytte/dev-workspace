@@ -1446,3 +1446,17 @@ Chronological record of workspace sessions — what was done, decided, and what'
     after ~30 days.
 - **Time:** rollup finalized nothing new (09-28 finalized earlier today: Dev 2,00 h after the Aeven
   move). `value.py --stalls`: nothing new. Value: nothing to derive. Month 165,75 h of 150,00 target.
+
+## 2026-10-04 (own/MetaAtomic -- GitHub backup, session 34f5bcaf from 10-02)
+- **Did:** found `C:\Dev\own` (one repo for all own projects) has no remote. Installed `gh`
+  2.102.0, created the private repo `atompower4us/AAI`, pushed `MetaAtomic/` (131 commits) and
+  `SoWSkill/` with history (`main` at `ff9beb9`). Added `ops/bin/sync-aai.ps1` (`3d8c0f7`) to sync
+  selected folders there. Handoff rewrote the MetaAtomic card + one decision row.
+- **Decided:** AAI is private, a full backup (history names customers); the ADO repo keeps the
+  customer-free subset. Row in `own/MetaAtomic/CONTEXT_DECISIONS.md`.
+- **Tasks:** none moved; `2026-08-03-metaatomic-consolidation` stalled 18 d.
+- **Next:** Niels installs the post-commit hook (auto mode blocked Claude writing it); 2026-09-30
+  (Wed) has no time and no absence entry; 10-01 and 10-03 lines undescribed.
+- **Time:** nothing new to finalize (09-29, 10-01..10-03 already final). W40 13,50 h of 37,50.
+  Stalls: nothing new. Value: 10-02/10-03 derived, Aeven 0,85 h keyboard -> 7,75 h weighted.
+  Backup to OneDrive ok (robocopy exit 1).
