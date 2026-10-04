@@ -1457,7 +1457,7 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Tasks:** dated Log line on `2026-09-02-carlras-dataverse-writeback`.
 - **Next:** Niels decides October routing for the write-back task: `230-04`/`112744` (activity,
   breaks the Carl Ras task-always rule; needs README 4.1) or stay on `230-02`/`CarlRData-557`.
-- **Time:** 10-01 is final as Dev 0,50 h internal (F&O lookup for Carl Ras); not moved.
+- **Time:** 10-01 0,50 h moved from Dev to Carl Ras `230-02`/`CarlRData-557` (owner, 10-04).
 
 ## 2026-10-04 (own/MetaAtomic -- GitHub backup, session 34f5bcaf from 10-02)
 - **Did:** found `C:\Dev\own` (one repo for all own projects) has no remote. Installed `gh`
