@@ -1472,3 +1472,22 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Time:** nothing new to finalize (09-29, 10-01..10-03 already final). W40 13,50 h of 37,50.
   Stalls: nothing new. Value: 10-02/10-03 derived, Aeven 0,85 h keyboard -> 7,75 h weighted.
   Backup to OneDrive ok (robocopy exit 1).
+
+## 2026-10-04 (customers/Aeven/AtomicServiceNow -- first deploy to Aeven DEV, session 6c611831 from 10-02)
+- **Did:** cloned the two workspace repos (Pingala `dataaidemo` /ServiceNow, Aeven
+  `AutomationAIAndTools/MasterDataPlan`) and built `tools/sync_workspace_repo.py` (generated items in,
+  workspace ids/normalisation kept, `--add` for new items). Deployed to Aeven `ITSM-ETL-Dev` by git
+  (wipe + resync after a DmsImportDatabaseException; warehouses now shells). PL_Ingest isolates
+  failures per table (`count.json` marker), `Empty` status, `initial_since`, incident page 2000,
+  4 tables in parallel. `PL_MainExecution` (bootstrap, concurrency 1, model frame mode switch);
+  variable libraries generated from `config/environments.json` (UNSET defaults, value sets).
+  NB_Metadata falls back to a mirror-based catalogue with inferred types. Production design
+  `docs/production-deployment.md`; two Aeven email drafts. fabric-deployment skill: failure 7.
+  Aeven main at `66ea2c2`; last run: Ingest/Metadata/Enriched ok, Curated 16 views fail on access.
+- **Decided:** 11 rows in `AtomicServiceNow/CONTEXT_DECISIONS.md` (2026-10-02/03), incl. production
+  Q1-Q7 (DEV -> PROD, no TEST, direct first deploy, user account now / SPN later).
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` Progress rewritten; customer_ask open
+  (both emails drafted, not sent).
+- **Next:** Niels sends `Aeven_ServiceNow_Read_Access_email.md` (8 tables return 0 rows, sys_choice
+  fields, audit); then rerun PL_MainExecution; Serving to Aeven once Curated builds; per-environment
+  disabled tables before syncing dataaidemo.
