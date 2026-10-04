@@ -39,9 +39,10 @@ Usage:
 8. **Commit the internal repos (no ask).** First run `powershell -NoProfile -File C:\Dev\ops\bin\heal-repos.ps1` (refreshes the `.project-meta/` metadata shadows + self-heals links). Then commit the workspace repo (`C:\Dev`) and any customer/own unit repos touched this session, with a short message; push where a remote exists. **Never auto-commit a DevOps / customer-facing repo (external or company remote) — ask explicitly.** See `AGENTS.md` > Conventions ("Wrap-up commits").
 9. Keep it concise and factual — this is continuity, not a transcript.
 10. Confirm in one line.
-11. **Hours first in the closing summary (owner, 2026-10-04).** The summary opens with one table, one row per
-    project for the days the rollup/value steps touched: `Project | Keyboard h | Measured h | Weighted h |
-    Weighted / measured`, then the week total. Only after it: what was logged, committed, backed up. Name the
-    `hours-chart` pane (`/hours`, `/hours week`), which opens by itself when `rollup.py` or `value.py` runs and
-    draws the same numbers as bars (C:\Dev\.claude\mods\hours-chart). Ask the step-6 evaluation question
-    against that table, not against prose.
+11. **Hours first in the closing summary (owner, 2026-10-04).** Run `python C:\Dev\ops\bin\hours.py` (this
+    ISO week; `last` for the previous one, `--days` for one row per day) and open the summary with its table,
+    copied as printed: `Project | Keyboard h | Measured h | Registered h | Weighted h | Weighted / registered`.
+    It is the dashboard Time page's own data, corrections included; never build the table from the raw
+    value/ or timesheet/ files (that showed moved lines as 0). Only after it: what was logged, committed,
+    backed up. The `hours-chart` pane (`/hours`) draws the same numbers as bars and opens by itself when
+    `rollup.py`, `value.py` or `hours.py` runs. Ask the step-6 evaluation question against that table.

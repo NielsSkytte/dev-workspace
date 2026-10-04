@@ -1491,3 +1491,10 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Next:** Niels sends `Aeven_ServiceNow_Read_Access_email.md` (8 tables return 0 rows, sys_choice
   fields, audit); then rerun PL_MainExecution; Serving to Aeven once Curated builds; per-environment
   disabled tables before syncing dataaidemo.
+- **Pending time correction for 2026-10-04 (apply at the /log that finalizes 10-04):** session
+  `6c611831` ran from `customers/Aeven`, so all its heartbeats are on AtomicServiceNow. Owner
+  2026-10-04: the time-system work is NOT Aeven. Split at **08:41:58Z** (the "hours as a graph"
+  prompt): before it (08:01-08:12Z, handoff + /log of the Aeven work) stays Aeven; from it to the
+  session end goes to `Dev` (hours-chart mod, value.py two-account fix, hours.py, measure-moves).
+  Move the hours in the 10-04 timesheet and record the move in `ops/time/measure-moves.md`
+  (From AtomicServiceNow To Dev) so the measurement follows.
