@@ -57,24 +57,29 @@ is in `fabric-data-agent-ops`; Git is what makes that change visible.
 > ([Pawar, 2026](https://fabric.guru/programmatically-retrieve-prep-data-for-ai-configuration-of-semantic-models)).
 > So even a fully scripted agent build still has a human step on the model side; account for it.
 
-## Building it as code — Python SDK (runs inside a Fabric notebook)
+## Building it as code — Python SDK
 
-Package: `fabric-data-agent-sdk`. Verified API (sample notebooks + MS Learn). The SDK is
-**notebook-only** (not local).
+Package: `fabric-data-agent-sdk`. Verified API (sample notebooks + MS Learn). The SDK runs in a
+Fabric notebook **or** in your own environment after authenticating to Fabric (`AzureCliCredential`
+or an SPN via `SetFabricAnalyticsDefaultTokenCredentialsGlobally`) — verified 2026-10-05,
+https://learn.microsoft.com/fabric/data-science/fabric-data-agent-sdk. Publishing to Microsoft
+365 Copilot still has to happen inside Fabric (portal or SDK in a Fabric notebook).
 
-> **⏰ The data-plane (consumption) client uses the OpenAI Assistants API, which shuts down
-> 26 Aug 2026.** Microsoft will migrate this to the Responses API "in a future update" but hasn't
-> shipped the sample yet. The **management/config-as-code** calls below are unaffected; only the
-> `FabricOpenAI(...)` *consumption* path carries this deadline. Don't hard-bake Assistants-API
-> consumption you can't revisit.
+> **Querying the agent (verified 2026-10-05).** OpenAI retired the **Assistants API on
+> 26 Aug 2026**; the old `FabricOpenAI(...)` → `threads` / `runs` consumption shape no longer
+> works. The **management/config-as-code** calls below are unaffected. Current query paths:
 >
-> Today's consumption shape: `FabricOpenAI(artifact_name=..., ai_skill_stage="sandbox"|"production")`
-> (the `ai_skill_stage` toggle picks draft vs published — handy for A/B-ing config changes) →
-> `threads.create` → `messages.create` → `runs.create` → **poll** `runs.retrieve` (~2s; 300s
-> default timeout) → read the assistant message. The **forward path** is the agent's **MCP server**
-> (preview): a published agent exposes a downloadable `mcp.json`, runs under the *caller's* Entra
-> identity, appears as a single tool, and keeps RLS/CLS/Purview — but **responses may leave
-> Fabric's compliance/geo boundary** per the MCP client's policies, so vet it for regulated data.
+> - **SDK Responses client:** `FabricOpenAIResponses(artifact_name=..., workspace_name=...,
+>   ai_skill_stage="sandbox"|"production")` (the stage toggle picks draft vs published — handy for
+>   A/B-ing config changes) → `responses.create(input=...)` → poll by response id to a terminal
+>   status → read `output`. https://learn.microsoft.com/fabric/data-science/fabric-data-agent-sdk
+>   (links the Responses API sample notebook in `microsoft/fabric-samples`).
+> - **MCP endpoint** (Microsoft's recommended runtime surface): a published agent exposes
+>   `https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent`
+>   and a downloadable `mcp.json`, runs under the *caller's* identity (user or SPN), appears as a
+>   single tool, and keeps RLS/CLS/Purview — but **responses may leave Fabric's compliance/geo
+>   boundary** per the MCP client's policies, so vet it for regulated data. No built-in
+>   conversation state. https://learn.microsoft.com/fabric/data-science/data-agent-mcp-server
 
 ```python
 %pip install fabric-data-agent-sdk

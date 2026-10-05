@@ -1,4 +1,4 @@
-Register a period's tracked time into Dynamics 365 F&O — the week and month close. Runs the fixed sequence: pre-flight, pull the rows at the F&O entry figure, validate every dimension, enter one journal per ISO week per company, reconcile, approve. The domain knowledge each step needs lives in the `fno-time-registration` skill (it fires automatically here); the time model itself is `ops/time/README.md`.
+Register a period's tracked time into Dynamics 365 F&O — the week and month close. Runs the fixed sequence: pre-flight, pull the rows at the F&O entry figure, validate every dimension, enter one journal per ISO week per company, reconcile, approve. The domain knowledge each step needs lives in the `time-tracking-to-fno` skill and its `references/fno-entry.md` (it fires automatically here); the time model itself is `ops/time/README.md`.
 
 Usage:
   /fno                 ← close the last complete ISO week
@@ -133,7 +133,7 @@ Fill **date, project id, task (or activity), hours** and nothing else — `Kateg
 
 If the Excel path is unavailable, offer Niels the choice between entering from the prepared rows
 himself and the browser fallback. Take the browser fallback only on his answer, and then follow
-`.claude/skills/fno-time-registration/references/browser-fallback.md` in full — re-screenshot before
+`.claude/skills/time-tracking-to-fno/references/browser-fallback.md` in full — re-screenshot before
 every click, verify every write, one journal at a time.
 
 ### 5. Approve — Godkendelse → Finished. Never Bogfør.

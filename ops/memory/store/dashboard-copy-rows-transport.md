@@ -39,4 +39,4 @@ journal grain exactly (one per ISO week per company).
 `rollup.py --week/--month` both give **work time**, not entry hours. So the dashboard is a hard
 dependency of a close until that scaling moves into Python.
 
-Encoded in the skill `fno-time-registration` and the command `/fno`.
+Encoded in the skill `time-tracking-to-fno` (`references/fno-entry.md`) and the command `/fno`.

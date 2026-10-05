@@ -34,7 +34,11 @@ Data agent usage is **token-based**, metered as **"AI Query"** at the standard C
 | Operation | Unit | Rate |
 |---|---|---|
 | AI Query — input prompt | per 1,000 tokens | **100 CU-seconds** |
+| AI Query — cached input prompt | per 1,000 tokens | **10 CU-seconds** |
 | AI Query — output completion | per 1,000 tokens | **400 CU-seconds** |
+
+Rates, background-job classification and the separate query-engine charge verified 2026-10-05
+against https://learn.microsoft.com/fabric/fundamentals/data-agent-consumption.
 
 Worked example from the docs: 2,000 input + 500 output tokens =
 (2,000×100 + 500×400)/1,000 = **400 CU-seconds ≈ 6.67 CU-minutes** — for the LLM portion only.
@@ -61,6 +65,8 @@ query cost, it adds up, and **when capacity is exhausted, operations shut down.*
 > Effective **17 Mar 2026**, new operation entries for Fabric AI functions/AI services started
 > appearing in the Capacity Metrics app. The **data agent AI Query rate is unchanged** (still
 > 100/400 CU-s per 1k in/out) — this is a metrics-reporting/naming change, not a price change.
+> (Unverified as of 2026-10-05: the source is the Fabric blog, which refused the fetch; the
+> AI Query rate itself is verified above.)
 
 ### Real total cost of ownership (set CFO expectations early)
 
@@ -117,10 +123,13 @@ deployment ([Tejwani, 2026](https://pub.towardsai.net/fabric-data-agents-just-hi
   itself consumes CU** (your monitor has a cost and shows up in the Metrics app).
 - **Cost isolation:** assign a **Fabric Copilot capacity** to absorb all Copilot + Data Agent
   usage for a named user set (intended for sub-F64 users; needs ≥F2/P1; one per user; home-region
-  only; not on Embedded). Use it to ring-fence and watch AI spend on a dedicated capacity.
-- **"Pause to save money" is a trap.** Smoothing *defers* cost, it never cancels it — **pausing a
-  capacity immediately tallies all outstanding smoothed CU and bills it to Azure on the spot**, and
-  idle capacities still draw down carry-forward overnight. Don't plan testing around pausing.
+  only; not on Embedded; does not cover Fabric AI functions). Use it to ring-fence and watch AI
+  spend on a dedicated capacity. Verified 2026-10-05:
+  https://learn.microsoft.com/fabric/enterprise/fabric-copilot-capacity
+- Throttling stages (10 min delay / 60 min interactive rejection / 24 h background rejection)
+  verified 2026-10-05: https://learn.microsoft.com/fabric/enterprise/throttling
+- **Pausing a capacity** as a cost lever, and what a pause does to smoothed usage: see
+  `fabric-licensing` (owner).
 
 ## 2. Usage logging — what users actually ask
 
@@ -146,10 +155,12 @@ With it enabled, Purview captures, per interaction, the **full prompt text**, th
 Agent`). Records are typed **"Copilot Interaction"** in the M365 unified audit log, viewed in
 **Purview → DSPM for AI → Activity Explorer**.
 
-Enable all three (it's off by default): (1) activate **Purview Audit** for the tenant; (2) enable
-the Purview policy **"DSPM for AI — Capture interactions for Copilot experiences"** (the policy
-name says "Copilot experiences" but it covers data agents); (3) in the **Fabric Admin Portal**
-turn on **"Allow Microsoft Purview to secure AI interactions."** Caveats: **preview**; it's a
+Enable all three (it's off by default): (1) in Purview DSPM, complete the setup task **"Activate
+Microsoft Purview Audit"**; (2) complete the DSPM setup task **"Secure interactions in Microsoft
+Copilot experiences"** (the name says "Copilot experiences" but it covers data agents); (3) in
+**OneLake catalog > Govern > Configurations > Tenant settings** turn on **"Allow Microsoft Purview
+to secure AI interactions."** Steps and names verified 2026-10-05:
+https://learn.microsoft.com/fabric/data-science/data-agent-purview-governance. Caveats: **preview**; it's a
 security/compliance surface (Purview), **not** a Fabric analytics dashboard; basic audit is in
 M365 E5, some advanced Purview features carry extra licensing.
 
@@ -170,46 +181,61 @@ interactions).
 **Purview now also enforces at query time (not just logs).** Beyond DSPM logging, Purview can
 **truncate or block** an agent's response over sensitive data: **DLP policies in Fabric
 Warehouse are GA**, and **access-restriction policies for KQL DB, SQL DB, and Warehouse are in
-preview**. So a governed agent may legitimately return less than the raw query would — design and
-test with these policies on, not off.
+preview** (both statuses verified 2026-10-05:
+https://learn.microsoft.com/fabric/data-science/concept-data-agent#prerequisites). So a governed
+agent may legitimately return less than the raw query would — design and test with these policies
+on, not off.
 
 ### Custom logging (when you need a real usage dashboard)
 
-Front the agent through your own app/orchestrator — the SDK's OpenAI-compatible client
-(`FabricOpenAI(artifact_name=...)`), the agent's **MCP server** (preview; consumed via VS Code
-Agent Mode today), **Copilot Studio**, or **Microsoft Foundry** — and **log every prompt/response
-yourself** into a lakehouse/Eventhouse, then build a Power BI report on it. This is the only way
-to get prompt-level analytics inside Fabric today.
+Front the agent through your own app/orchestrator — the agent's **MCP endpoint** (any MCP client
+over streamable HTTP; the MS Learn page carries no preview label as of 2026-10-05), the SDK's
+`FabricOpenAIResponses` client, **Copilot Studio**, or **Microsoft Foundry** — and **log every
+prompt/response yourself** into a lakehouse/Eventhouse, then build a Power BI report on it. This
+is the only way to get prompt-level analytics inside Fabric today.
 
-- **Auth:** historically runtime querying ran only as a **user identity**. **Service-principal
-  auth is now in preview**, but narrowly: it covers exactly **two scenarios — direct calls from
-  custom apps, and Foundry agents using the data agent as a knowledge source.** Known gaps
-  practitioners hit: **KQL-DB-backed agents are "coming soon" (not yet)**, and client-credentials
-  SPN has been reported **unsupported for external REST API integrations**. "SPN is supported"
-  ≠ every path works — verify the exact path before promising it.
-  ([MS PMs, 2026](https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Service-Principal-Support-for-Data-Agents-in-Fabric-Preview/ba-p/5181634))
+- **Auth:** **service-principal auth is in preview** for querying a published agent from custom
+  apps, automation and CI/CD (client-credentials flow). Limits: **not supported for KQL-database
+  agents**, **managed identities not supported**, and the SPN needs explicit read on every data
+  source. The **Foundry Fabric tool does not support SPN** — it requires user identity.
+  "SPN is supported" ≠ every path works — verify the exact path before promising it. Verified
+  2026-10-05: https://learn.microsoft.com/fabric/data-science/data-agent-service-principal ;
+  https://learn.microsoft.com/azure/foundry/agents/how-to/tools/fabric#prerequisites
 - **Compliance caveat (MCP):** when consumed via the MCP server, responses may leave Fabric's
   compliance/geo boundary depending on the MCP client's policies. Factor this into any regulated
   deployment.
 
 The two halves of a homegrown observability setup, from practitioners:
-- **Prompt side:** wrap the SDK consumption loop — `FabricOpenAI(artifact_name=..., ai_skill_stage=
-  "production")` → `threads.create` → `messages.create` → `runs.create` → poll `runs.retrieve` →
-  read the assistant message — and persist each prompt+response to a Lakehouse table. (No
-  practitioner has published a turnkey prompt-logger, which itself confirms there's no native one.)
-  ([Pawar, 2026](https://fabric.guru/programmatically-comparing-draft-vs-production-fabric-data-agent-responses))
+- **Prompt side:** wrap the call that queries the agent and persist each prompt+response to a
+  Lakehouse table. Two current calling patterns (verified 2026-10-05):
+  - **MCP endpoint** (Microsoft's recommended runtime surface for a published agent):
+    `https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent`,
+    bearer token for scope `https://api.fabric.microsoft.com/.default` (user or SPN), MCP Python SDK
+    `streamablehttp_client` → `ClientSession.initialize()` → `list_tools()` (one tool) →
+    `call_tool(tool.name, {question_arg: question})`. No built-in conversation state — the caller
+    carries multi-turn context.
+    https://learn.microsoft.com/fabric/data-science/data-agent-mcp-server
+  - **SDK Responses client** (in a Fabric notebook, can target the draft): `from
+    fabric.dataagent.client import FabricOpenAIResponses` → `FabricOpenAIResponses(artifact_name=...,
+    workspace_name=..., ai_skill_stage="sandbox"|"production")` → `responses.create(input=...)` →
+    poll by response id until status is terminal → read `output`. Follow-ups chain with
+    `previous_response_id=` or a `conversation=` id. No `model` argument.
+    https://learn.microsoft.com/fabric/data-science/fabric-data-agent-sdk (links the
+    [Responses API sample notebook](https://github.com/microsoft/fabric-samples/blob/main/docs-samples/data-science/data-agent-sdk/responses-api/responses-api-notebook.ipynb))
+  (No practitioner has published a turnkey prompt-logger, which itself confirms there's no native one.)
 - **CU side:** query the **Capacity Metrics semantic model directly from a notebook** (SemPy
   `fabric.evaluate_dax`, filtering `TimePoint`/`CapacitiesList` with `TREATAS`) to attribute CU to
   an operation without the Metrics-app UI. Operational gotcha: **operations take ~6 minutes to
   appear** in the Metrics model, so automation must wait.
   ([bits2BI, 2025](https://bits2bi.com/2025/10/05/tracking-capacity-unit-consumption-for-dax-queries-with-fabric-notebooks/))
 
-> **Time-sensitive — plan for it.** The data agent's programmatic interface still uses the
-> **OpenAI Assistants API, which shuts down 26 Aug 2026** (no extensions). Microsoft says it
-> "will migrate this programmatic interface to the Responses API in a future update" but has
-> **not yet shipped a migration sample**. Existing code keeps working until then. Any PoC that
-> promises SDK/MCP/programmatic consumption must budget for this migration — track the updated
-> sample and don't hard-bake Assistants-API calls you can't revisit.
+> **Assistants API is retired (verified 2026-10-05).** OpenAI sunset the Assistants API on
+> 26 Aug 2026. Code that queries an agent through `FabricOpenAI` + `threads` / `runs` (the
+> Assistants shape), or through the `fabric_data_agent_client` external-client repo, no longer
+> works and must move to the MCP endpoint or `FabricOpenAIResponses` (above). Creating,
+> configuring and publishing through the SDK are unaffected.
+> https://learn.microsoft.com/fabric/data-science/consume-data-agent-python ;
+> https://learn.microsoft.com/fabric/data-science/data-agent-end-to-end-tutorial#use-the-fabric-data-agent-programmatically
 
 ## 3. Lifecycle: Git, CI/CD, and model↔agent sync
 
@@ -228,9 +254,9 @@ The two halves of a homegrown observability setup, from practitioners:
   Definitions Batch APIs**; automate with the **Azure DevOps Pipelines extension for Fabric**
   (runs `fab` CLI tasks).
 - **Auth:** service principals have long been supported for **ALM** (Git/deployment automation).
-  **Runtime querying** ran as a user identity only — but **SPN runtime auth is now in preview**
-  (custom apps / Foundry; KQL "coming soon"). So as-code provisioning/promotion is solid, and
-  app-identity invocation is becoming viable; treat the runtime path as preview until GA.
+  **Runtime querying** under an SPN is preview, with the limits in section 2 (Custom logging >
+  Auth). So as-code provisioning/promotion is solid; treat app-identity invocation as preview
+  until GA.
 
 ## Quick reference — out of the box vs custom
 
@@ -257,6 +283,8 @@ The two halves of a homegrown observability setup, from practitioners:
 - Source control / CI/CD: https://learn.microsoft.com/en-us/fabric/data-science/data-agent-source-control
 - Data agent as MCP server (preview): https://learn.microsoft.com/en-us/fabric/data-science/data-agent-mcp-server
 - Foundry Fabric tool (observability, identity passthrough): https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric
-- Responses-API migration note (end-to-end tutorial): https://learn.microsoft.com/en-us/fabric/data-science/data-agent-end-to-end-tutorial
+- Querying after the Assistants retirement (MCP endpoint; end-to-end tutorial): https://learn.microsoft.com/en-us/fabric/data-science/data-agent-end-to-end-tutorial
+- SDK (management plane; Responses client note): https://learn.microsoft.com/fabric/data-science/fabric-data-agent-sdk
+- Service-principal auth (preview): https://learn.microsoft.com/fabric/data-science/data-agent-service-principal
 - Billing updates — new AI operations (Mar 2026): https://blog.fabric.microsoft.com/en-GB/blog/billing-updates-new-operations-for-fabric-ai-functions-and-ai-services/
 - June 2026 feature summary: https://community.fabric.microsoft.com/t5/Fabric-Updates-Blog/Fabric-June-2026-Feature-Summary/ba-p/5190690

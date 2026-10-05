@@ -78,7 +78,9 @@ ground_truth = pd.DataFrame(
 > blind `%pip install` can pull a broken or behavior-shifted build mid-pipeline.
 
 ```python
-%pip install fabric-data-agent-sdk==0.1.25a0   # pin; latest verified at time of writing
+%pip install fabric-data-agent-sdk==0.1.32a0   # pin; latest on PyPI, verified 2026-10-05
+# 0.1.32a0 is the first release whose evaluate_data_agent defaults to the Responses client;
+# up to 0.1.31a0 it defaults to the retired Assistants path (read from the wheels' source).
 from fabric.dataagent.evaluation import (
     evaluate_data_agent, get_evaluation_summary, get_evaluation_details,
 )
@@ -196,9 +198,11 @@ Any of them can silently move answers. So:
 
 Automate by running the eval notebook from a Fabric pipeline or an Azure DevOps pipeline (the
 SDK runs in-notebook). Service principals are fully supported for ALM; SPN **runtime** querying
-is now in **preview** (was user-identity-only) — see `fabric-data-agent-ops`. Note the evaluation
-harness calls the agent, so the same Assistants-API → Responses-API deadline (**26 Aug 2026**)
-applies to long-lived eval automation.
+is now in **preview** (was user-identity-only) — see `fabric-data-agent-ops`. The evaluation
+harness calls the agent: OpenAI retired the Assistants API on 26 Aug 2026
+(https://learn.microsoft.com/fabric/data-science/consume-data-agent-python), so eval automation
+pinned to an SDK whose harness defaults to the Assistants path (≤ 0.1.31a0) must move to
+≥ 0.1.32a0 (verified 2026-10-05 from the PyPI wheels).
 
 ## Sources
 

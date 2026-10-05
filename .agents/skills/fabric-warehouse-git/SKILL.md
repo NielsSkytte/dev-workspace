@@ -2,25 +2,17 @@
 name: fabric-warehouse-git
 bundle: custom
 description: >
-  How a Microsoft Fabric Warehouse behaves as code in a git-connected workspace, and what
-  breaks on "Update from git". Use this skill whenever a schema change to a Fabric
-  Warehouse has to travel through git - adding, removing, renaming or reordering a column
-  on a warehouse table or view - and whenever a source-control sync fails or silently
-  destroys data. Trigger on "Update from git failed", "commit from workspace",
-  "ObjectNotFoundInCollection", "columns 'X' not found in etl or database", a table name
-  with a "(1)" suffix in an error, "DmsImportDatabaseException" with "Invalid column name"
-  on a sync, "data in the following tables will be deleted", a warehouse table that came
-  out empty after a sync, `xmla.json`, `.sqlproj`, `Microsoft.Build.Sql`, DacFx rebuilding
-  a table instead of altering it, column order / ordinal changes, the
-  "Auto Generated (Do not modify)" header and its hash, drift between a workspace and its
-  branch, or validating .sql files before committing them. Also trigger on "can I drop
-  this column", "will this sync lose data", "why is source control showing the whole
-  warehouse as one item", and on planning a multi-warehouse schema change.
-  This skill owns the WAREHOUSE-AS-CODE contract and git-sync failure modes inside one
-  workspace. Promoting items DEV -> TEST -> PROD through a deployment pipeline is
-  `fabric-deployment`. Workspace structure, branch model and the git-not-`fab import`
-  authoring rule are `pingala-fabric-platform`. Renaming an item is `fabric-rename-entity`.
-  Row-count reconciliation after data moves is `medallion-migration-validation`.
+  How a Microsoft Fabric Warehouse behaves as code in a git-connected workspace, and what breaks on
+  "Update from git". Use it when a warehouse schema change has to travel through git (adding,
+  removing, renaming or reordering columns on tables or views, or a multi-warehouse change), and
+  when a sync fails or silently destroys data: ObjectNotFoundInCollection, "columns not found in etl
+  or database", DmsImportDatabaseException with "Invalid column name", a table name with a "(1)"
+  suffix, a "data will be deleted" warning, or a table that came out empty. It also covers
+  `xmla.json`, `.sqlproj` and DacFx rebuilds, the auto-generated header hash, workspace-branch drift
+  and validating .sql files before commit. It owns the warehouse-as-code contract inside one
+  workspace. Promotion between stages is `fabric-deployment`; workspace structure and branch model
+  are `pingala-fabric-platform`; renaming an item is `fabric-rename-entity`; row-count
+  reconciliation is `medallion-migration-validation`.
 ---
 
 # Fabric Warehouse as code: the git-integration contract

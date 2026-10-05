@@ -301,15 +301,20 @@ deliberately and call them out in any plan:
 - **Consumption beyond the chat pane**: the agent can be exposed as an **MCP server** (consumed
   via VS Code Agent Mode today), a **Copilot Studio** tool, and a **Microsoft Foundry** tool with
   identity passthrough and per-call observability.
-- **Service-principal auth** (preview): run an agent under an app identity for custom apps/Foundry
-  (KQL "coming soon") — this **softens the old "SPN can't query at runtime" limit** (see
+- **Service-principal auth** (preview): run an agent under an app identity for custom apps and
+  automation; not for KQL-database agents, and not through the Foundry Fabric tool (user identity
+  only) — verified 2026-10-05,
+  https://learn.microsoft.com/fabric/data-science/data-agent-service-principal — this **softens the old "SPN can't query at runtime" limit** (see
   `fabric-data-agent-ops` and [git ref](references/git-and-config-as-code.md)).
 - Roadmap: **in-agent visualizations** ("coming soon"); ontology GA (no date).
 
-> **Time-sensitive:** the programmatic interface still uses the OpenAI **Assistants API, which
-> shuts down 26 Aug 2026**, and Microsoft has not yet shipped the Responses API migration sample.
-> Any PoC promising SDK/programmatic consumption must plan for this — details in
-> `fabric-data-agent-ops`.
+> **Programmatic querying (verified 2026-10-05):** OpenAI retired the **Assistants API on
+> 26 Aug 2026**, so Assistants-shaped querying (`threads` / `runs`) no longer works. Query a
+> published agent through its **MCP endpoint**, or in a notebook through the SDK's
+> `FabricOpenAIResponses` client; SDK create/configure/publish calls are unaffected. Calling
+> patterns in `fabric-data-agent-ops`.
+> https://learn.microsoft.com/fabric/data-science/fabric-data-agent-sdk ;
+> https://learn.microsoft.com/fabric/data-science/data-agent-end-to-end-tutorial#use-the-fabric-data-agent-programmatically
 
 ## Authoritative sources
 

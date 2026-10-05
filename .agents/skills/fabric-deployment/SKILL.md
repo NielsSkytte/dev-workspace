@@ -2,27 +2,16 @@
 name: fabric-deployment
 bundle: custom
 description: >
-  What breaks when Microsoft Fabric items are promoted between environments, and the
-  release procedure that prevents it. Use this skill whenever an item moves DEV -> TEST
-  -> PROD through a Fabric deployment pipeline, whenever a deployment or a first run in
-  the new environment fails, and whenever authoring an item that will later be promoted.
-  Trigger on "deploy to TEST", "promote to PROD", "deployment pipeline failed", "the
-  deployment succeeded but it doesn't work in TEST", "Invalid object name" or
-  "DmsImportDatabaseException" on a warehouse deploy, "already exists" on a redeploy,
-  a pipeline failing at submit with "BadRequest" and zero activity runs, VariableNotFound,
-  a variable library / value set that differs between stages, a notebook that wrote to
-  the wrong workspace, a missing seeded table in a new environment, or a scheduled run
-  that stopped when someone's account was disabled. Also trigger on "is this item
-  portable", "can I hardcode this id", item ownership / LastModifiedBy / takeover, and
-  on reviewing a change for environment portability before it ships. Also trigger on a
-  FIRST deploy into an empty or new workspace (a new customer, a new stage, "connect the
-  workspace to the repo", "wipe and resync"), and before the first push to a customer repo.
-  This skill owns deployment MECHANICS and FAILURE MODES. The delivery architecture
-  around it - workspace structure, branch model, three-stage strategy, roles, and the
-  git-not-fab-import authoring rule - lives in `pingala-fabric-platform`. Getting a
-  warehouse SCHEMA change through git in the first place - "Update from git" failures,
-  `xmla.json`, DacFx rebuilding a table and emptying it - is `fabric-warehouse-git`.
-  Renaming a git-connected item is `fabric-rename-entity`. Post-migration data
+  What breaks when Microsoft Fabric items are promoted between environments, and the release
+  procedure that prevents it. Use it when an item moves DEV -> TEST -> PROD through a deployment
+  pipeline; when a deployment or its first run fails ("Invalid object name", "already exists", a
+  BadRequest submit with zero activity runs, VariableNotFound); for a first deploy into an empty or
+  new workspace and before the first push to a customer repo; for variable libraries and per-stage
+  value sets; for portability review (hardcoded ids, a notebook writing to the wrong workspace, a
+  missing seeded table); and for item ownership and scheduled runs that stop when an account is
+  disabled. It owns deployment mechanics and failure modes. Delivery architecture (workspaces,
+  branch model, the git-not-fab-import rule) is `pingala-fabric-platform`; a warehouse schema change
+  through git is `fabric-warehouse-git`; renaming an item is `fabric-rename-entity`; data
   reconciliation is `medallion-migration-validation`.
 ---
 

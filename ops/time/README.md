@@ -254,12 +254,13 @@ be typed yet* instead of leaving it to be spotted. It lives in the `## Customer`
 | `fno_billable: no` | the F&O line goes in as `Linjeegenskab: No charge` |
 | `fno_description:` | the required `Beskrivelse` text (on the *project*, since it carries the engagement) |
 | `fno_firma:` `fno_code:` `fno_activity:` | override the sheet for a customer it does not list |
+| `fno_code:` `fno_category:` **on a work-task** | the task books on its own Proj ID (and Kategori), not the project's; the customer's `fno_requires` stops applying to it (`fno.task_overrides`, 2026-10-05) |
 
 An absent field means nothing extra is required. The table below stays the record of what was confirmed and when — change it and the node together.
 
 | Customer | Proj ID | Registers on | Activity | Confirmed |
 |---|---|---|---|---|
-| **Carl Ras** | `230-02` (always) | **Task, always** — every line needs one | **Never supplied by us.** F&O derives it from the task | 2026-08-31 |
+| **Carl Ras** | `230-02`; **exception:** Dataverse write-back → `230-04` | **Task, always** — every line needs one; the `230-04` line is activity-level | **Never supplied by us.** F&O derives it from the task; `230-04` takes activity `112744`, Kategori `F` | 2026-08-31; exception 2026-10-05 |
 | **Matas** | `212-01` | Task | Filled automatically by F&O | 2026-08-31 |
 | Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
 | Element Logic | `6001-01` | Activity `600003` | **+ `Beskrivelse` required** — see below | 2026-09-02 |
@@ -289,6 +290,12 @@ an `activity:` for Carl Ras — a value we invent there is noise at best and con
 activity at worst. **Everything worked on at Carl Ras needs a task.** Tasks in use so far:
 `CarlRData-496` Marketo ingest, `CarlRData-553` Marketo write-back, `CarlRData-555` operational
 hardening.
+
+**Carl Ras exception (Niels, 2026-10-05):** the Dataverse write-back
+(`2026-09-02-carlras-dataverse-writeback`) books on `230-04` "Power Platform PoC" (PING), activity
+`112744` "PowerPOC Dataverse-demo-miljø", Kategori `F`, no task. The task file holds those values
+itself (`fno_code` / `activity` / `fno_category`). Before 2026-10-05 that work was on `230-02` /
+`CarlRData-557`. September's lines stay there because those journals are posted (task Log, 2026-10-01).
 
 
 ### 4.2 What an F&O task id is called (added 2026-09-21)
@@ -344,6 +351,10 @@ worked.
 me 18 hours in one day" is a statement about a *customer*, not about a folder, and 12 h across two
 different customers is unremarkable because neither can see the other. A single long day for one
 customer is normal and stays; what the cap prevents is several days stacking into one.
+
+**F&O entry is a separate rule** (owner, 2026-10-05): lines are entered at 9 h per customer/project
+per day, 12 h when the tracked data supports it, no total limit per day. The 12 h cap above governs
+the timesheet (record of work); skill `time-tracking-to-fno` > `references/fno-entry.md` owns the entry rule.
 
 ### Bounded turns (added 2026-08-30)
 
@@ -423,7 +434,7 @@ can pull a whole period at once without a separate aggregate file.
 one journal per ISO week per company, and `Godkendelse -> Finished` (never `Bogfør`) -- is written up
 in the memory records `fno-registration-per-customer-protocol`, `fno-month-close-approve-not-post`
 and `dashboard-copy-rows-transport`. Those are the durable source; the Claude harness only
-accelerates them (skill `fno-time-registration`, command `/fno`).
+accelerates them (skill `time-tracking-to-fno`, command `/fno`).
 
 ### 6.1 Work that is not invoiced (added 2026-09-21)
 
@@ -643,6 +654,8 @@ a path not seen before is `new`; >=150 weighted lines on a seen path is a `rebui
 | per **customer** per day | 12 h | hard -- spills to another day, same customer, same month |
 | all customers per day | 15 h | soft -- review flag only, never moves hours |
 | all customers per day | 24 h | hard -- assertion |
+
+F&O entry lines: 9 h per customer/project per day, 12 h when the data supports it (owner, 2026-10-05; see section 4).
 
 A day over 9 h across *different* customers is fine: customers cannot see each other, so the only cap
 that binds is the one on their own line. Spill is section 5's `consolidate_week` run backwards, plus

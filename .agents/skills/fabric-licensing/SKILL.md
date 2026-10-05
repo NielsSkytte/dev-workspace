@@ -2,7 +2,7 @@
 name: fabric-licensing
 bundle: custom
 description: >
-  Microsoft Fabric licensing and cost - capacity SKUs (F2 to F2048), the per-user tiers
+  Microsoft Fabric licensing and cost - capacity SKUs (F2 to F8192), the per-user tiers
   (Free / Pro / PPU), the F64 viewing threshold, how capacity is bought (pay-as-you-go vs a
   capacity reservation, pause/resume), how Copilot and AI in Fabric are metered, the tenant and
   data-residency gates, and how to state any of it in a customer offer without leaving Pingala
@@ -33,41 +33,41 @@ The money-and-access reference for Fabric: which licence a user needs, what capa
 
 ## The two licence types (they stack)
 
-Fabric needs **both** a capacity and **at least one per-user licence**; they are not interchangeable, they stack. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
+Fabric needs **both** a capacity and **at least one per-user licence**; they are not interchangeable, they stack. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
 
-- **Capacity** = the compute pool, sized in Capacity Units (CUs) via SKUs (F2 to F2048; legacy P1 to P5). It licenses Fabric features and lets you create and run Fabric items.
+- **Capacity** = the compute pool, sized in Capacity Units (CUs) via SKUs (F2 to F8192; legacy P1 to P5). It licenses Fabric features and lets you create and run Fabric items.
 - **Per-user** = Free, Pro, or Premium-Per-User (PPU). Governs what an individual can author and view.
 
-## Capacity SKUs (F2 to F2048)
+## Capacity SKUs (F2 to F8192)
 
-- **The F number equals the CU count** (F2 = 2 CU, F64 = 64 CU = 8 v-cores = the old P1). Full ladder in `references/capacity-and-per-user.md`. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
+- **The F number equals the CU count** (F2 = 2 CU, F64 = 64 CU = 8 v-cores = the old P1); the ladder now runs to **F8192** (F4096 and F8192 added). Full ladder in `references/capacity-and-per-user.md`. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
 - **F2 is the floor to turn features on** (including data agents and Copilot), not a sizing recommendation. Pingala starts at F4 and sizes production from measured CU - that sizing is an ops call (`fabric-data-agent-ops`).
-- **P-SKU retirement:** Microsoft is retiring the Power BI Premium per-capacity P SKUs; new and existing customers should move to **F SKUs**. Flag this in any offer or environment that still assumes a P SKU. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
+- **P-SKU retirement:** Microsoft is retiring the Power BI Premium per-capacity P SKUs; new and existing customers should move to **F SKUs**. Flag this in any offer or environment that still assumes a P SKU. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
 
 ## Per-user tiers and the F64 rule (the biggest cost lever)
 
-- **Free** is auto-assigned on first Fabric sign-in. It can create and share **non-Power BI Fabric items** (lakehouse, warehouse, notebook, pipeline) in an F or Trial-capacity workspace, but cannot create or share Power BI items outside its own *My workspace*. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
-- **Pro** can create and share Power BI content. **Every org using Power BI in Fabric needs at least one Pro or PPU user.** ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
-- **PPU** adds most Premium features per user (the XMLA endpoint, larger models, 48 refreshes/day), but **does not provision a Fabric capacity** - PPU alone cannot run non-Power BI Fabric items. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses); [PPU FAQ](https://learn.microsoft.com/power-bi/enterprise/service-premium-per-user-faq), verified 2026-06-25)
-- **The F64 line (the single biggest per-seat cost lever):** **below F64**, every user *viewing* Power BI content needs **Pro, PPU, or an individual trial**; **at F64 or larger** (or a P capacity), a **Free** viewer can view. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
-- **Creating** non-Power BI Fabric items needs only **Free plus an F/Trial capacity**, at any SKU size. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-06-25)
+- **Free** is auto-assigned on first Fabric sign-in. It can create and share **non-Power BI Fabric items** (lakehouse, warehouse, notebook, pipeline) in an F or Trial-capacity workspace, but cannot create or share Power BI items outside its own *My workspace*. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
+- **Pro** can create and share Power BI content. **Every org using Power BI in Fabric needs at least one Pro or PPU user.** ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
+- **PPU** adds most Premium features per user (the XMLA endpoint, larger models, 48 refreshes/day), but **does not provision a Fabric capacity** - PPU alone cannot run non-Power BI Fabric items. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses); [PPU FAQ](https://learn.microsoft.com/fabric/enterprise/powerbi/service-premium-per-user-faq), verified 2026-10-05)
+- **The F64 line (the single biggest per-seat cost lever):** **below F64**, every user *viewing* Power BI content needs **Pro, PPU, or an individual trial**; **at F64 or larger** (or a P capacity), a **Free** viewer can view. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
+- **Creating** non-Power BI Fabric items needs only **Free plus an F/Trial capacity**, at any SKU size. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses), verified 2026-10-05)
 
 Full capability matrix and trial rules in `references/capacity-and-per-user.md`.
 
 ## Buying capacity (the cost mechanics MS Learn states)
 
-- **Two SKU families:** **Azure F SKUs** (bought in the Azure portal, **billed per second with a one-minute minimum, no commitment**, pay-as-you-go, the **recommended** option) and **Microsoft 365 P SKUs** (monthly/yearly commitment, EA-only, being retired). ([buy-subscription](https://learn.microsoft.com/fabric/enterprise/buy-subscription), verified 2026-06-25)
-- F SKUs can be **scaled** and **paused/resumed**, and discounted with a **1- or 3-year capacity reservation**. A reservation covers **capacity CU only** (not storage or networking), applies hourly with no carryover, and reverts to pay-as-you-go when it expires. ([buy-subscription](https://learn.microsoft.com/fabric/enterprise/buy-subscription); [fabric reservation](https://learn.microsoft.com/azure/cost-management-billing/reservations/fabric-capacity), verified 2026-06-25)
-- **Pausing** an F SKU stops compute billing, but **settles outstanding smoothed/overage usage** at pause; resuming resumes billing. A pause is a real cost lever for non-production capacities. ([pause-resume](https://learn.microsoft.com/fabric/enterprise/pause-resume), verified 2026-06-25)
+- **Two SKU families:** **Azure F SKUs** (bought in the Azure portal, **billed per second with a one-minute minimum, no commitment**, pay-as-you-go, the **recommended** option) and **Microsoft 365 P SKUs** (monthly/yearly commitment, EA-only, being retired). ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses#capacity), verified 2026-10-05)
+- F SKUs can be **scaled** and **paused/resumed**, and discounted with a **1- or 3-year capacity reservation**. A reservation covers **capacity CU only** (not storage or networking), applies hourly with no carryover, and reverts to pay-as-you-go when it expires. ([scale-capacity](https://learn.microsoft.com/fabric/enterprise/scale-capacity); [pause-resume](https://learn.microsoft.com/fabric/enterprise/pause-resume); [fabric reservation](https://learn.microsoft.com/azure/cost-management-billing/reservations/fabric-capacity), verified 2026-10-05)
+- **Pausing** an F SKU stops compute billing, but at pause the remaining **cumulative overages and smoothed operations are summed and added to your Azure bill** at once - smoothing defers cost, it never cancels it, so a pause does not erase usage already incurred. Pausing also ends any throttling immediately. Resuming resumes billing. With that understood, a pause is a real cost lever for idle non-production capacities. ([pause-resume](https://learn.microsoft.com/fabric/enterprise/pause-resume), verified 2026-10-05)
 - F SKUs can also be bought via a **Cloud Solution Provider (CSP)**; same product, partner billing.
-- **Dollar prices are NOT on MS Learn.** The pages point to the **Azure pricing calculator** for regional list prices. Quote from the calculator at offer time; do not state a price from memory. ([buy-subscription](https://learn.microsoft.com/fabric/enterprise/buy-subscription), verified 2026-06-25)
+- **Dollar prices are NOT on MS Learn.** Pricing is regional; the pages point to the **Fabric pricing page** (azure.microsoft.com/pricing/details/microsoft-fabric/) and the Azure pricing calculator. Quote from there at offer time; do not state a price from memory. ([licenses](https://learn.microsoft.com/fabric/enterprise/licenses#capacity); [fabric reservation](https://learn.microsoft.com/azure/cost-management-billing/reservations/fabric-capacity), verified 2026-10-05)
 
 ## Copilot and AI in Fabric licensing
 
-- **No separate per-user licence for Copilot-in-Fabric** - it **consumes capacity CUs** (metered, not seat-licensed). ([copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview), verified 2026-06-25)
-- Requires a paid **F2+/P1+** capacity; **Pro or PPU alone is not sufficient**; not available on trial SKUs. ([copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview), verified 2026-06-25)
-- Metered by tokens (**100 CU-seconds per 1,000 input, 400 per 1,000 output**), background-smoothed over 24h; **these rates can change** so any quote must be dated. The CU monitoring and runaway side is `fabric-data-agent-ops`. ([copilot consumption](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-consumption), verified 2026-06-25)
-- **Region gate:** Copilot runs on Azure OpenAI in the US and the EU data boundary; if the capacity is outside US/EU it is **disabled until an admin enables cross-geo processing**. UK maps to the EU boundary but still counts as cross-geo. ([copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview), verified 2026-06-25)
+- **No separate per-user licence for Copilot-in-Fabric** - it **consumes capacity CUs** (metered, not seat-licensed); access depends on a supported capacity, not a per-user licence. ([copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview); [troubleshoot-copilot-unavailable-after-trial](https://learn.microsoft.com/fabric/fundamentals/troubleshoot-copilot-unavailable-after-trial), verified 2026-10-05)
+- Requires a paid **F2+/P1+** capacity; **Pro and PPU workspaces don't directly support Copilot** (they need a Fabric Copilot capacity assigned); not available on trial SKUs. ([copilot-enable-fabric](https://learn.microsoft.com/fabric/fundamentals/copilot-enable-fabric#prerequisites); [copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview), verified 2026-10-05)
+- Metered by tokens (**100 CU-seconds per 1,000 input, 10 per 1,000 cached input, 400 per 1,000 output**; prompt caching applies automatically), background-smoothed over 24h; **these rates can change** so any quote must be dated. The CU monitoring and runaway side is `fabric-data-agent-ops`. ([copilot consumption](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-consumption), verified 2026-10-05)
+- **Region gate:** Copilot runs on Azure OpenAI in the US and the EU data boundary; if the capacity is outside US/EU it is **disabled until an admin enables cross-geo processing**. UK maps to the EU boundary but still counts as cross-geo. ([copilot overview](https://learn.microsoft.com/fabric/fundamentals/copilot-fabric-overview), verified 2026-10-05)
 - **M365 Copilot is a different, separately-licensed product.** The data-agent-in-Teams path and Copilot Credits live in `references/data-agent-consumption.md`, not here.
 
 ## Offer translation (business altitude)
@@ -79,7 +79,7 @@ Stance and structure are governed by `pingala-offer`; voice by `writing-voice`. 
 - State **cost exposure in business terms** - what scales with use, what the customer must licence and budget - so nothing surprises later. Keep the CU rates, credit meters, reservation mechanics, and dollar figures OUT (technical-note or live-quote material).
 - The only legitimate customer decision is a **named compliance sign-off** (e.g. data residency), never "which do you prefer".
 
-**This skill replaces the licensing facts** once single-sourced in `writing-voice/references/business-offers.md`. That file keeps its before/after passage as a **voice demonstration only** and points here for facts. If they disagree, **this skill is authoritative.**
+`writing-voice/references/business-offers.md` holds a voice example only; facts are here. If they disagree, **this skill is authoritative.**
 
 ## Re-verify (these facts decay)
 
@@ -94,4 +94,4 @@ Canonical pages:
 
 Data-agent consumption pages are listed in `references/data-agent-licensing-tables.md`. Live dollar figures: the Azure pricing calculator / Fabric pricing page.
 
-> Licensing facts verified against MS Learn on 2026-06-25 (capacity, per-user, Copilot in Fabric) and 2026-06-24 (data-agent consumption).
+> Licensing facts verified against MS Learn on 2026-10-05 (capacity, per-user, Copilot in Fabric, data-agent consumption).

@@ -75,25 +75,39 @@ When sending timestamps to external APIs as query filters:
 3. **Convert to UTC before sending** if the API interprets bare timestamps as UTC
 4. **Respect API precision limits** — some APIs only accept minute precision, not seconds
 
-**Watermark query pattern for Fabric SQL endpoint** (handles variable UTC offsets, DST-safe):
+**Watermark query pattern for Fabric SQL endpoint** (handles variable UTC offsets, DST-safe).
+Convert each row to UTC first, then take the MAX. Accepts `+hhmm`, `-hhmm`, `+hh:mm` and `-hh:mm`:
 ```sql
-SELECT 
+WITH parsed AS (
+    SELECT
+        TRY_CONVERT(datetime, LEFT([<timestamp_column>], 23)) AS local_ts,
+        RIGHT(REPLACE(RIGHT([<timestamp_column>], 6), ':', ''), 5) AS off   -- '+0100' / '-0500'
+    FROM [<tracking_table>]
+    WHERE <timestamp_column> != ''
+)
+SELECT
     FORMAT(
-        DATEADD(
+        MAX(DATEADD(
             MINUTE,
-            -(
-                CAST(SUBSTRING(MAX(RIGHT([<timestamp_column>], 5)), 2, 2) AS int) * 60 +
-                CAST(SUBSTRING(MAX(RIGHT([<timestamp_column>], 5)), 4, 2) AS int)
-            ),
-            MAX(TRY_CONVERT(datetime, LEFT([<timestamp_column>], 23)))
-        ),
+            -(CASE LEFT(off, 1) WHEN '-' THEN -1 ELSE 1 END)
+              * (CAST(SUBSTRING(off, 2, 2) AS int) * 60 + CAST(SUBSTRING(off, 4, 2) AS int)),
+            local_ts
+        )),
         'yyyy-MM-dd HH:mm'
     ) AS LastUpdatedDate
-FROM [<tracking_table>]
-WHERE <timestamp_column> != ''
+FROM parsed
 ```
 
-> Note: TODATETIMEOFFSET and AT TIME ZONE are not supported on the Fabric SQL endpoint. Use manual offset arithmetic as above.
+Convert per row before the MAX: `MAX(local time)` and `MAX(offset)` taken separately pair the
+latest local time with some other row's offset (wrong across a DST change), and the offset's sign
+decides whether minutes are added or subtracted.
+
+> Note: `AT TIME ZONE` **is** supported on the SQL analytics endpoint and Warehouse, and
+> **datetimeoffset** can be used in queries (not as a stored column type). `TODATETIMEOFFSET` does
+> not list Fabric Warehouse or SQL analytics endpoint in its "Applies to". Verified 2026-10-05:
+> https://learn.microsoft.com/sql/t-sql/queries/at-time-zone-transact-sql ,
+> https://learn.microsoft.com/fabric/data-warehouse/data-types ,
+> https://learn.microsoft.com/sql/t-sql/functions/todatetimeoffset-transact-sql
 
 ---
 

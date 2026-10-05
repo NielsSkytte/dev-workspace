@@ -2,25 +2,16 @@
 name: time-tracking-to-fno
 bundle: custom
 description: >
-  The whole time-tracking chain, from a keystroke to an approved Dynamics 365 F&O journal line:
-  how a turn is captured as a heartbeat, how it is attributed to a project and a task, the 15+5
-  active-time rollup that turns heartbeats into a finalized day, the five measures (keyboard,
-  measured, work, F&O entry, value) and the formula that carries work time toward the value
-  ceiling, the registers that override derivation (absence, not-invoiced, splits, task ids, line
-  descriptions), the full-period rule and the deliberate top-up, the per-customer F&O dimension
-  protocol, and the entry runbook itself - pre-flight gates, the paste-not-drive-the-grid transport,
-  which journal fields are typed, one journal per ISO week per company, and closing with
-  Godkendelse -> Finished and never Bogfoer. Use this skill whenever time is being captured,
-  attributed, corrected, rolled up, reviewed, reported, registered, approved or reconciled, and
-  whenever a question is about an F&O project id, activity, task, journal or company. Trigger on
-  "time tracking", "how is my time tracked", "heartbeat", "attribution", "which project does this
-  time go to", "rollup", "timesheet", "finalize the day", "keyboard time", "value time", "F&O
-  entry figure", "topup", "absence", "not invoiced", "split the line", "register time", "week
-  close", "month close", "enter the timesheet", "tidsregistrering", "godkend kladden", "Bogfoer",
-  "Godkendelse", "Finished", "journal / kladde", "which project id for X", "which activity for X",
-  "Opgaven eksisterer ikke", "Rolle-id", "Linjeegenskab", "No charge", "faktureringsprocent",
-  "bonus". Use it even if the request names only one link in the chain (e.g. just "why is today
-  0.5 h" or "what project id is Carl Ras").
+  The workspace's time-tracking chain, from a keystroke to an approved Dynamics 365 F&O journal
+  line, and the knowledge each step of the `/fno` week and month close needs. Use it for any
+  request about how time is captured, attributed to a project or task, rolled up into a finalized
+  day, corrected, topped up, reviewed or reported - heartbeats, the 15+5 model, the five measures
+  from keyboard to value time, the registers, absence, the day cap. Use it equally for entering,
+  correcting, approving or reconciling time in F&O: project ids, activities, tasks, companies,
+  journals (kladder), Godkendelse versus Bogfoer, F&O error messages, the utilisation page and the
+  faktureringsprocent bonus boundary, in Danish or English. Use it even when the request names one
+  link only, such as one day's hours or one customer's project id. The canonical per-customer table
+  is `ops/time/README.md` section 4.1; the hours to enter come from the dashboard Time page.
 ---
 
 # Time tracking, end to end
@@ -275,17 +266,21 @@ Forgetting to wrap up costs no hours - idle gaps are discarded and missed days f
 What decays is the part that needs the conversation: the handoff, and the transcript-dependent
 records.
 
-**The cap: 12 h per customer per date.** That grain is the point - "you billed me 18 hours in one
-day" is a statement about a *customer*, not about a folder, and 12 h across two customers is
-unremarkable because neither can see the other. A single long day for one customer is normal and
-stays. What the cap prevents is several days stacking into one. The cap is enforced where hours are
-**moved**; measured hours are never moved behind you, so a day over the cap at finalize is
-**flagged in its own file** instead - 2026-08-27 finalized at 22.75 h silently and was caught days
-later. Over the cap, hours **spill** to another date for the same customer within the same week,
-largest line first: hours move, never drop, every move is printed, and two identical lines on one
-date fold into one so a spill never adds a line to type. If the whole week is already at the cap
-the excess stays where it was measured and says so - inventing a date outside the period would be
-worse than one honest over-cap day.
+**The day cap (owner, 2026-10-05): 9 h per customer/project per date; 12 h is allowed when the
+tracked data supports it. There is no total limit per day.** That grain is the point - "you billed
+me 18 hours in one day" is a statement about a *customer*, not about a folder, and a long day split
+across two customers is unremarkable because neither can see the other. What the cap prevents is
+several days stacking into one. The code does not match the rule yet: `rollup.py` (`DAY_CAP`) and
+`value.py` (`CUSTOMER_CAP`) enforce 12 h, and the Time page packs entry rows at 9 h with no 12 h
+exception (`packDays`, `ops/web/time.js`). The cap is enforced where hours are **moved**; measured
+hours are never moved behind you, so a day over the cap at finalize is **flagged in its own file**
+instead - 2026-08-27 finalized at 22.75 h silently and was caught days later. Over the cap,
+measured hours **spill** (`rollup.py`) to another date for the same customer within the same ISO
+week, largest line first: hours move, never drop, every move is printed, and two identical lines on
+one date fold into one so a spill never adds a line to type. If the whole week is already at the
+cap the excess stays where it was measured and says so - inventing a date outside the period would
+be worse than one honest over-cap day. Value time spills by a different rule (`value.py`: same
+month, same week first) - see `references/value-and-entry-figure.md` section 5.
 
 **Consolidation.** A day-entry **>= 2 h** stays where it is. Sub-2 h entries of the same line
 within an ISO week are summed onto a single day of that week, preferring a day that line was
@@ -369,12 +364,14 @@ rules, in one breath:
 2. **Paste the rows; do not drive the grid.** Driving a production grid one coordinate at a time put
    `0,75` into a role-id field in a production journal. The browser path is the guarded fallback
    (`references/browser-fallback.md`), never the happy path.
-3. **Type date, project id, task-or-activity, hours. Nothing else.** Hours are typed and do not
-   recompute; the category auto-fills once the task resolves.
+3. **Type date, project id, task-or-activity, hours. Nothing else.** Hours are always typed: they
+   do not recompute, and they pre-fill from the task; the category auto-fills once the task resolves.
 4. **One journal per ISO week per company. Reconcile each one before starting the next.**
 5. **Closing is Godkendelse -> Finished. Never Bogfoer.** Approval is not posting, and **posting is
-   the owner's decision.** A low utilisation figure right afterwards is expected - that page counts
-   only posted lines - and is **not** evidence of missing registration. Do not "fix" it.
+   the owner's decision.** Approve last: approved journals can be posted by someone else within
+   hours, so every correction comes before approval. A low utilisation figure right afterwards is
+   expected - that page counts only posted lines - and is **not** evidence of missing registration.
+   Do not "fix" it.
 
 ## 8. Reporting a run
 

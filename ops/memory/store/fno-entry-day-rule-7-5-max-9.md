@@ -6,13 +6,17 @@ scope: workspace
 source: session:a110c294
 tags: [fno, time, registration, day-cap, entry]
 status: distilled
-description: "F&O entry lines per customer per date: 7.5 h a normal day, never over 9 h, within the ISO week on weekdays (owner, 2026-09-29). Enforced by packDays in ops/web/time.js on consolidated rows; the timesheet cap (rollup DAY_CAP 12 h per customer per date, ADR-005) is unchanged"
+description: "F&O entry lines per customer per date: 7.5 h a normal day, 9 h cap, 12 h allowed when the tracked data supports it, no total limit per day (owner, revised 2026-10-05), within the ISO week on weekdays (owner, 2026-09-29). Enforced by packDays in ops/web/time.js on consolidated rows; the timesheet cap (rollup DAY_CAP 12 h per customer per date, ADR-005) is unchanged"
 ---
 
 **The rule (owner, 2026-09-29):** what goes into F&O is laid out per customer as normal days --
 7.5 h, never more than 9 h on one date -- *"distributed across the week normally in 7,5 max 9
 hours per day"*. Per customer, not per day across all companies. Weekends only when a week has no
 weekday in range.
+
+**Revised 2026-10-05 (owner):** 9 h per customer/project per day, with an option of 12 h when the
+tracked data supports it; no limit in total per day. `packDays` does not yet implement the 12 h
+exception (owner chose to leave the code as is). Skill: `time-tracking-to-fno` > `references/fno-entry.md`.
 
 **Where it lives.** `packDays` in `ops/web/time.js`, applied to consolidated entry rows AFTER
 `scaleRows`: each line keeps its own weekday up to 7.5 h, the excess fills other weekdays of the

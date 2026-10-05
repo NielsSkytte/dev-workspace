@@ -79,14 +79,17 @@ A ledger keyed by file path, rebuilt from scratch on every run so nothing persis
 
 | Level | Threshold | Type |
 |---|---|---|
-| per **customer** per day | 12 h | hard - spills to another day, same customer, same month |
+| per **customer/project** per day | 9 h; 12 h when the tracked data supports it (owner, 2026-10-05) | hard - spills to another day, same customer, same month |
 | all customers per day | 15 h | soft - review flag only, never moves hours |
 | all customers per day | 24 h | hard - assertion |
 
-A day over 9 h across *different* customers is fine: customers cannot see each other, so the only
-cap that binds is the one on their own line. Spill is the weekly consolidation run backwards, plus
-two guardrails: **never cross a month boundary** (it may be invoiced), and distance beats the
-worked-day preference outside the week.
+There is **no total limit per day**: a long day across *different* customers is fine, because
+customers cannot see each other, so the only cap that binds is the one on their own line. The two
+all-customer rows are checks, not limits. `value.py` still enforces 12 h per customer
+(`CUSTOMER_CAP`). This value-time spill is the weekly consolidation run backwards, plus two
+guardrails: **never cross a month boundary** (it may be invoiced), and same-week dates first, then
+distance beats the worked-day preference outside the week. Measured hours spill by the narrower
+rule in SKILL.md section 6 (`rollup.py`: same ISO week only).
 
 **The 15 h flag counts weighted hours, not clock hours.** It means "check the classifier", never
 "you worked 15 hours."

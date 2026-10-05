@@ -1498,3 +1498,27 @@ Chronological record of workspace sessions — what was done, decided, and what'
   session end goes to `Dev` (hours-chart mod, value.py two-account fix, hours.py, measure-moves).
   Move the hours in the 10-04 timesheet and record the move in `ops/time/measure-moves.md`
   (From AtomicServiceNow To Dev) so the measurement follows.
+
+## 2026-10-05 (workspace -- skills 5.5 review + Atomic reference, session ee830441)
+- **Did:** Q reviewed all 21 skills for Opus/Sonnet 5.5 (14 minor, 7 rework; no model-specific
+  defects). Applied the three top fixes: four long descriptions cut to < 1,000 chars;
+  `fno-time-registration` merged into `time-tracking-to-fno` and deleted (`/fno`, BUNDLES, README,
+  m.md repointed; TODO:62 closed); every flagged Fabric fact re-verified on MS Learn and stamped
+  2026-10-05 (Assistants API retired 08-26, SDK pin 0.1.32a0, 12 licensing corrections, watermark SQL
+  rewritten). Wrote `pingala-fabric-platform/references/atomic-overview.md` (what/why/components) and
+  `atomic.md` (Part 2 from the Element Logic and Carl Ras repos).
+- **Decided:** F&O entry day cap = 9 h per customer/project per day, 12 h when the data supports it,
+  no total per day (skills, `ops/time/README.md`, memory `fno-entry-day-rule-7-5-max-9`; code
+  unchanged). Keep `time-tracking-to-fno` as the single F&O skill.
+- **Tasks:** none moved (no active task this session).
+- **Next:** Niels supplies Atomic background (Part 1 + 4 open questions); rotate the committed secrets
+  in Carl Ras `NB_Ingest_CVR` and Element Logic `NB_Manage_Shortcut_LZ_To_Raw` (customer repos, not
+  touched); settle the few-shot function name in `fabric-data-agent-testing:158/171` by a notebook run;
+  `packDays` has no 12 h exception; remaining minor/rework items in the review (stream-maturity-matrix,
+  pingala-fabric-platform overlap, synced duplicate skills in ~/.claude).
+- **Time:** 10-04 finalized; session 6c611831 split at 08:41:58Z per the pending correction: Aeven
+  1,25 -> 0,50 h, Dev 0,50 -> 1,25 h, row in `measure-moves.md`; 10-04 lines described. W40 22,25 h of
+  37,50. Stalls: nothing new. Value 10-04 derived before the split (Aeven 0,33 kbd / 2,25 weighted).
+  Sentinel on daily/2026-10-05: 11 capture-side flags (expanded command text and hand-back frames as
+  User lines, 3 pairing mismatches in session a78914e1) -- none distilled; inference: capture_turn.py
+  pairs queued prompts with the previous answer.

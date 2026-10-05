@@ -25,6 +25,10 @@ findes en entydig Resource category view-post"*. The line had to be deleted and 
   move".
 - Prefer targeting by **element/text lookup** over pixel coordinates wherever the tooling allows it.
 - Never batch several coordinate clicks from one screenshot.
+- **Toolbar buttons by element reference, never by coordinate.** On 2026-09-29 a re-screenshotted
+  coordinate still hit `Tilbagefoer` (its copy/reverse dialog opened; cancelled) because the toolbar
+  moved after the screenshot. Rows the same way: pick the row by its reference and read back the
+  focused journal id before acting on it.
 
 ### 2. Verify after every write, before the next one
 

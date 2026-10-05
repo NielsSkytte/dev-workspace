@@ -1,0 +1,210 @@
+# Pingala Atomic — reference
+
+> Status (2026-10-05): Part 1 is a skeleton awaiting owner material; Part 2 is filled from the
+> Element Logic and Carl Ras repos. Facts cite their source; inference is labelled.
+> Read part 1 for what Atomic is; part 2 for how it is built.
+
+---
+
+## Part 1 — High level
+
+### 1.1 What Atomic is
+Pingala's proprietary accelerator for building a Microsoft Fabric data platform on an ERP source:
+pre-built, tested transformation logic from raw ERP tables to curated, model-ready tables
+(`SKILL.md` > *Pingala Atomic framework*).
+
+TODO: one-paragraph owner definition (product, method, or both; what is sold vs what is delivered).
+
+### 1.2 The problem it solves
+Without an accelerator, 60-80% of project time goes to data transformation (`SKILL.md`
+> *The problem Atomic solves*). TODO: owner wording, evidence.
+
+### 1.3 Origin and scope
+- Designed originally for **Dynamics 365 F&O** sources (`SKILL.md`).
+- Reference implementation on F&O: **Element Logic** (`customers/ElementLogic`).
+- Applied to a non-F&O source: **Carl Ras** — Dynamics AX 2009 (`AX09`) plus CVR, GTM/GA4 and
+  Marketo (`customers/Carl-Ras/CONTEXT.md`).
+- Generic vs customer-specific parts: see 2.8. TODO: owner confirmation.
+
+### 1.4 Vocabulary
+| Atomic term | Medallion layer | Fabric layer name | Store type |
+|---|---|---|---|
+| Landing Zone | - | LZ | Lakehouse |
+| Particles | Bronze | Raw | `Lakehouse_Raw_<Source>` |
+| Atoms | Silver | Enriched | `Warehouse_Enriched_<Source>` |
+| Molecules | Gold | Curated | `Warehouse_Curated` |
+| Measures | - | Semantic model | `SM_*` |
+
+Source: `SKILL.md` layer table; store names from both repos. Fact: the words
+Particles/Atoms/Molecules appear nowhere in the Element Logic repo; the code uses Raw/Enriched/Curated
+(`customers/ElementLogic/LineageDocumentation/research/phase0-agent-reports.md`, *Atomic model validation*).
+
+### 1.5 Value proposition
+See `SKILL.md` > *Atomic value proposition*. TODO: customer-facing version.
+
+### 1.6 Related products
+- **MetaAtomic** (`own/MetaAtomic`) — metadata product run against an Atomic estate: lineage,
+  stream matrix, data quality, portal. Live on Carl Ras; deployment pack for Element Logic.
+
+---
+
+## Part 2 — Technical
+
+Sources, read 2026-10-05:
+- Element Logic (EL): `customers/ElementLogic/LineageDocumentation/Input/Pingala Fabric ETL/Fabric`
+  and `Input/SM_PingalaAtomic.SemanticModel` (repo snapshot).
+- Carl Ras (CR): `customers/Carl-Ras/datahub/{Landingzone-ETL,Fabric-ETL,Semantic-Model}`.
+
+"Generic" = same code or pattern in both; anything else is named per customer.
+
+### 2.1 Workspace and environment structure
+- ETL workspace item folders are numbered in reverse flow order: `01 - Curated`, `02 - Enriched`,
+  `03 - Raw`, plus `Orchestration`, `Util` (EL also `Serving`). Under Raw and Enriched: one
+  subfolder per source.
+- The landing zone is a separate workspace, shared across environments (no per-environment
+  override in either customer).
+- Variable libraries in `Util/Variables` carry every environment-dependent id.
+  - Generic: `VL_WorkspaceId`, `VL_DatastoreId`, `VL_ConnectionId`, `VL_PingalaUtils` (abfss path to
+    the `pingalatool_spark` wheel).
+  - EL adds `VL_DatastoreSQLendpoints`, `VL_EnvironmentParameters`, `VL_CICDparameters`.
+  - CR adds `VL_ModelId`, `VL_Capacity`.
+- Environments: EL has Dev/Prod value sets only (no TEST). CR runs DEV/TEST/PROD workspace
+  triplets (Landingzone-Code, Fabric-ETL, Semantic-Model, Sales); only DEV and Fabric-TEST are
+  git-connected.
+- Workspace names are customer-chosen (EL `Finance-FinOps-*` / `Finance-Analytics-*`), not the
+  `{Prefix}-Fabric-{Layer}-{Env}` pattern in `SKILL.md`.
+
+### 2.2 Layer by layer
+
+**Landing Zone** — staging only, one lakehouse per source, no transformation.
+- EL: the Dataverse "Link to Microsoft Fabric" lakehouse carries F&O and CRM tables (inference
+  from the lakehouse name).
+- CR: one `Lakehouse_Landingzone_<SRC>` per source, filled by Pingala-built adapters (2.5).
+
+**Raw / Particles** — generic "AutoLoader" ingestion into one `Lakehouse_Raw_<SRC>` per source.
+1. `NB_Ingest_IdentifyChangedTables` scans the LZ Delta logs and writes a status table
+   (`AutoLoader_<SRC>`) to `Lakehouse_Util`.
+2. `NB_Ingest_IngestChangedRecords` reads the Delta change feed of each changed table
+   (`pingalatool_spark.CDCreader`; checkpoint `Files/CDC/<table>` is the watermark, no watermark
+   table) and merges with `pingalatool_spark.SCDMerger`.
+- Every table is SCD2: adds `SCDcurrent`, `SCDeffectiveDate`, `SCDendDate` (open row = 2999-12-31).
+- Key per table: `recid` (F&O, AX), `Id` (Dataverse), otherwise `Lakehouse_Util.rawtablekeymap_<src>`.
+- A table qualifies for Raw when it has a RECID column (the Lookup filter).
+- Drops link sink columns (`Id`, `SinkCreatedOn`, `sysrowversion`, ...) and cleans column names;
+  table name = source table name.
+- EL: SQL-endpoint schema `viewraw`, one view per RECID table, generated by
+  `dbo.sp_CreateRawViewAsSelect` (body not in the repo). Enriched reads
+  `Lakehouse_Raw_FO.viewraw.<table>`.
+
+**Enriched / Atoms** — one `Warehouse_Enriched_<SRC>` per source; T-SQL "views to tables".
+- Business logic = views in schema `viewtransform`. `[transform].[sp_CreateTableAsSelect]` runs
+  DROP + CTAS into schema `enriched`, same object name. Full rebuild every run.
+- Columns added: `PIN_UTCDateTime`, `PIN_DataSource`, `PIN_PrimaryTable`, `PIN_DataAreaId`,
+  `PIN_RecId`, `RecId_<Relation>`, `PIN_RowCheck`.
+- Joins filter on `SCDcurrent = 'TRUE'` (current version only).
+- Size: EL FO 134 views (+ Dataverse 5, Currency 2). CR AX09 32 views (+ CVR and Marketo 1-2 each),
+  plus a `rowcheck` schema (`sp_RowCheck`).
+
+**Curated / Molecules** — one `Warehouse_Curated`, star schema, same view→CTAS pattern per schema:
+- `viewdimtransform` → `dim` via `[dimtransform].[sp_CreateDimTableAsSelect]`.
+- `viewfacttransform` → `fact` via `[facttransform].[sp_CreateFactTableAsSelect]`.
+- Bridges in `viewbridge` (EL: not materialized; CR: materialized).
+- Dims carry `SurrogateKey` plus an "Orphan" unknown member (EL: `SurrogateKey = -1`) unioned in.
+  Facts carry `SurrogateKey_<Dim>` = `ISNULL(dim.SurrogateKey, -1)`.
+  CR key form: `PIN_DataAreaId-PIN_RecId-PIN_DataSource`.
+- Size: EL 75 dim / 27 fact views. CR 17 dim / 9 fact / 3 bridge.
+- Outbound projections are their own schema: EL `elogic` (9 views, exported by copy job);
+  CR `outbound` (Dataverse account/contact, Marketo lead).
+
+**Semantic model / Measures** — Import mode over `Warehouse_Curated`.
+- EL `SM_PingalaAtomic`: 114 tables, ~265 measures, 6 calculation groups, 2 RLS roles. Refreshed
+  by a `PBISemanticModelRefresh` pipeline activity.
+- CR `Model`: 42 tables, plus a DEV-only Direct Lake variant. Refreshed by
+  `NB_Refresh_SemanticModel` (enhanced-refresh REST, retry ladder, log table).
+
+**Util** — `Lakehouse_Util`: `dates`, `hourminutes`, `enumtable` (F&O enum labels; EL views reference
+it 215 times), key maps, AutoLoader status. Seeded by `PL_Init_PopulateLakehouseUtil` (EL) /
+`PL_IaC_PopulateLakehouseUtil` (CR) with `NB_InitDates` and the enum notebook.
+
+### 2.3 Orchestration
+- One master pipeline, layer by layer; sources run in parallel inside a layer.
+  - EL `PL_Master` (daily 20:00): `PL_Master_FO` (Raw → viewraw → Enriched) → `PL_Master_Currency`
+    → `PL_Transform_Curated` (Dim → Fact) → in parallel: outbound copy job and model refresh.
+    The Dataverse master pipeline exists but `PL_Master` does not call it.
+  - CR `PL_MainExecution` (Mon-Fri 06:30, enabled in TEST only): Raw → Enriched → capacity scale-up
+    → Curated (Dim → Bridge → Fact → Outbound) → semantic model → scale-down.
+- **The set of views is the configuration.** Each Enriched/Curated pipeline runs a Lookup on
+  `INFORMATION_SCHEMA.VIEWS` for its schema, then ForEach → CTAS procedure. A new view is picked up
+  with no pipeline change.
+- Raw table list = every LZ table with RECID, filtered by the AutoLoader status table. Non-ERP
+  sources use literal lists.
+- CR convention: schedules are defined disabled in git and enabled per environment.
+
+### 2.4 Conventions the code relies on
+- Item prefixes: `PL_`, `NB_`, `VL_`, `CP_`, `DF_`, `SM_`. Stores: `Lakehouse_<Layer>_<SRC>`,
+  `Warehouse_<Layer>_<SRC>`, `Warehouse_Curated`, `Lakehouse_Util`. Layer identity is carried by
+  these prefixes and the schema names.
+- Schema triples: `view<x>transform` (logic) → `<x>` (table) ← `<x>transform` (procedure).
+- View template (generated): header `-- Auto Generated (Do not modify) <hash>`, a METADATA block
+  (PrimaryTable, Filter, BusinessArea, Category), `'Alias' = expr` projection,
+  `WITH Entity AS (...) SELECT *, PIN_RowCheck`. CR logs manual edits to generated views in
+  `design/ATOMIC_GENERATOR_CHANGES.md` (GEN-001...).
+- Cross-layer references use three-part names (`[Warehouse_Enriched_FO].[enriched].[x]`).
+- `PIN_*` = Pingala lineage and key columns; `SCD*` = history columns.
+
+### 2.5 Source adapters
+| Source | Customer | How it lands | Change detection into Raw |
+|---|---|---|---|
+| D365 F&O (+ CRM) | EL | Dataverse Link to Fabric lakehouse (Microsoft-managed) | generic AutoLoader (Delta CDF) |
+| AX 2009 (on-prem SQL DB `Dynamics_Addon`) | CR | Copy activity via gateway, `SELECT *` over 95 tables, full overwrite | Delta CDF enabled on LZ tables, then generic AutoLoader |
+| CVR (Virk REST) | CR | Spark notebook, full overwrite | generic AutoLoader |
+| Marketo (Bulk Extract API) | CR | Python notebook, 31-day windows, landed as text | generic AutoLoader; Enriched views generated from metadata |
+| GTM / GA4 (Event Hub Capture Avro) | CR | OneLake shortcut + file-keyed incremental notebook | custom watermark append, no SCD |
+| Currency; SharePoint Excel | EL | separate LZ lakehouse; Dataflow | full load |
+
+**Off F&O (CR):**
+- A Pingala-built landing pipeline replaces the managed link.
+- Change detection moves from link columns to Delta CDF on overwritten tables.
+- AX keeps the `RECID` / `DataAreaId` shape, so Raw → Curated runs on the same code.
+- Non-ERP sources fit the AutoLoader where they have a key; event data (GTM) does not and has its
+  own path.
+
+### 2.6 F&O table coverage
+- EL Enriched FO views reference **204 distinct F&O tables**. Sample: custtable, custtrans,
+  custinvoicejour/trans, salesline, purchline, generaljournalentry/accountentry, ledger,
+  dimensionattribute*, ecoresproduct*, projtable, bomtable, whsworktrans, assettable, entasset*.
+- The full ingested set is a runtime result (every LZ table with RECID) and is not listed in the repo.
+- CR AX09: 95 landed tables.
+
+### 2.7 CI/CD and deployment
+- Fabric git serialization per workspace (`.platform`, `pipeline-content.json`, warehouse
+  `<schema>/{Tables|Views|StoredProcedures}/*.sql`).
+- EL: SQL objects are promoted by `PL_CICD_Master` → `NB_CICD_DeploySqlObjects` (service principal
+  compares DEV and PROD endpoints, copies view and procedure definitions, re-runs the transforms).
+  No deployment-pipeline definition in the repo. Semantic model stored as TMDL (Tabular Editor).
+- CR: Fabric deployment pipeline DEV → TEST → PROD, driven by `tools/fabric_release.py`
+  (deploy → seed → re-stamp identity → verify). Pre-push gate `tools/wh_validate.py` /
+  `wh_rules.py` (local DacFx build, ASCII-only, no `*` over a lakehouse).
+- See skills `fabric-deployment` and `fabric-warehouse-git`.
+
+### 2.8 Where the code lives; generic vs customer-specific
+**Generic Atomic** (same notebooks and ids across sources and customers):
+- `Util/Code/Ingestion/NB_Ingest_*` and `pingalatool_spark` (`CDCreader`, `SCDMerger`).
+- `Util/Code/InfrastructureAsCode` (incl. `NB_Prepare_Workspace_Pingala_Framework`) and Util seeding.
+- The `sp_Create*TableAsSelect` procedures and the Lookup → ForEach → CTAS pipelines.
+- The master-pipeline skeleton, the view template, the `PIN_*` / `SCD*` conventions.
+
+**Customer-specific:** every view body and its DDL, landing adapters (CR), outbound schema and
+feeds, semantic-model measures and RLS, schedules, capacity handling (CR), release tooling (CR).
+
+No canonical customer-free Atomic repo was found, and the view generator is not in either repo
+(inference: it is a separate tool).
+
+---
+
+## Open questions for the owner
+1. Is Atomic a product (versioned code), a method, or both?
+2. Is there a canonical Atomic codebase, or is each customer repo a fork? Where does the view
+   generator live?
+3. Particles/Atoms/Molecules — marketing vocabulary only, or should code use it?
+4. Is the CR off-F&O adaptation (2.5) the intended pattern for other non-F&O sources?

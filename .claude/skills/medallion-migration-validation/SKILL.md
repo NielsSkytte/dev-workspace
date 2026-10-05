@@ -108,11 +108,11 @@ If you migrate tracking history from an old system to a new one:
 The Fabric SQL endpoint is read-only — watermark manipulation must happen via notebook:
 
 ```python
-from datetime import datetime
+from datetime import datetime, timezone
 
 backfill_data = [(
     'backfill-manual',
-    datetime.utcnow(),
+    datetime.now(timezone.utc),
     '<backfill_start_date_UTC>',  # e.g. '2026-01-01T00:00:00.000000+00:00'
     0, 0, 0, 0
 )]

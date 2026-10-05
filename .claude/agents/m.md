@@ -135,7 +135,8 @@ Q clears entries after hiring.
 <!-- Cleared 2026-09-01 (Q): F&O time registration. The gap was never on this board — it was logged
 as the evaluative record `eval-20260901-no-capability-for-fno-registration`, which recommended
 deferring; that deferral applied the repeatability test where the depth test belonged and was
-overruled by Niels. Built: skill `fno-time-registration` (+ `references/browser-fallback.md`) and
+overruled by Niels. Built: skill `fno-time-registration` (+ `references/browser-fallback.md`; merged into
+`time-tracking-to-fno` 2026-10-05) and
 command `/fno`. No agent — every mid-task decision in the routine resolves to "put it back to
 Niels", which is a rule, not judgment. Lesson for this board: an evaluative memory record saying
 "revisit later" is not a substitute for a Hiring Board entry; log the gap here. -->

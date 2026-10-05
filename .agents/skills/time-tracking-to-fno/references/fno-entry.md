@@ -46,6 +46,14 @@ to the owner.
    **The page cannot tell you whether a task id exists in F&O**, only that one is present. Check the
    ids in F&O, remembering that **an empty task lookup means the task does not exist**. Collect all
    unresolved ids and put them in **one** question.
+   The fast check (2026-09-29): from any F&O page, read
+   `/data/DevOpsIntegrationV2_PIN?cross-company=true&$filter=CustomTaskId eq '<id>'` in the
+   browser's own session. A usable task has `CustomTaskId` and `CustomProjectId` set; a DevOps work
+   item without them is not linked to the project and F&O will refuse it.
+   `/data/Projects?cross-company=true` checks a project id the same way - Aeven's `4058-1` did not
+   exist; the project is `4058` in PDK4. A task F&O rejects with *"Opgaven eksisterer ikke - nye
+   opgaver boer oprettes via DevOps"* books to the id the owner names until DevOps creates it
+   (Matas: `Task-65904` -> `Task-65905`).
 
 Then, before entering and while there is still time to act, **check the bonus boundary**:
 
@@ -98,7 +106,8 @@ Description, Hours`. The workbook adds `Company`, `Line property` (Vestforbraend
 decimal** (`7.5`, `1.25`) while F&O expects the Danish comma - convert, and check the first pasted
 line before trusting the rest. The workbook writes them as numbers, so Excel applies the locale.
 
-Split the rows into one set per **ISO week per company**. That is the journal grain.
+Split the rows into one set per **ISO week per company**. That is the journal grain. Transport
+detail and code references: `ops/memory/store/dashboard-copy-rows-transport`.
 
 **Check the lines are described.** `python ops/bin/linedesc.py --check <YYYY-MM>` says which lines
 have no written description. It is not a gate - an undescribed line can still be entered - but the
@@ -124,7 +133,8 @@ Order of preference:
 2. **Manual entry by the owner** from the prepared rows - still faster and safer than a driven grid
    for a handful of lines.
 3. **Browser grid driving** - the guarded fallback only, taken on an explicit answer, following
-   `browser-fallback.md` in full.
+   `browser-fallback.md` in full. Click toolbar buttons and rows **by element reference, never by
+   coordinate**, and read back the focused journal id before acting on it.
 
 **Never let the browser path become the happy path** in a plan, a report, or a rewrite of this file.
 
@@ -135,13 +145,20 @@ Nothing else.
 
 | Field | Rule |
 |---|---|
-| `Timer` (hours) | **Typed directly.** It does **not** recompute from `Starttidspunkt`/`Sluttidspunkt`, and those two are not used at all. |
+| `Timer` (hours) | **Typed directly, always.** It does **not** recompute from `Starttidspunkt`/`Sluttidspunkt` (those two are not used at all), and it **pre-fills from the task** (10,50 and 14,25 seen on 2026-09-29) - a line saved without typing it registers that number. |
 | `Kategori` | **Leave it.** It auto-fills once `Opgave` resolves. |
 | `Aktivitet` | Only where the customer registers on activity. On a task-registering customer, **do not write one**. |
 | `Opgave` (task) | The ADO work-item id. An empty lookup means the task does not exist. |
 | `Beskrivelse` | **Element Logic only, and required there** - carries the engagement as `<number> <title>`, e.g. `45394 Lineage documentation`. Different work there takes a different text; ask rather than reuse. Blank for every other customer. |
 | `Rolle-id` | **Never touched.** If a number lands here, a coordinate went stale - delete the line and re-enter it. |
 | `Linjeegenskab` | Carries the charge status. Vestforbraending books `No charge`. |
+
+**Day cap (owner, 2026-10-05): per customer/project per date, 7,5 h a normal day and 9 h the cap;
+12 h is allowed when the tracked data supports it. There is no total limit per day across
+customers.** Lines are laid out on weekdays of the same ISO week. The Time page's consolidated rows
+pack to 7,5 h, then 9 h (`packDays`); a row marked *over 9 h* means the week has no room at 9 h. It
+goes in above 9 h (up to 12 h) only where the tracked data for that customer and date supports it;
+otherwise it is a question for the owner, not a line to type.
 
 ## 5. Per-customer protocol
 
@@ -172,6 +189,8 @@ The three that were **errors**, and so do not change with the table:
 Vestforbraending is the known exception, and any billable total spanning its hours overstates by
 that much.
 
+Full detail: `ops/memory/store/fno-registration-per-customer-protocol`.
+
 ## 6. Journals - one per ISO week, per company
 
 Named `NSC-<Month>-W<nn>` in PING. Element Logic gets its own journal in PNO1.
@@ -192,10 +211,14 @@ and stopped: *"tror bare du skal godkende dem"*.
   journal.
 - The journals **stay under "Ikke bogfoert"**. Finished is an approval state.
 - **Posting is a separate, later decision and it is the owner's. Never initiate it.**
+- **Approved is not a resting state.** On 2026-09-29 all six approved journals were posted by
+  someone else within hours, and a planned correction became impossible. Make every correction -
+  dates, the day cap, ids - **before** approving.
 
 **Consequence for reporting:** the utilisation page counts only **posted** lines. A low figure right
 after a close is expected and is **not** evidence of missing registration - August read 33,00 h
-while 138,75 h sat approved-but-unposted. Do not "fix" it.
+while 138,75 h sat approved-but-unposted. Do not "fix" it. Detail:
+`ops/memory/store/fno-month-close-approve-not-post`.
 
 ## 8. Reconcile and record
 

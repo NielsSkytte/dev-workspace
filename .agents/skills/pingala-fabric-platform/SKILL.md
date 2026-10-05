@@ -371,8 +371,8 @@ InventItemGroupItem, InventTable, ProjTable, WrkCtrTable, and many more.
 | Budget model | Mostly time & materials | Significant portion as fixed fee |
 | Worst case | 50%+ cost overrun (IT project average) | Even worst case delivers in half the time of traditional |
 
-> **Area to explore later:** a deeper dive into the Atomic framework — the full table
-> mapping and transformation specifications — is a candidate for a standalone reference doc.
+> **Deeper reference:** `references/atomic-overview.md` — what Atomic is, what it solves, its
+> components (no how-to). `references/atomic.md` — implementation evidence per customer repo.
 
 ---
 

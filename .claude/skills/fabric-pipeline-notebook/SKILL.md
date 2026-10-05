@@ -15,15 +15,21 @@ A notebook behaves differently when triggered by a pipeline vs run interactively
 ## Critical Platform Facts
 
 ### SQL Endpoint is Read-Only
-The Fabric Lakehouse SQL endpoint only supports SELECT. Any INSERT, UPDATE, DELETE, or DDL must be done via a notebook or pipeline activity — never via the SQL endpoint directly.
+The Fabric Lakehouse SQL analytics endpoint is read-only over the Delta tables: no INSERT, UPDATE, DELETE or MERGE, and no table DDL. Data changes go through a notebook or pipeline activity. You *can* create views, functions and stored procedures on the endpoint. Verified 2026-10-05: https://learn.microsoft.com/fabric/data-engineering/lakehouse-sql-analytics-endpoint
 
 ### Spark Cold Start
-Every notebook triggered by a pipeline pays a cold start penalty (typically 3-5 minutes on Default Starter Pool) unless High Concurrency mode is configured. The first `spark.*` call triggers JVM initialisation — structure cells so this happens early and predictably.
+Session start depends on the pool (verified 2026-10-05, https://learn.microsoft.com/fabric/data-engineering/spark-compute#starter-pools):
+- **Starter pool, no custom libraries or Spark properties:** typically 5-10 seconds. Best effort — when prewarmed capacity is not available (high regional demand) Fabric falls back to on-demand, 2-5 minutes.
+- **Libraries in an environment:** add 30 seconds to 5 minutes (Quick mode) or 1-3 minutes (Full mode).
+- **Custom pool, or Private Links / Managed VNet:** about 2-5 minutes (custom pools "about three minutes").
+- **Custom live pool:** about 5 seconds inside its active window.
+
+The first `spark.*` call triggers JVM initialisation — structure cells so this happens early and predictably.
 
 **Cold start mitigation options:**
 - High Concurrency mode with session tag in pipeline notebook activity settings
-- Python notebooks (no JVM, no Spark, 2-3 second startup)
-- Custom pool with keepalive configured
+- Python notebooks (no JVM, no Spark): about 5 seconds, up to 3 minutes when the run misses the live pool (verified 2026-10-05, https://learn.microsoft.com/fabric/data-engineering/using-python-experience-on-notebook#known-limitations)
+- Custom live pool with an active window
 
 ### Cadence vs Execution Time
 Always verify that pipeline cadence > notebook execution time with meaningful headroom. If runs overlap due to queuing spikes, the same watermark gets read twice — leading to duplicate processing or race conditions on the tracking table.
@@ -57,7 +63,7 @@ if num_rows > 0 and num_rows % MAX_RESULTS == 0:
 ```
 
 ### File Discovery in Fabric
-Glob patterns (e.g. **/*.json) do not work in Fabric. Always use recursive mssparkutils.fs.ls():
+Glob patterns (e.g. **/*.json) do not work in Fabric (unverified as of 2026-10-05: MS Learn does not state it either way; the Copy activity's Lakehouse source does accept `*` / `?` wildcards). Always use recursive mssparkutils.fs.ls():
 ```python
 def get_recursive_files(path, extension=".json"):
     file_list = []
@@ -174,7 +180,7 @@ For incremental pipelines processing small-to-medium batches, Python notebooks a
 
 | | PySpark | Python |
 |---|---|---|
-| Cold start | 3-5 min | 2-3 sec |
+| Cold start (verified 2026-10-05) | ~5 s starter pool; 2-5 min custom pool / fallback | ~5 s; up to 3 min off the live pool |
 | Complexity | High | Low |
 | Delta writes | Native | Via delta-rs |
 | Best for | Large batch, complex transforms | Incremental, simple transforms |

@@ -2,31 +2,17 @@
 name: fabric-project-access
 bundle: custom
 description: >
-  Use this skill whenever setting up access rights, user accounts, Entra ID groups, service
-  principals, licences, Azure Key Vault, or role assignments for a new Pingala Fabric project.
-  Triggers on phrases like "set up access for Fabric", "create Entra ID groups", "what access
-  do we need", "provision users for Fabric project", "service principal setup", "Key Vault for
-  Fabric", "Fabric licences", "workspace roles", "onboard a new Fabric customer", or any mention
-  of user provisioning, guest users, ext_ accounts, security groups, or Fabric admin portal
-  settings in the context of starting a new project. Also trigger when someone asks "what do we
-  need from the customer to get started", "what access requests should we send", or wants to
-  draft an access-request email for a customer. Also trigger on Dataverse "Link to Microsoft
-  Fabric" access problems — workspaces not appearing in the Link-to-Fabric picker, only Fabric
-  Trial offered, "capacity you don't have access to", or capacity Contributor / capacity-admin
-  permission questions (see section 8.5). Also trigger on ENVIRONMENT DISCOVERY — establishing
-  what a customer tenant already has before or while the access request goes out: "which
-  environments are F&O-backed", "which environment has the Link to Fabric", "is that a Fabric
-  link or an Azure Synapse Link", "how do I tell a Synapse link from a Fabric link", "which
-  tables are in the link", "where is the Dataverse environment located / which region", "which
-  Dataverse environment belongs to this F&O instance", "what is already set up in this tenant",
-  "we don't know which environment is which", "can two Dataverse environments share one Fabric
-  workspace", "why are there two different Link-to-Fabric guides" (see section 0 — runnable
-  scripts at `C:\Dev\own\EnvDiscovery`). Also trigger on REPO INVENTORY — "which repos does this
-  customer have", "repo inventory", "did we clone all the repos", "is this workspace
-  git-connected", "which workspaces are connected to git", "which items are in no repo" (see
-  section 0). This skill covers Phase 1 of the Pingala Project
-  Playbook — use it even if the user only asks about one part (e.g. just Entra ID groups, just
-  licences, or just the service principal).
+  Access, identity and environment discovery for starting a Pingala Fabric project (Phase 1 of
+  `pingala-project-playbook`). Use it when planning or requesting what a new customer must provide:
+  Entra ID groups, guest and ext_ accounts, service principals, licences per role, Azure Key Vault,
+  workspace and capacity roles, Fabric admin-portal settings, and the access-request email. Use it
+  for Dataverse "Link to Microsoft Fabric" access problems, such as workspaces missing from the
+  picker, only Fabric Trial offered, or capacity permissions (section 8.5). Use it for finding out
+  what a customer tenant already has: which Dataverse environments are F&O-backed, Fabric link
+  versus Azure Synapse Link, linked tables, regions, and which repos and workspaces are
+  git-connected (section 0, scripts at `C:\Dev\own\EnvDiscovery`). Use it even for one piece, such
+  as only the groups. Licence prices and SKU sizing are `fabric-licensing`; deployment mechanics are
+  `fabric-deployment`.
 ---
 
 # Fabric Project Access Skill
@@ -461,13 +447,21 @@ configured.
 
 ### 8.1 Fabric Admin Portal Settings
 
-These settings are configured in the **Fabric Admin Portal** (admin.powerbi.com) and control
-tenant-wide capabilities:
+These are Fabric **tenant settings**, in app.fabric.microsoft.com > **OneLake catalog** >
+**Govern** > **Configurations** > **Tenant settings** (where Govern is not yet rolled out:
+**Settings** gear > **Admin portal** > **Tenant settings**). They control tenant-wide capabilities.
+Names and locations verified 2026-10-05:
+https://learn.microsoft.com/fabric/admin/about-tenant-settings ,
+https://learn.microsoft.com/fabric/admin/service-admin-portal-developer ,
+https://learn.microsoft.com/fabric/admin/portal-workspace#create-workspaces
 
-- **Allow service principals to use Fabric APIs** — enable for the `SG-Fabric-ServicePrincipals`
-  security group
-- **Allow users to create workspaces** — enable for ext_ accounts (or the relevant security
-  groups)
+- Developer settings > **Service principals can call Fabric public APIs** — scope to the
+  `SG-Fabric-ServicePrincipals` security group (on by default for new customers)
+- Developer settings > **Service principals can create workspaces, connections, and deployment
+  pipelines** — scope to the same group if the SPN must create these (off by default for new
+  customers)
+- Workspace settings > **Create workspaces** — enable for ext_ accounts (or the relevant
+  security groups)
 
 > Pingala's solution architect can assist the customer with configuring these settings.
 
