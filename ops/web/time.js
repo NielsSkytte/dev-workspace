@@ -1155,7 +1155,8 @@ function EntryBlocks({ D, rows, periodLabel, fileName, scaled, lead, gate, check
                     title="filled from TidsregInfo.xlsx; the project CLAUDE.md has no fno_code">(sheet)</span>` : null}${
                   r.conflict ? html` <span class="accentink"
                     title=${'the sheet says ' + r.xl_proj_id + ', the workspace says ' + r.ws_proj_id}>conflict</span>` : null}</td>
-                <td>${r.activity || '-'}${!anyDesc && r.no_charge
+                <td>${r.activity || '-'}${r.category
+                  ? html` <span class="pill" title="Kategori">Kategori ${r.category}</span>` : null}${!anyDesc && r.no_charge
                   ? html` <span class="pill">No charge</span>` : null}</td>
                 <td>${r.fno_task || ((r.requires || []).includes('task')
                   ? html`<b class="accentink">needed</b>` : '-')}</td>

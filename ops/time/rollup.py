@@ -29,7 +29,7 @@ import sys, os, json, glob, re, datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib import heartbeats as hbrec           # the raw measurement record
 from lib.substrate import file_field
-from lib.workspace import billing_entity, task_file
+from lib.workspace import billing_entity, identity_file, task_file
 from lib import noinvoice
 
 ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
@@ -181,7 +181,7 @@ def project_id(project):
     """The F&O Project ID for a workspace project folder."""
     if project == "Dev":
         return DEV_CODE
-    return file_field(os.path.join(DEV_WORKSPACE, project.replace("/", os.sep), "CLAUDE.md"),
+    return file_field(identity_file(os.path.join(DEV_WORKSPACE, project.replace("/", os.sep))),
                        "fno_code") or "UNSET"
 
 
@@ -193,6 +193,20 @@ def task_dims(slug):
     if p:
         return file_field(p, "activity") or "", file_field(p, "fno_task") or ""
     return "", ""
+
+
+def task_code(slug):
+    """A task's own `fno_code:` -- the Proj ID for work booked off the project's default
+    (Carl Ras Dataverse write-back on 230-04, 2026-10-05). '' when it has none."""
+    if not slug:
+        return ""
+    _, p = task_file(slug, root=DEV_WORKSPACE)
+    return (file_field(p, "fno_code") or "") if p else ""
+
+
+def line_proj_id(project, slug):
+    """The Proj ID a line carries: the task's own `fno_code` wins over the project's."""
+    return task_code(slug) or project_id(project)
 
 
 # ---------- rendering ----------
@@ -214,7 +228,7 @@ def rows_for(heartbeats):
     agg = {}   # (project, proj_id, activity, fno_task) -> summed hours
     for (project, slug), hrs in raw.items():
         activity, fno_task = task_dims(slug)
-        key = (project, project_id(project), activity, fno_task)
+        key = (project, line_proj_id(project, slug), activity, fno_task)
         agg[key] = agg.get(key, 0.0) + hrs
     dates = sorted({hb["date"] for hb in heartbeats}) or [""]
     marks = noinvoice.entries(ROOT)

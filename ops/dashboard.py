@@ -4,9 +4,9 @@
 Reads (never writes) the existing sources of truth:
   ops/tasks/<state>/*.md      the cross-project task queue
   ops/time/heartbeats + timesheet  tracked hours (via ops/time/rollup.py -- the 15+5 model)
-  <project>/CLAUDE.md         the Identity block (fno_code, status, type, focus)
+  <project>/AGENTS.md         the Identity block (fno_code, status, type, focus)
   <project>/CONTEXT.md        Current Focus / State / Next Actions / Open Threads
-  customers/<C>/CLAUDE.md     the customer node (profile + project index)
+  customers/<C>/AGENTS.md     the customer node (profile + project index)
   ops/TODO.md                 unprocessed capture
 
 Nothing here is a new source of truth (Guardrail 7): delete this file and no knowledge is lost.
@@ -42,7 +42,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.substrate import (read, frontmatter, identity, sections, bullets,
                            labelled, field, plain, first_para, days_ago)
-from lib.workspace import customer_dirs, project_dirs, customer_name
+from lib.workspace import customer_dirs, project_dirs, customer_name, identity_file
 from lib import fno
 from lib import lines as linedesc
 from lib import attribution
@@ -123,11 +123,11 @@ def _daybrief_model():
 # ---------- discovery ----------
 
 def discover():
-    """-> (projects, customers). A project is a folder with its own CLAUDE.md."""
+    """-> (projects, customers). A project is a folder with its own identity file."""
     projects, customers = {}, {}
 
     for cname, cdir in customer_dirs(ROOT):
-        ctext = read(os.path.join(cdir, "CLAUDE.md"))
+        ctext = read(identity_file(cdir))
         cctx = sections(read(os.path.join(cdir, "CONTEXT.md")))
         prof = {}
         cust_block = sections(ctext).get("Customer", "")
@@ -162,7 +162,7 @@ def discover():
 
 
 def build_project(key, pdir, customer):
-    ident = identity(read(os.path.join(pdir, "CLAUDE.md")))
+    ident = identity(read(identity_file(pdir)))
     ctx = sections(read(os.path.join(pdir, "CONTEXT.md")))
     state = ctx.get("State", "")
     return {
@@ -799,7 +799,8 @@ def _fix_targets(row, rule, proj):
                     "label": "Set fno_description on " + row["project"]})
     if kinds and rule:
         out.append({"kind": "customer", "field": "", "target": rule["customer"],
-                    "label": "Rule: " + rule["customer"] + "/CLAUDE.md"})
+                    "label": "Rule: " + rule["customer"] + "/" + os.path.basename(
+                        identity_file(os.path.join(ROOT, "customers", rule["customer"])))})
     if kinds:
         out.append({"kind": "row", "field": "", "target": row["date"],
                     "label": "Correct this day's timesheet"})
@@ -832,6 +833,7 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
     # The register wins over the timesheet's own Billable column, so a decision taken
     # after a day was written is honoured without rewriting it (ops/lib/noinvoice.py).
     marks = noinvoice.entries()
+    overrides = fno.task_overrides(ROOT)
 
     def decorate(e, agg, unmapped):
         """One timesheet entry -> one F&O entry row (company, customer, resolved Proj ID)."""
@@ -860,9 +862,13 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
         ws_id = e["proj_id"]
         dims = fno.resolve_dims(ws_id, e["activity"], rule, row_c)
         proj_id, activity = dims["proj_id"], dims["activity"]
-        conflict = dims["conflict"]
         xl_id = (rule or {}).get("proj_id") or (row_c["projektnr"] if row_c else "")
         fno_task = fno.value_or_blank(e["fno_task"])
+        # A line booked on a work-task's own fno_code: differing from the sheet's Proj ID
+        # is the point, not a conflict (fno.task_overrides).
+        ov = overrides.get("|".join((ws_id or "", fno.value_or_blank(e["activity"]),
+                                     fno_task)).lower())
+        conflict = dims["conflict"] and not ov
         proj = projects.get(p) or {}
         description = proj.get("fno_description") or (rule or {}).get("description") or ""
         # What the work WAS, written at /log (ops/lib/lines.py). Keyed on the timesheet's
@@ -888,7 +894,9 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
                                   "description": description, "summary": summary,
                                   "no_charge": bool((rule or {}).get("no_charge")),
                                   "no_entry": no_entry,
-                                  "requires": (rule or {}).get("requires") or [],
+                                  "override": bool(ov),
+                                  "category": (ov or {}).get("category", ""),
+                                  "requires": [] if ov else ((rule or {}).get("requires") or []),
                                   # A day still accruing has no finalized file, so it cannot
                                   # be corrected -- the editor has to say that, not fail.
                                   "live": bool(e.get("live")),
@@ -1460,7 +1468,7 @@ def _is_place(key):
     if re.match(r"^customers/[^/]+$", key):
         return os.path.isdir(os.path.join(ROOT, key.replace("/", os.sep)))
     if re.match(r"^(customers/[^/]+/[^/]+|own/[^/]+)$", key):
-        return os.path.exists(os.path.join(ROOT, key.replace("/", os.sep), "CLAUDE.md"))
+        return os.path.exists(identity_file(os.path.join(ROOT, key.replace("/", os.sep))))
     return False
 
 
@@ -1845,15 +1853,15 @@ def fno_field(kind, target, key, value):
     if kind == "project":
         if not re.match(r"^(customers/[^/]+/[^/]+|own/[^/]+)$", target or ""):
             return False, "not a project key: %r" % (target,)
-        path, header = os.path.join(ROOT, target.replace("/", os.sep), "CLAUDE.md"), "Identity"
+        path, header = identity_file(os.path.join(ROOT, target.replace("/", os.sep))), "Identity"
     elif kind == "customer":
         if not re.match(r"^[\w.-]+$", target or ""):
             return False, "not a customer: %r" % (target,)
-        path, header = os.path.join(ROOT, "customers", target, "CLAUDE.md"), "Customer"
+        path, header = identity_file(os.path.join(ROOT, "customers", target)), "Customer"
     else:
         return False, "unknown target kind: %r" % (kind,)
     if not os.path.exists(path):
-        return False, "no CLAUDE.md at %s" % target
+        return False, "no AGENTS.md at %s" % target
     text, crlf = _read_raw(path)
     out = _set_block_field(text, header, key, value)
     if out is None:
@@ -2149,7 +2157,7 @@ def build_xlsx(title, headers, rows):
 
 
 ENTRY_COLUMNS = ("Date", "Company", "Customer", "Project", "Proj ID", "Activity", "Task",
-                 "Description", "Hours", "Line property", "What it was", "Not ready")
+                 "Category", "Description", "Hours", "Line property", "What it was", "Not ready")
 
 
 def entry_workbook(req):
@@ -2170,7 +2178,7 @@ def entry_workbook(req):
         out.append([r.get("date", ""), r.get("firma", ""), r.get("customer", ""),
                     (r.get("project", "") or "").replace("customers/", ""),
                     r.get("proj_id", ""), r.get("activity", ""), r.get("fno_task", ""),
-                    r.get("description", ""), float(r.get("hours") or 0),
+                    r.get("category", ""), r.get("description", ""), float(r.get("hours") or 0),
                     "No charge" if r.get("no_charge") else "",
                     r.get("summary", ""),
                     ", ".join(m.get("label", "") for m in (r.get("missing") or []))])

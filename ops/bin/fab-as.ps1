@@ -18,7 +18,7 @@
 # Homes live under %LOCALAPPDATA%\fab-profiles - a token cache must never sit
 # in a git repo (AGENTS.md > Conventions > Secrets).
 #
-# Identity is read from the customer node's CLAUDE.md (tenant_id: / account:).
+# Identity is read from the customer node's AGENTS.md (tenant_id: / account:).
 # One source of truth, no second registry to drift (Guardrail 11).
 
 # Deliberately NOT an advanced function: no [CmdletBinding()], no declared
@@ -38,7 +38,8 @@ $HomesRoot     = Join-Path $env:LOCALAPPDATA 'fab-profiles'
 function Get-CustomerIdentity {
     param([string]$Name)
 
-    $node = Join-Path $CustomersRoot "$Name\CLAUDE.md"
+    $node = Join-Path $CustomersRoot "$Name\AGENTS.md"
+    if (-not (Test-Path $node)) { $node = Join-Path $CustomersRoot "$Name\CLAUDE.md" }
     if (-not (Test-Path $node)) { return $null }
 
     $tenant  = ''
@@ -72,11 +73,11 @@ if (-not $Customer) {
 
 $id = Get-CustomerIdentity $Customer
 if (-not $id) {
-    Write-Error "No customer node at $CustomersRoot\$Customer\CLAUDE.md. Run without arguments to list customers."
+    Write-Error "No customer node at $CustomersRoot\$Customer\AGENTS.md. Run without arguments to list customers."
     exit 1
 }
 if (-not $id.Tenant) {
-    Write-Error "Customer node $CustomersRoot\$Customer\CLAUDE.md has no tenant_id. Fill it in first (Guardrail 11)."
+    Write-Error "Customer node $CustomersRoot\$Customer\AGENTS.md has no tenant_id. Fill it in first (Guardrail 11)."
     exit 1
 }
 

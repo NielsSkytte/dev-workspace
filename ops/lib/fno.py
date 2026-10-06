@@ -24,8 +24,8 @@ fields through the ordinary CLAUDE.md editor.
 import os
 import re
 
-from .substrate import read
-from .workspace import ROOT, customer_dirs
+from .substrate import file_field, read
+from .workspace import ROOT, TASK_STATES, customer_dirs, identity_file
 
 # A customer is named slightly differently in the workspace folder, in the owner's
 # TidsregInfo.xlsx and in prose. Normalising to a bare lowercase key is what lets the three
@@ -119,7 +119,7 @@ def rules(root=None):
     """-> {normalised customer key: rule}. A customer with no fno_* fields is absent."""
     out = {}
     for name, path in customer_dirs(root or ROOT):
-        r = rule_for(os.path.join(path, "CLAUDE.md"))
+        r = rule_for(identity_file(path))
         if r:
             r["customer"] = name
             out[norm(name)] = r
@@ -219,6 +219,35 @@ def resolve_dims(ws_proj_id, ws_activity, rule, sheet_row):
     }
 
 
+def task_overrides(root=None):
+    """-> {'proj_id|activity|fno_task' (lowercased): {slug, category}} for every work-task
+    that carries its own `fno_code:`.
+
+    Such a task is booked on a Proj ID other than its project's (Carl Ras Dataverse
+    write-back: 230-04 / activity 112744 / Kategori F, owner 2026-10-05). The rollup writes
+    that Proj ID on the line; this lookup lets the entry page recognise the line again from
+    its dimensions alone, so it can show the task's `fno_category:` (Kategori) and stop
+    applying the customer's `fno_requires`, which describe the default project."""
+    out = {}
+    base = os.path.join(root or ROOT, "ops", "tasks")
+    for state in TASK_STATES:
+        try:
+            names = sorted(os.listdir(os.path.join(base, state)))
+        except OSError:
+            continue
+        for name in names:
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(base, state, name)
+            code = file_field(p, "fno_code")
+            if not code:
+                continue
+            key = "|".join((code, value_or_blank(file_field(p, "activity")),
+                            value_or_blank(file_field(p, "fno_task")))).lower()
+            out[key] = {"slug": name[:-3], "category": file_field(p, "fno_category") or ""}
+    return out
+
+
 def missing(row, rule):
     """Which required F&O fields this entry row still cannot supply.
 
@@ -233,7 +262,9 @@ def missing(row, rule):
     if is_unset(row.get("proj_id")):
         out.append({"field": "proj_id", "label": "Proj ID",
                     "why": "no fno_code on the project and nothing usable in the sheet"})
-    req = set((rule or {}).get("requires") or ())
+    # A line booked on a task's own `fno_code` is off the customer's default project; the
+    # customer's requirements describe that project, not this one (task_overrides).
+    req = set() if row.get("override") else set((rule or {}).get("requires") or ())
     if "activity" in req and not (row.get("activity") or "").strip():
         out.append({"field": "activity", "label": "Activity",
                     "why": "this customer registers on activity"})

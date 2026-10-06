@@ -45,8 +45,8 @@ class Drift(unittest.TestCase):
             f.write(text)
 
     def customer(self, name, extra="", code="901-01"):
-        self.put("customers/%s/CLAUDE.md" % name, NODE % {"c": name, "extra": extra})
-        self.put("customers/%s/p/CLAUDE.md" % name, PROJECT % code)
+        self.put("customers/%s/AGENTS.md" % name, NODE % {"c": name, "extra": extra})
+        self.put("customers/%s/p/AGENTS.md" % name, PROJECT % code)
 
     def task(self, slug, project, activity="", task="none"):
         self.put("ops/tasks/open/%s.md" % slug,
@@ -71,6 +71,14 @@ class Drift(unittest.TestCase):
         self.customer("Widget", "fno_requires: task")
         self.task("t1", "customers/Widget/p", task="WID-1")
         self.assertIsNone(self.d("customers/Widget/p", "t1"))
+
+    def test_nor_one_under_a_task_booked_on_its_own_proj_id(self):
+        # The task's fno_code takes it off the customer's default project, and with it the
+        # customer's task requirement.
+        self.customer("Widget", "fno_requires: task")
+        self.put("ops/tasks/open/t2.md", TASK.replace("fno_task:", "fno_code: 901-04\nfno_task:")
+                 % {"project": "customers/Widget/p", "activity": "112744", "task": ""})
+        self.assertIsNone(self.d("customers/Widget/p", "t2"))
 
     # ---- the three ways a line comes out unenterable
 

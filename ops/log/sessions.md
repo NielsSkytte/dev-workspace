@@ -1522,3 +1522,8 @@ Chronological record of workspace sessions — what was done, decided, and what'
   Sentinel on daily/2026-10-05: 11 capture-side flags (expanded command text and hand-back frames as
   User lines, 3 pairing mismatches in session a78914e1) -- none distilled; inference: capture_turn.py
   pairs queued prompts with the previous answer.
+## 2026-10-05 (Carl Ras datahub, Dataverse write-back)
+- **Did:** Task-level F&O override built in the time code (`rollup.line_proj_id`, `fno.task_overrides`, attribution exemption, Kategori on the Time page and export; 6 tests, 367 pass); Dataverse write-back task now books 230-04 / 112744 / Kategori F. `dataverse_url` moved into `VL_ConnectionId.Dataverse_Url` (default empty, Dev = crm4, Test/Prod empty) and `PL_Outbound_Dataverse` bound to it -- `Fabric-ETL` `7d4a8ab`, not pushed. ADO CI/CD research written (`design/ADO_CICD_RESEARCH.md`). Dataverse ALM diagram published (https://claude.ai/artifact/QyvURNCeEAXusaNj2BawUu).
+- **Decided:** 3 rows in datahub `CONTEXT_DECISIONS.md`: 230-04 routing for Dataverse work; per-stage Dataverse URL with empty default; AX stays one PROD source while Dataverse in/out splits per environment.
+- **Tasks:** `2026-09-02-carlras-dataverse-writeback` Progress rewritten (still in-progress; `fno_task: none`, `fno_code: 230-04`).
+- **Next:** push `7d4a8ab` + Update from git in DEV; Test/Prod Dataverse URLs + app users; schema contract + preflight gate; confirm crm4 vs crm17 as the Dev value; CS team ALM tooling; 4th env shape; ADO SPN (TF401444).

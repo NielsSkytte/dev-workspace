@@ -462,7 +462,7 @@ def score(rows):
                     rec["t5_events"] += 1
             rec["weighted_h"] = max(rollup.round_quarter(weighted_min / 60.0), MIN_HOURS)
             rec["keyboard_h"] = rec["keyboard_min"] / 60.0
-            rec["proj_id"] = rollup.project_id(project)
+            rec["proj_id"] = rollup.line_proj_id(project, task)
             activity, fno_task = rollup.task_dims(task)
             rec["activity"], rec["fno_task"] = activity, fno_task
             rec["billable"] = project.startswith("customers/")

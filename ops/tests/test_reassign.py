@@ -49,7 +49,7 @@ class Reassign(unittest.TestCase):
                     ("own", "MetaAtomic")):
             d = os.path.join(self.tmp, *rel)
             os.makedirs(d)
-            with io.open(os.path.join(d, "CLAUDE.md"), "w", encoding="utf-8") as f:
+            with io.open(os.path.join(d, "AGENTS.md"), "w", encoding="utf-8") as f:
                 f.write("# x\n\n## Identity\nfno_code:\n")
         os.makedirs(os.path.join(self.tmp, "timesheet", "2026-09"))
         self.path = os.path.join(self.tmp, "timesheet", "2026-09", "2026-09-15.md")

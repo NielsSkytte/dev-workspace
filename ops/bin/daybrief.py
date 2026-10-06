@@ -32,7 +32,7 @@ import os, re, sys, json, glob, datetime, argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.substrate import (read, frontmatter, identity, section, clean,
                            first_sentence, parse_date, bullets_joined)
-from lib.workspace import project_dirs
+from lib.workspace import identity_file, project_dirs
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 TASKS = os.path.join(ROOT, "ops", "tasks")
@@ -138,9 +138,9 @@ def parse_card(path):
 def load_projects():
     out = []
     for key, d in project_dirs(ROOT):
-        ident = identity(read(os.path.join(d, "CLAUDE.md")))
+        ident = identity(read(identity_file(d)))
         if not ident:
-            continue  # a CLAUDE.md without an Identity block declares a non-project (a wiki mirror)
+            continue  # an identity file without an Identity block declares a non-project (a wiki mirror)
         card = parse_card(os.path.join(d, "CONTEXT.md"))
         out.append({"key": key, "status": ident.get("status", ""), "fno_code": ident.get("fno_code", ""),
                     "type": ident.get("type", ""), "card": card})

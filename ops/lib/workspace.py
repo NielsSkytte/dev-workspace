@@ -1,7 +1,7 @@
 """Where things are in the workspace, and what a project rolls up to.
 
 `customers/<client>/<project>` and `own/<project>` are the two project shapes; a
-project is any folder with its own CLAUDE.md. Before this module each consumer walked
+project is any folder with its own AGENTS.md (legacy: CLAUDE.md). Before this module each consumer walked
 the tree itself, so adding a shape meant finding every walker.
 
 Read-only. Pure stdlib, ASCII-only.
@@ -10,11 +10,25 @@ import glob
 import os
 
 __all__ = ["ROOT", "customer_dirs", "project_dirs", "billing_entity", "customer_name",
-           "task_file", "TASK_STATES"]
+           "task_file", "TASK_STATES", "IDENTITY_FILES", "identity_file"]
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 
 TASK_STATES = ("open", "in-progress", "done", "cancelled")
+
+# The file that holds a folder's Identity block. AGENTS.md is current; CLAUDE.md is read
+# until every project has been renamed.
+IDENTITY_FILES = ("AGENTS.md", "CLAUDE.md")
+
+
+def identity_file(d):
+    """The identity file in folder `d`: AGENTS.md, else the legacy CLAUDE.md. A folder with
+    neither gets the AGENTS.md path, so callers that test existence see it missing."""
+    for name in IDENTITY_FILES:
+        p = os.path.join(d, name)
+        if os.path.isfile(p):
+            return p
+    return os.path.join(d, IDENTITY_FILES[0])
 
 
 def customer_dirs(root=None):
@@ -30,7 +44,7 @@ def customer_dirs(root=None):
 def project_dirs(root=None, branch=None):
     """-> [(key, dir)] for every project folder, sorted by path.
 
-    A project is a folder with a CLAUDE.md, under `customers/<client>/` or `own/`. The
+    A project is a folder with an identity file (`identity_file`), under `customers/<client>/` or `own/`. The
     key is the workspace-relative path with forward slashes -- the same string the
     heartbeats, the task files and the F&O dimension lookup all use for a project.
 
@@ -47,7 +61,7 @@ def project_dirs(root=None, branch=None):
                    os.path.join(base, "own", "*")]
     out = []
     for d in sorted(p for g in pattern for p in glob.glob(g)):
-        if not os.path.isfile(os.path.join(d, "CLAUDE.md")):
+        if not os.path.isfile(identity_file(d)):
             continue
         out.append((os.path.relpath(d, base).replace("\\", "/"), d))
     return out

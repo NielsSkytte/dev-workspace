@@ -6,10 +6,12 @@ project: customers/Carl-Ras/datahub
 owner: fabric-back
 priority: medium
 blocked_by:
-fno_task: CarlRData-557
+fno_code: 230-04      # Power Platform PoC (PING); overrides datahub's 230-02 (Niels, 2026-10-05)
+fno_task: none        # activity-level under 230-04; CarlRData-557 was the 230-02 task
+fno_category: F
 customer_ask: none
 source: session
-activity:
+activity: 112744      # PowerPOC Dataverse-demo-miljo
 ---
 
 ## What
@@ -30,19 +32,23 @@ Reuses the outbound layer decided 2026-08-13 for Marketo (`CLAUDE.md` > Conventi
 
 ## Progress
 
-**Now (2026-09-21):** population complete in `org8a074fed.crm4` on 2026-09-14 (34,913 accounts /
-44,526 contacts, every contact parent-bound); the delta push is proven (50 sent, immediate rerun 0);
-token-expiry (`e852ac4`) and percent-encoded parent key (`54ffbda`) fixes are in git and await one sync.
+**Now (2026-10-06):** the Dataverse URL comes from `VL_ConnectionId.Dataverse_Url` (`Fabric-ETL`
+`7d4a8ab`, 10-05, committed, not pushed): default empty, Dev = `org8a074fed.crm4`, Test/Prod explicit
+empty. Dev/Test/Prod Dataverse environments exist, one region (Niels, 10-05); crm4 over crm17 as the Dev
+value is not confirmed. Population (09-14) unchanged; fixes `e852ac4` / `54ffbda` still await one sync.
 
 **Tried and dropped:** `TOP (5000)` as the selection cap -> a 365-day window on the contact's own order
 (`c23022f`, 09-14); `UpsertMultiple` and the Copy activity -> Web API `$batch`, which returns per-record
 status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-02).
 
 **Next:**
-1. `dataverse_url` into a variable library with per-stage value sets (today a run-time parameter, no default).
-2. Least-privilege application-user role (design section 10) before any TEST/PROD environment.
-3. Schedule `PL_Outbound_Dataverse` after `PL_Transform_Curated_Outbound` in `PL_MainExecution` once
-   Patrick confirms the app takes a daily delta.
+1. Push `7d4a8ab`; Niels runs Update from git in DEV.
+2. Test/Prod Dataverse URLs into the value sets; application user + least-privilege role (design
+   section 10) in each environment.
+3. Schedule `PL_Outbound_Dataverse` after `PL_Transform_Curated_Outbound` in `PL_MainExecution`
+   (Patrick confirmed a daily delta 09-21).
+4. Dataverse schema contract + `dataverse_preflight.py` as its gate, then the ADO release train
+   (proposal: `design/ADO_CICD_RESEARCH.md`, ALM page https://claude.ai/artifact/QyvURNCeEAXusaNj2BawUu).
 
 ## Needs from customer
 
@@ -92,6 +98,8 @@ status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-0
   would have to generate a deterministic GUID column.
 
 ## Log
+- 2026-10-05 — `Dataverse_Url` variable library landed (`Fabric-ETL` `7d4a8ab`, not pushed); ADO CI/CD research written (`design/ADO_CICD_RESEARCH.md`); ALM diagram published.
+- 2026-10-05 — going-forward routing decided (Niels): this task books `230-04` / activity `112744` / Kategori `F`, no task. Before today: `230-02` / `CarlRData-557`. Carried by the task's own `fno_code` / `fno_category` (task-level override, `ops/lib/fno.py` `task_overrides`).
 - 2026-10-01 — F&O now has `230-04` "Power Platform PoC" (PING), activity `112744` "PowerPOC Dataverse-demo-miljø" (no DevOps task under it). Niels wanted September's 557 hours (24,75 h) moved there; left on `230-02`/`CarlRData-557` because the journals are posted and his role has no access to Projektjustering / Bogførte projekttransaktioner, and no line-level Tilbagefør exists. Going-forward routing not yet decided.
 - 2026-09-17 — scope: Customer Insights - Data segmentation (CI trial env) is part of the same app delivery and billed here for now, per Niels; may be split out later (Niels will say). Set up 2026-09-16/17: lakehouse view `dbo.CI_SalesInvoice` over shortcuts to TEST `enriched.SalesInvoiceTransactions` + `dim.Customer` (invoice-journal grain, key `DataArea|RecId_CustInvoiceJour`, verified unique in DEV and TEST), loaded via Power Query; Customer via OneLake; SalesOrder activity; RFM + measure-based suggestions. Not in any repo by choice.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.

@@ -243,13 +243,23 @@ class WorkspaceLayout(unittest.TestCase):
                     "own/tooling"):
             d = os.path.join(self.tmp, *rel.split("/"))
             os.makedirs(d)
-            with open(os.path.join(d, "CLAUDE.md"), "w", encoding="utf-8") as f:
+            # own/tooling keeps the legacy name: it must still count as a project
+            name = "CLAUDE.md" if rel == "own/tooling" else "AGENTS.md"
+            with open(os.path.join(d, name), "w", encoding="utf-8") as f:
                 f.write("## Identity\nstatus: active\n")
-        # a folder with no CLAUDE.md is not a project
+        # a folder with no identity file is not a project
         os.makedirs(os.path.join(self.tmp, "customers", "Acme", "notes"))
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_identity_file_prefers_agents_md(self):
+        d = os.path.join(self.tmp, "own", "tooling")
+        self.assertEqual(os.path.basename(workspace.identity_file(d)), "CLAUDE.md")
+        open(os.path.join(d, "AGENTS.md"), "w").close()
+        self.assertEqual(os.path.basename(workspace.identity_file(d)), "AGENTS.md")
+        missing = os.path.join(self.tmp, "customers", "Acme", "notes")
+        self.assertEqual(workspace.identity_file(missing), os.path.join(missing, "AGENTS.md"))
 
     def test_customer_dirs_lists_the_clients(self):
         self.assertEqual([n for n, _ in workspace.customer_dirs(self.tmp)], ["Acme", "Beta"])

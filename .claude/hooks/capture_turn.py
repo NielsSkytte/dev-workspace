@@ -41,6 +41,11 @@ SUMMARY_MODEL = os.environ.get("MEMORY_SUMMARY_MODEL", "qwen3:1.7b")
 SUMMARY_TIMEOUT = int(os.environ.get("MEMORY_SUMMARY_TIMEOUT", "20"))
 
 
+def _has_identity(d):
+    """A folder is a project when it holds an AGENTS.md (legacy: CLAUDE.md)."""
+    return any(os.path.isfile(os.path.join(d, n)) for n in ("AGENTS.md", "CLAUDE.md"))
+
+
 def scope_from_cwd(cwd):
     """cwd -> record scope, anchored at the workspace root (mirrors
     track_time.project_from_cwd; scope values per ops/memory/README.md).
@@ -49,7 +54,7 @@ def scope_from_cwd(cwd):
     hooks are registered machine-wide in the user-level settings, and
     non-workspace sessions must not be captured. realpath canonicalizes
     casing/junctions; a depth-3 folder is a project only if it has a
-    CLAUDE.md (grandfathered flat repos scope to the client)."""
+    AGENTS.md or legacy CLAUDE.md (grandfathered flat repos scope to the client)."""
     if not cwd:
         return None
     root = os.path.realpath(DEV_WORKSPACE)
@@ -60,13 +65,13 @@ def scope_from_cwd(cwd):
         return None
     rest = [seg for seg in c[len(root) + 1:].split(os.sep) if seg]
     if rest and rest[0].lower() == "customers":
-        if len(rest) >= 3 and os.path.isfile(
-                os.path.join(root, rest[0], rest[1], rest[2], "CLAUDE.md")):
+        if len(rest) >= 3 and _has_identity(
+                os.path.join(root, rest[0], rest[1], rest[2])):
             return "project:customers/%s/%s" % (rest[1], rest[2])
         if len(rest) >= 2:
             return "client:%s" % rest[1]
-    if rest and rest[0].lower() == "own" and len(rest) >= 2 and os.path.isfile(
-            os.path.join(root, rest[0], rest[1], "CLAUDE.md")):
+    if rest and rest[0].lower() == "own" and len(rest) >= 2 and _has_identity(
+            os.path.join(root, rest[0], rest[1])):
         return "project:own/%s" % rest[1]
     return "workspace"
 

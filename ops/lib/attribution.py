@@ -27,7 +27,7 @@ import os
 
 from . import fno
 from .substrate import file_field
-from .workspace import ROOT, customer_name, task_file
+from .workspace import ROOT, customer_name, identity_file, task_file
 
 __all__ = ["KINDS", "project_id_of", "drift"]
 
@@ -41,7 +41,7 @@ def project_id_of(project, root=None):
     the rollup pulls in the whole 15+5 model to answer one field lookup."""
     if project == "Dev":
         return "INTERNAL-RND"
-    path = os.path.join(root or ROOT, project.replace("/", os.sep), "CLAUDE.md")
+    path = identity_file(os.path.join(root or ROOT, project.replace("/", os.sep)))
     return file_field(path, "fno_code") or ""
 
 
@@ -97,7 +97,13 @@ def drift(project, task_slug, held_slug, held_project, rules=None, sheet=None, r
     # DevOps work item yet", so a session can be correctly tagged and still produce a line
     # that cannot be typed.
     t_act, t_task = task_dims(task_slug, root)
-    dims = fno.resolve_dims(project_id_of(project, root), t_act, rule, sheet_row)
+    # A work-task with its own `fno_code` is booked off the customer's default project, so
+    # the customer's `fno_requires` does not describe it (fno.task_overrides).
+    _, t_path = task_file(task_slug, root=root or ROOT) if task_slug else (None, None)
+    t_code = (file_field(t_path, "fno_code") or "") if t_path else ""
+    if t_code:
+        requires = set()
+    dims = fno.resolve_dims(t_code or project_id_of(project, root), t_act, rule, sheet_row)
     task_id = fno.value_or_blank(t_task)
 
     if _is_node(project):

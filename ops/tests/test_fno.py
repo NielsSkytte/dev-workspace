@@ -20,7 +20,7 @@ from lib import fno
 
 
 NODE = (
-    "# Widget - CLAUDE.md (customer node)\n"
+    "# Widget - AGENTS.md (customer node)\n"
     "\n"
     "## Customer\n"
     "name: Widget\n"
@@ -116,7 +116,7 @@ class Rules(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.dir = os.path.join(self.tmp, "customers", "Widget")
         os.makedirs(self.dir)
-        self.path = os.path.join(self.dir, "CLAUDE.md")
+        self.path = os.path.join(self.dir, "AGENTS.md")
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -141,6 +141,33 @@ class Rules(unittest.TestCase):
         self.assertTrue(fno.rules(self.tmp)["widget"]["no_charge"])
         self.write(NODE.replace("language: da", "language: da\nfno_code: 222"))
         self.assertFalse(fno.rules(self.tmp)["widget"]["no_charge"])
+
+
+class TaskOverrides(unittest.TestCase):
+    """A work-task with its own fno_code is found again from the line's dimensions."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.tmp, "ops", "tasks", "in-progress"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def put(self, slug, text):
+        p = os.path.join(self.tmp, "ops", "tasks", "in-progress", slug + ".md")
+        with io.open(p, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+
+    def test_keyed_on_proj_id_activity_task(self):
+        self.put("dv", TASK.replace("activity:\n", "activity: 112744\nfno_code: 230-04\n"
+                                    "fno_category: F\n").replace(
+                 "fno_task: none        # no Azure DevOps work item yet", "fno_task:"))
+        self.assertEqual(fno.task_overrides(self.tmp),
+                         {"230-04|112744|": {"slug": "dv", "category": "F"}})
+
+    def test_a_task_without_fno_code_is_absent(self):
+        self.put("plain", TASK)
+        self.assertEqual(fno.task_overrides(self.tmp), {})
 
 
 class Missing(unittest.TestCase):
@@ -170,6 +197,12 @@ class Missing(unittest.TestCase):
         self.assertEqual([m["field"] for m in fno.missing(self.row(), rule)], ["fno_task"])
         self.assertEqual(fno.missing(self.row(fno_task="CarlRData-557"), rule), [])
 
+    def test_a_task_override_is_not_held_to_the_customer_rule(self):
+        # Booked on the task's own fno_code: the customer's rule describes another project.
+        rule = {"requires": ["task"]}
+        self.assertEqual(fno.missing(self.row(proj_id="230-04", activity="112744",
+                                              override=True), rule), [])
+
     def test_description(self):
         rule = {"requires": ["activity", "description"]}
         got = [m["field"] for m in fno.missing(self.row(), rule)]
@@ -177,14 +210,14 @@ class Missing(unittest.TestCase):
 
 
 class FnoField(unittest.TestCase):
-    """The source fix: one field on one CLAUDE.md, nothing else touched."""
+    """The source fix: one field on one AGENTS.md, nothing else touched."""
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.pdir = os.path.join(self.tmp, "customers", "Widget", "portal")
         os.makedirs(self.pdir)
-        self.node = os.path.join(self.tmp, "customers", "Widget", "CLAUDE.md")
-        self.proj = os.path.join(self.pdir, "CLAUDE.md")
+        self.node = os.path.join(self.tmp, "customers", "Widget", "AGENTS.md")
+        self.proj = os.path.join(self.pdir, "AGENTS.md")
         for path, body in ((self.node, NODE), (self.proj, PROJECT)):
             with io.open(path, "w", encoding="utf-8", newline="") as f:
                 f.write(body)
@@ -645,7 +678,7 @@ class SetDims(unittest.TestCase):
 class LineEndings(unittest.TestCase):
     """A write puts the endings back as it found them.
 
-    The substrate is not uniform: task files and CLAUDE.md are LF, the timesheet days and
+    The substrate is not uniform: task files and AGENTS.md are LF, the timesheet days and
     TODO.md are CRLF because rollup.py writes them in text mode on Windows. Flipping either
     turns a one-line correction into a whole-file diff, which is what makes the correction
     unreviewable -- the same standard `todo_mutate` was held to.
@@ -658,7 +691,7 @@ class LineEndings(unittest.TestCase):
         os.makedirs(os.path.join(self.tmp, "timesheet", "2026-09"))
         self.task = os.path.join(self.tmp, "ops", "tasks", "open",
                                  "2026-09-14-widget-portal-build.md")
-        self.proj = os.path.join(self.tmp, "customers", "Widget", "portal", "CLAUDE.md")
+        self.proj = os.path.join(self.tmp, "customers", "Widget", "portal", "AGENTS.md")
         self.day = os.path.join(self.tmp, "timesheet", "2026-09", "2026-09-15.md")
         self._root, self._ts = dashboard.ROOT, dashboard.rollup.TIMESHEET
         dashboard.ROOT = self.tmp
@@ -697,7 +730,7 @@ class LineEndings(unittest.TestCase):
         ok, msg = dashboard.fno_field("project", "customers/Widget/portal",
                                       "fno_code", "901-08")
         self.assertTrue(ok, msg)
-        self.assertEqual(self.endings(self.proj), want, "project CLAUDE.md")
+        self.assertEqual(self.endings(self.proj), want, "project AGENTS.md")
 
         ok, msg = dashboard.timesheet_edit(
             "2026-09-15",

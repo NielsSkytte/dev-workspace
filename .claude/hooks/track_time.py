@@ -22,6 +22,11 @@ STATE_FILE = os.environ.get(
 )
 
 
+def _has_identity(d):
+    """A folder is a project when it holds an AGENTS.md (legacy: CLAUDE.md)."""
+    return any(os.path.isfile(os.path.join(d, n)) for n in ("AGENTS.md", "CLAUDE.md"))
+
+
 def project_from_cwd(cwd):
     """Session working dir -> project key, anchored at the workspace root.
     Mirrors capture_turn.scope_from_cwd. Any depth below a project rolls up to
@@ -32,7 +37,7 @@ def project_from_cwd(cwd):
     settings, and non-workspace sessions must not be tracked.
     realpath canonicalizes casing and resolves junctions/subst drives so one
     project never splits into case-variant keys. A depth-3 folder counts as a
-    project only if it has a CLAUDE.md -- a grandfathered flat code repo under
+    project only if it has an AGENTS.md (or legacy CLAUDE.md) -- a grandfathered flat code repo under
     a customer (e.g. Tystofte/PowerPortal.wiki) bills to the customer, and a
     non-project folder under own/ bills to Dev."""
     if not cwd:
@@ -45,13 +50,13 @@ def project_from_cwd(cwd):
         return None
     rest = [seg for seg in c[len(root) + 1:].split(os.sep) if seg]
     if rest and rest[0].lower() == "customers":
-        if len(rest) >= 3 and os.path.isfile(
-                os.path.join(root, rest[0], rest[1], rest[2], "CLAUDE.md")):
+        if len(rest) >= 3 and _has_identity(
+                os.path.join(root, rest[0], rest[1], rest[2])):
             return "customers/%s/%s" % (rest[1], rest[2])
         if len(rest) >= 2:
             return "customers/%s" % rest[1]
-    if rest and rest[0].lower() == "own" and len(rest) >= 2 and os.path.isfile(
-            os.path.join(root, rest[0], rest[1], "CLAUDE.md")):
+    if rest and rest[0].lower() == "own" and len(rest) >= 2 and _has_identity(
+            os.path.join(root, rest[0], rest[1])):
         return "own/%s" % rest[1]
     return "Dev"
 

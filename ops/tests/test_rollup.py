@@ -334,3 +334,31 @@ class WeightedHours(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LineProjId(unittest.TestCase):
+    """A work-task's own fno_code goes on the line in place of the project's."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.saved = rollup.DEV_WORKSPACE
+        rollup.DEV_WORKSPACE = self.tmp
+        for rel, text in (
+                ("customers/W/p/CLAUDE.md", "# p\n\n## Identity\nfno_code: 901-02\n"),
+                ("ops/tasks/open/own.md", "---\nfno_code: 901-04\nactivity: 112744\nfno_task:\n---\n"),
+                ("ops/tasks/open/plain.md", "---\nactivity:\nfno_task: WID-1\n---\n")):
+            p = os.path.join(self.tmp, rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with io.open(p, "w", encoding="utf-8", newline="") as f:
+                f.write(text)
+
+    def tearDown(self):
+        rollup.DEV_WORKSPACE = self.saved
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_task_code_wins(self):
+        self.assertEqual(rollup.line_proj_id("customers/W/p", "own"), "901-04")
+
+    def test_project_code_otherwise(self):
+        self.assertEqual(rollup.line_proj_id("customers/W/p", "plain"), "901-02")
+        self.assertEqual(rollup.line_proj_id("customers/W/p", None), "901-02")

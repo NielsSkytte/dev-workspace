@@ -29,7 +29,7 @@
        depths) - sessions are rooted at the project, and none of commands/skills/agents cascade down
        from the unit (added 2026-07-31; see memory 'hooks-subdir-session-gap')
     5. for each DevOps (customer-facing) sub-repo: link the harness there too, and add the
-       internal-only harness names (.claude/, CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) to its
+       internal-only harness names (.claude/, AGENTS.md, CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) to its
        .git\info\exclude (LOCAL) so internal info can never be committed to the customer's repo.
        Only harness-reserved names are excluded; generic doc folders (decisions/, architecture/)
        are left alone so legitimate customer-facing docs still commit. The real guarantee is
@@ -146,17 +146,22 @@ function Install-TenantShims {
   if ($a -or $b) { Write-Host "== tenant shims installed/healed in $binDir" }
 }
 
+function Test-Identity($dir) {
+  # A project's identity file: AGENTS.md, or the legacy CLAUDE.md until every project is renamed.
+  return (Test-Path (Join-Path $dir "AGENTS.md")) -or (Test-Path (Join-Path $dir "CLAUDE.md"))
+}
+
 function Get-ProjectRoots($unit) {
-  # A project root = any dir holding a CLAUDE.md, at the two storage-standard depths (same scan
+  # A project root = any dir holding an AGENTS.md (legacy: CLAUDE.md), at the two storage-standard depths (same scan
   # as Get-SubRepos). Sessions are rooted at the PROJECT (CLAUDE.md > Reminders), but harness
   # linking used to key on unit + nested git repo - so a plain-folder project (Matas\DataCompare,
   # own\EnvDiscovery) got no commands/skills/agents at all. Added 2026-07-31.
   $skip = @(".claude", ".project-meta", ".git", ".vscode")
   $out = @()
   foreach ($child in (Get-ChildItem $unit -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
-    if (Test-Path (Join-Path $child.FullName "CLAUDE.md")) { $out += $child.FullName }
+    if (Test-Identity $child.FullName) { $out += $child.FullName }
     foreach ($gc in (Get-ChildItem $child.FullName -Directory -Force | Where-Object { $skip -notcontains $_.Name })) {
-      if (Test-Path (Join-Path $gc.FullName "CLAUDE.md")) { $out += $gc.FullName }
+      if (Test-Identity $gc.FullName) { $out += $gc.FullName }
     }
   }
   return $out
@@ -167,7 +172,7 @@ function Ensure-Excludes($repo) {
   # harness files or credentials, even if one is accidentally created inside it.
   # .secrets/ is here rather than in the unit .gitignore on purpose: unit repos are
   # local-only backups and may hold secrets; a repo that goes online never may.
-  $patterns = @(".claude/", "CLAUDE.md", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md", ".secrets/")
+  $patterns = @(".claude/", "AGENTS.md", "CLAUDE.md", "CONTEXT.md", "CONTEXT_*.md", "INBOX.md", ".secrets/")
   $ex = Join-Path $repo ".git\info\exclude"
   if (-not (Test-Path $ex)) { return }
   $existing = Get-Content $ex
@@ -252,7 +257,7 @@ function Set-ManagedIgnore($unit, $subrepos) {
 }
 
 function Sync-SubrepoMeta($unit, $subRepos) {
-  # A DevOps sub-repo's internal metadata (CLAUDE.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) is
+  # A DevOps sub-repo's internal metadata (AGENTS.md, CONTEXT.md, CONTEXT_*.md, INBOX.md) is
   # excluded from the DevOps remote (Ensure-Excludes) AND cannot be tracked by the unit repo
   # directly (git refuses paths inside a nested repo). Backup: HARD-LINK each metadata file
   # into <unit>\.project-meta\<rel>\ - a tracked shadow path mirroring the repo's unit-relative
@@ -263,7 +268,7 @@ function Sync-SubrepoMeta($unit, $subRepos) {
   foreach ($r in $subRepos) {
     $full = $r.Dir.FullName
     $relWin = $r.Rel -replace "/", "\"
-    $names = @("CLAUDE.md", "CONTEXT.md", "INBOX.md") + `
+    $names = @("AGENTS.md", "CLAUDE.md", "CONTEXT.md", "INBOX.md") + `
       (Get-ChildItem $full -File -Filter "CONTEXT_*.md" | ForEach-Object { $_.Name })
     $metaFiles = $names | Where-Object { Test-Path (Join-Path $full $_) } | Select-Object -Unique
     if ($metaFiles.Count -eq 0) { continue }
