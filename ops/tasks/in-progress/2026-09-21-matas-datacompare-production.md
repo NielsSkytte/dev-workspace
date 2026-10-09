@@ -20,19 +20,22 @@ the master switch to GFO, and getting Matas's people onto the app.
 
 ## Progress
 
-**Now (2026-09-21):** the PoC was demoed (deck and app) and approved on 2026-09-14. `CustTable` and
-`CustBankAccount` are synced into Link to Fabric. `GFO_DataCompare_ETL_Prod` is ready. Master is MFO
-until 2026-11-01, then GFO, as agreed with Matas.
+**Now (2026-10-09):** Prod live since 2026-10-06 (own SQL DB, release = pipeline `DataCompare` only).
+Dev on branch `dev` at 21fdd13: rule kinds (mapping, normalise, on-hold condition; `rules.py`), rule
+builder with value list + preview, Excel mapping import (one mapping rule per field), match keys in
+`compare.MATCH_KEYS` recorded in `dc.match_key`; schema migrate_v4 (add-only) committed ad966e8.
+Dev run 2026-10-09 11:47-11:50 UTC Completed: Vendor 11,591 matched, 232 open, 40,625 accepted;
+Customer 0 matched (GFO holds only 5 GFO-RCM placeholders). Prod still runs the 2026-10-06 notebook.
 
-**Tried and dropped:** -
+**Tried and dropped:** pushing to `main` (Matas policy needs a PR) -> branch `dev`. `deploy_fabric.py`
+upload -> code generated into the notebook. One accept rule per Excel line -> one mapping rule per field.
 
 **Next:**
-1. Move to production: all data used is already production data; only the database that stores the
-   rules etc. is kept as separate Dev and Prod.
-2. Master flag MFO -> GFO on 2026-11-01; people at Matas reach the app by 2026-11-01.
-3. Customers: match evidence first, then the adapter.
-4. Configurable match keys (point to an existing primary key, or create a composite key) and a
-   first-seen date on every unhandled finding.
+1. Release to Prod through the pipeline (SQLDB first, then notebook) when the owner says so.
+2. Customer page with 0 matched: show the missing lists first and say why (offered 2026-10-09, not answered).
+3. Rule builder slice 2: missing-record rules, conditions on other fields (DESIGN-custom-rules.md).
+4. Hosting at Matas: SPN connection in `fabric_sql.connect`, API package, resource group + SPN.
+5. Master flag MFO -> GFO and people at Matas in the app, both by 2026-11-01.
 
 ## Needs from customer
 
@@ -52,3 +55,4 @@ including 2026-09-14 books to Task-65904.
 - 2026-09-21 - created at check-in; the owner named Task-72114 for all work after 2026-09-14.
   Matas heartbeats on 2026-09-18 and 2026-09-21 before the re-tag carry the engine-app slug and are
   corrected to Task-72114 in the timesheet at /log, never in the heartbeats.
+- 2026-10-09 - rule kinds, builder, mapping import and match keys released to Dev (21fdd13); Dev run Completed.

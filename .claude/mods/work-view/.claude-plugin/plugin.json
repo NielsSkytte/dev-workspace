@@ -1,0 +1,1 @@
+{ "name": "work-view", "version": "0.1.0", "description": "Shows what Claude is working on per thread and agent; hides code and tool output in the transcript", "types": "./types/index.d.ts" }
