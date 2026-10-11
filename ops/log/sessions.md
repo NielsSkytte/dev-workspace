@@ -1544,3 +1544,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
   `2026-10-06-matas-datacompare-appinsights` created (open, Task-72114, ask not sent).
 - **Next:** release to Prod via the pipeline when Niels says so; Customer page with 0 matched;
   rule builder slice 2; hosting at Matas (SPN); check capture_turn.py stale pairing (sentinel 13 flags).
+
+## 2026-10-10
+- **Did:** Carl Ras datahub (CarlRData-555): diagnosed PROD `PL_MainExecution` - never green since the 09-25 first deploy. Copied the 19 Marketo `include_in_enriched` flags TEST->PROD (Marketo enriched green in PROD); created PROD WI connections `CON_Notebook_WI_PROD` + Marketo enriched SQL via API, roles mirrored from TEST, ids in `VL_ConnectionId` Prod (`3775e78`, pushed, PROD library written); PROD `VL_ModelId` active set -> PROD; patched 5 PROD model partitions reading a missing `#"Source"`; generator guard `426510d` pushed (with `7d4a8ab`). `fabric_release.py` now copies marketo flags and fixes the active value set (`6171217`); new `tools/marketo_seed_columns.py`.
+- **Decided:** model drift fixed by patch now, Server parameter next (TEST model hardcodes TEST server, no deploy rule seen); PROD schedule stays off until a green run.
+- **Tasks:** `2026-08-11-carlras-operation-hardening` Progress rewritten (in-progress). 10-10 time moved 553 -> 555.
+- **Next:** read the PROD run started 10-11; Scale Up/Down `Failed to create session` (cause unknown - check monitoring-hub run log); re-enable PROD schedule once green; parameterize model Server; commit Niels's local `VL_DatastoreId` Prod.json.
