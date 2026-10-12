@@ -5,7 +5,7 @@ type: semantic
 scope: project:own/MetaAtomic
 tags: [github, backup, aai, metaatomic, sowskill, git-filter-repo, own-repo]
 status: distilled
-description: "C:\\Dev\\own is ONE git repo (all own projects) with no remote; selected folders are backed up with history to the private GitHub repo atompower4us/AAI by ops/bin/sync-aai.ps1, manual only"
+description: "C:\\Dev\\own is ONE git repo (all own projects) with no remote; hooked folders go with history to the private monorepo atompower4us/AAI on every commit (post-commit hook -> ops/bin/sync-aai.ps1); sync-aai.ps1 -Pull brings AAI branch work back; ops/bin/own-status.ps1 reports state; skill own-repos"
 ---
 
 - `C:\Dev\own` is a single git repo holding every own project (MetaAtomic, SoWSkill, DeployFabric,
@@ -25,3 +25,4 @@ description: "C:\\Dev\\own is ONE git repo (all own projects) with no remote; se
 - Gotcha met while writing the script: a PowerShell function named `Git` shadows `git.exe`, and a
   `ValueFromRemainingArguments` param needs `[CmdletBinding(PositionalBinding = $false)]` when
   other string params follow, or the positional value binds elsewhere.
+- 2026-10-12 update: the post-commit hook IS installed (FOLDERS="MetaAtomic SoWSkill") and pushes in the background on every commit, so a reset after a commit leaves abandoned commits in AAI. `sync-aai.ps1 -Pull -Branch <b> <Folder>` applies AAI branch work onto `pull/<Folder>-<b>` in own (tested). AAI is MetaAtomic's repo (monorepo, one folder per product); Ontology lives only in AAI so far. Rules and failure modes: skill `own-repos`.

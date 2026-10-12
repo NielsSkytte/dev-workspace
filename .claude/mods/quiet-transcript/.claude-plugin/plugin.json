@@ -1,0 +1,6 @@
+{
+  "name": "quiet-transcript",
+  "version": "0.6.0",
+  "description": "Hides code the model edits or writes, highlights your prompts, shows a live progress bar per shell command and agent, and has replies end with what you need to do next.",
+  "types": "./types/index.d.ts"
+}
