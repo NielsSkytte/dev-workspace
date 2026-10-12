@@ -45,6 +45,19 @@ if (-not (Test-Path $Alt)) {
   Write-Host "created $Alt"
 }
 
+# --- mods: every folder under C:\Dev\.claude\mods that holds a plugin.json is loaded in both accounts ---
+$ModsRoot = "C:\Dev\.claude\mods"
+$mods = @(Get-ChildItem $ModsRoot -Directory -ErrorAction SilentlyContinue |
+  Where-Object { Test-Path (Join-Path $_.FullName ".claude-plugin\plugin.json") } |
+  Sort-Object Name | ForEach-Object { $_.FullName })
+$mainSettings = Join-Path $Main "settings.json"
+if ($mods.Count -gt 0 -and (Test-Path $mainSettings)) {
+  $value = ($mods -join ";").Replace("\", "\\")
+  $text = [IO.File]::ReadAllText($mainSettings)
+  $new = [regex]::Replace($text, '("CLAUDE_CODE_PLUGIN_DIRS"\s*:\s*)"[^"]*"', { param($m) $m.Groups[1].Value + '"' + $value + '"' })
+  if ($new -ne $text) { [IO.File]::WriteAllText($mainSettings, $new, (New-Object Text.UTF8Encoding($false))); Write-Host "mods   $($mods.Count) registered" }
+}
+
 # --- shared files: copy (see header for why not hard links) ---
 foreach ($f in @("settings.json","settings.local.json","CLAUDE.md")) {
   $src = Join-Path $Main $f
