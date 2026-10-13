@@ -60,7 +60,7 @@ ownership problem as GEN-002/003/005 (`design/ATOMIC_GENERATOR_CHANGES.md`, owne
 
 ## Progress
 
-**Now (2026-09-21):** GL 13-month rolling window in git and live in DEV (verified 09-07). Scope expanded:
+**Now (2026-10-13):** GL window is 3 years (decided by Niels), in git `99f6814` and live in DEV, TEST and PROD (23.4M rows, 2023-10-01 to 2026-10-16). The earlier "13-month fix in git" was wrong: git held current-month-only and the nightly rebuild undid DEV's hand-widened copy. Earlier note (2026-09-21): GL 13-month rolling window in git and live in DEV (verified 09-07). Scope expanded:
 task covers all curated tables with data-window filters, not GL alone. TEST and PROD were last measured with
 the original GL bug (08-31).
 
