@@ -1,6 +1,6 @@
 ---
 title: Carl Ras — Atomic data-quality gate: rule-based row checks, quarantine, stakeholder notification
-status: open
+status: in-progress
 created: 2026-08-19
 project: customers/Carl-Ras/datahub
 owner: fabric-back
@@ -29,27 +29,26 @@ Three parts, in the order they matter:
 
 ## Progress
 
-**Now (2026-09-21):** nothing is built (verified 08-31: no rule table, no reject schema, no notification
-activity; `transform.sp_RowCheck` logs only). The triggering AX09 row was still uncorrected on 08-31. The
-model-side retype is live in DEV's and TEST's `Model`; `Model_OneLake`'s copy of `Forecast Quantity` is still
-`decimal` and must be fixed before that model is promoted. TEST's row-check log shows six red and nobody acts
-on it.
+**Now (2026-10-13):** quarantine is built in MetaAtomic (ADR 0018, `54d9f95`, 136 tests pass). It reverses the 09-18
+deferral for exact row-level rules, on Niels's 10-13 instruction: rules `validity.value_range` and
+`validity.allowed_values`, a scan that copies failing rows to a fix area (`quarantine.row`), a filter the load adds to its
+read, an alert per owner per run (Teams, e-mail, structured event) and `NB_DataQuality` MODE `quarantine`. It has not run in
+Fabric. It needs a Fabric SQL database for the store (none at Carl Ras), a Teams webhook, Key Vault secrets, and the rule
+declared with an owner and a key. Data quality itself runs in Fabric since 10-13 (run `a1d06a51`). Worker findings for an AX
+data-quality package are in `customers/Carl-Ras/datahub/design/ax_dq/` (not re-run by me). The triggering AX09 row was
+last measured uncorrected on 08-31; not re-checked.
 
-**Tried and dropped:** nothing yet; not started.
+**Tried and dropped:** nothing yet.
 
-**Scope narrowed 2026-09-18 (Niels): reporting only.** Data quality must not stop or alter a load.
-Parts 1 and 3 stay (rules, notification); part 2 — quarantine, `reject.<Table>`, any diversion of a row —
-is **deferred, not cancelled**. Revisit once the reporting has run long enough to show which rules would
-have been worth acting on. The reporting half is MetaAtomic's DQ module, not a new Atomic build, so this
-task now covers what MetaAtomic does not: rules inside the load path, and the notification that reaches
-the source-system owner.
+**Scope history.** 2026-09-18 (Niels): reporting only, quarantine deferred. 2026-10-13 (Niels): quarantine is wanted, with
+an alert to the source owner every time it happens. Part 2 is built; part 3 (notification) is built as part of it.
 
 **Next:**
-1. Deploy the MetaAtomic DQ gate to Carl Ras DEV as a plain notebook activity — no If Condition, no Fail
-   activity (blocked on: the Fabric SQL database for the store, and Niels's review of the declarations).
-2. Decide what this task still owns once the reporting runs, and whether it closes into
-   `2026-09-09-carlras-metaatomic-implementation`.
-3. Fix `Model_OneLake`'s `Forecast Quantity` type before promotion.
+1. Provision the Fabric SQL database for the store (ADR 0016) — Niels.
+2. Pick the Teams webhook and the Key Vault; name the owner of the AX09 source for the alert.
+3. Declare the Forecast Quantity rule in `dq_expectations.json` (value range, `RECID` as key, owner), then run
+   `quarantine scan` in DEV before a load.
+4. Fix `Model_OneLake`'s `Forecast Quantity` type before promotion.
 
 ## Needs from customer
 
@@ -160,3 +159,4 @@ not the answer here either. Notification is part of the feature, not a follow-up
   `customers/Carl-Ras/datahub/CONTEXT_DECISIONS.md` and `own/MetaAtomic/CONTEXT_DECISIONS.md`.
 - 2026-08-19 — created after the Currency overflow took down the TEST model refresh.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-10-13 — started: quarantine built in MetaAtomic (ADR 0018, `54d9f95`), not run in Fabric; moved to in-progress.
