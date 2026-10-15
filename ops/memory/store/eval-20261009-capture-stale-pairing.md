@@ -15,3 +15,4 @@ description: "Sentinel on daily/2026-10-09: 13 flags, 9 records pair a user line
 - Also: harness `<task-notification>` XML and expanded /handoff help text landed as User lines
   (see `capture-turn-records-expanded-help`).
 - Needs its own check in `.claude/hooks/capture_turn.py`; not changed this session.
+- Fixed 2026-10-15, see [[eval-20261015-capture-stale-pairing-recurs]].

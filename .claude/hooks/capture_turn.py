@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """Stop hook: append one raw memory record per turn to ops/memory/daily/<date>.md.
 
-Robust by design: reads the hook JSON from stdin, extracts the last user+assistant
-exchange from the transcript, writes a record in the workspace record shape, and ALWAYS
+Robust by design: reads the hook JSON from stdin, extracts the last user prompt and the
+answer that follows it from the transcript, writes a record in the workspace record shape, and ALWAYS
 exits 0 (never blocks or errors a turn). Summarizes via a tiny local Ollama model; if Ollama
 is unreachable it falls back to a deterministic truncated extract so capture always succeeds.
 See C:\\Dev\\ops\\memory\\README.md for the model and record shape.
 """
-import sys, os, json, datetime, hashlib
+import sys, os, json, datetime, hashlib, time
 
 DAILY_DIR = os.environ.get("MEMORY_DAILY_DIR", r"C:\Dev\ops\memory\daily")
 DEV_WORKSPACE = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
@@ -76,8 +76,45 @@ def scope_from_cwd(cwd):
     return "workspace"
 
 
-def extract_turn(transcript_path):
-    user_text, asst_text = "", ""
+# Harness text that arrives with role "user" but was not typed by the user (fixed 2026-10-15:
+# these were recorded as User lines, and the answer was paired with them).
+HARNESS_PREFIXES = (
+    "<task-notification", "<system-reminder", "<local-command-", "Another Claude session sent",
+    "[SYSTEM NOTIFICATION", "This session is being continued",
+)
+
+
+def _text_of(content):
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                parts.append(b.get("text", ""))
+            elif isinstance(b, str):
+                parts.append(b)
+        return "\n".join(p for p in parts if p)
+    return ""
+
+
+def _is_prompt(obj, text):
+    """True for a message the user typed (or a slash command they ran)."""
+    if obj.get("isMeta") or obj.get("isCompactSummary") or obj.get("toolUseResult") is not None:
+        return False
+    origin = obj.get("origin")
+    if isinstance(origin, dict) and origin.get("kind") not in (None, "human"):
+        return False  # peer / agent hand-backs and other non-human origins
+    return not text.lstrip().startswith(HARNESS_PREFIXES)
+
+
+def read_turn(transcript_path):
+    """Return (user_text, asst_text, done) for the LAST user prompt and only the assistant text
+    that follows it. done = the turn's last assistant message ended the turn (end_turn).
+    Fixed 2026-10-15: the old reader kept the last user text and the last assistant text
+    independently, so a Stop that fired before the final answer reached the transcript paired
+    the prompt with the previous turn's answer (sentinel 10-05, 10-09, 10-13/14)."""
+    user_text, asst_parts, done = "", [], False
     try:
         with open(transcript_path, encoding="utf-8") as f:
             for line in f:
@@ -88,29 +125,32 @@ def extract_turn(transcript_path):
                     obj = json.loads(line)
                 except Exception:
                     continue
-                msg = obj.get("message") or obj
-                role = msg.get("role") or obj.get("type")
-                content = msg.get("content")
-                text = ""
-                if isinstance(content, str):
-                    text = content
-                elif isinstance(content, list):
-                    parts = []
-                    for b in content:
-                        if isinstance(b, dict) and b.get("type") == "text":
-                            parts.append(b.get("text", ""))
-                        elif isinstance(b, str):
-                            parts.append(b)
-                    text = "\n".join(p for p in parts if p)
-                if not text.strip():
+                msg = obj.get("message")
+                if not isinstance(msg, dict):
                     continue
+                role = msg.get("role")
+                text = _text_of(msg.get("content"))
                 if role == "user":
-                    user_text = text
-                elif role == "assistant":
-                    asst_text = text
+                    if text.strip() and _is_prompt(obj, text):
+                        user_text, asst_parts, done = text, [], False
+                elif role == "assistant" and user_text:
+                    if text.strip():
+                        asst_parts.append(text)
+                    done = msg.get("stop_reason") == "end_turn"
     except Exception:
         pass
-    return user_text, asst_text
+    # The final answer is the turn's last text block; earlier ones are progress lines.
+    return user_text, (asst_parts[-1] if asst_parts else ""), done
+
+
+def extract_turn(transcript_path, wait=2.0):
+    """read_turn, re-reading for up to `wait` seconds until the turn's end is in the transcript."""
+    deadline = time.time() + wait
+    while True:
+        user_text, asst_text, done = read_turn(transcript_path)
+        if done or time.time() >= deadline:
+            return user_text, asst_text, done
+        time.sleep(0.25)
 
 
 PROMPT_TMPL = (
@@ -234,18 +274,29 @@ def _hash(s):
     return hashlib.sha1((s or "").encode("utf-8")).hexdigest()
 
 
-def load_state():
+def load_state(sid):
+    """Per-session state (fixed 2026-10-15: one shared state let parallel sessions reset each
+    other's same-turn detection, which wrote duplicate records)."""
     try:
         with open(STATE_FILE, encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        return (data.get("sessions") or {}).get(sid, {})
     except Exception:
         return {}
 
 
-def save_state(state):
+def save_state(sid, st):
     try:
+        try:
+            with open(STATE_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+        sessions = {k: v for k, v in (data.get("sessions") or {}).items()
+                    if v.get("date") == st.get("date")}  # keep today's sessions only
+        sessions[sid] = st
         with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f)
+            json.dump({"sessions": sessions}, f)
     except Exception:
         pass
 
@@ -271,7 +322,15 @@ def main():
     scope = scope_from_cwd(cwd)
     if scope is None:
         return  # outside the workspace -> not captured
-    user_text, asst_text = extract_turn(hook.get("transcript_path", ""))
+    user_text, asst_text, done = extract_turn(hook.get("transcript_path", ""))
+    # Prefer the final answer from the hook input when the harness supplies it.
+    last = hook.get("last_assistant_message")
+    if isinstance(last, str) and last.strip():
+        asst_text, done = last, True
+    if user_text and not asst_text:
+        asst_text = "(answer not yet in transcript)"
+    elif not done and asst_text:
+        asst_text += "\n(turn still running when captured)"
 
     now = datetime.datetime.now(datetime.timezone.utc)
     ts = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -282,10 +341,9 @@ def main():
     # hook can fire several times within one turn (the agent yields, then continues) - those
     # share the same user message, so we REPLACE the prior record in place rather than append.
     user_h, asst_h = _hash(user_text), _hash(asst_text)
-    state = load_state()
+    state = load_state(sid)
     same_turn = (
         state.get("date") == date
-        and state.get("session") == sid
         and state.get("user_hash") == user_h
     )
     if same_turn and state.get("asst_hash") == asst_h:
@@ -321,7 +379,9 @@ def main():
             with open(path, "rb") as f:
                 existing = f.read()
         offset = state.get("offset", 0)
-        if same_turn and existing and 0 <= offset <= len(existing):
+        # Replace in place only while our record is still the file's last one; if another
+        # session appended since, truncating would delete its records - append instead.
+        if same_turn and existing and 0 <= offset <= len(existing) and state.get("end") == len(existing):
             base = existing[:offset]   # same turn: drop the prior record, keep everything before
         elif existing:
             base = existing            # new turn: append to today's stream
@@ -330,9 +390,10 @@ def main():
         record_start = len(base)
         with open(path, "wb") as f:    # binary write preserves the explicit "\n" line endings
             f.write(base + rec)
-        save_state({
-            "date": date, "session": sid,
+        save_state(sid, {
+            "date": date,
             "user_hash": user_h, "asst_hash": asst_h, "offset": record_start,
+            "end": record_start + len(rec),
         })
     except Exception:
         pass
