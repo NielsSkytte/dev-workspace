@@ -341,6 +341,23 @@
       "problemMatcher": []
     }
 
+    ,{
+      "label": "Claude · customers/Carl-Ras/process-insight",
+      "detail": "Carl Ras — process-first metric libraries on Dataverse: generated Atomic pipeline, ontology, Direct Lake models, coverage report",
+      "type": "shell",
+      "command": "claude",
+      "options": {
+        "cwd": "${workspaceFolder}/customers/Carl-Ras/process-insight"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "claude",
+        "close": false
+      },
+      "problemMatcher": []
+    }
+
     // ── ADD NEW PROJECTS BELOW THIS LINE ───────────────────────
     // Template to copy:
     //
