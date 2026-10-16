@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { Job, Last, Step } from '../types'
+import type { Ask, Board, Job, Last, Step } from '../types'
 
 const last = atom({ plugin: 'quiet-transcript', key: 'last' } as const, null as Last | null)
 
@@ -11,6 +11,8 @@ const carried = atom({ plugin: 'quiet-transcript', key: 'carried' } as const, {}
 const names = atom({ plugin: 'quiet-transcript', key: 'names' } as const, {} as Record<string, string>)
 const tick = atom({ plugin: 'quiet-transcript', key: 'tick' } as const, 0)
 const done = atom({ plugin: 'quiet-transcript', key: 'done' } as const, 0)
+const board = atom({ plugin: 'quiet-transcript', key: 'board' } as const, {} as Record<string, Board>)
+const turn = atom({ plugin: 'quiet-transcript', key: 'turn' } as const, 0)
 
 const EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit']
 const SHELL_TOOLS = ['Bash', 'PowerShell']
@@ -29,12 +31,19 @@ const RULE = [
   'children (the concrete substeps), and afterwards only update statuses by calling it with the same steps. Never',
   'shrink or restart the plan between turns; replace it only when the objective itself changes. Exactly one leaf',
   'is in_progress. When you dispatch an agent, tell it to keep its own plan the same way.',
+  'THE BAND IS THE USER CONTROL PANEL, so EVERY turn call ' + PLAN_TOOL + ' once more before your last reply, even when no',
+  'step changed, and fill the three board fields: next = the one immediate step; you = what you are waiting for from the',
+  'user, each {kind: approve | answer | do, text} (approve = a go for a named action, answer = a question, do = something',
+  'only they can do); claude = what the user is waiting for from you (a run, a build, a delivery) with its reason',
+  'if it is held. A thing that needs the user must be in you, never only in prose. Leave you empty only when nothing is',
+  'pending; remove an item when it is answered or done.',
   'Do not stop to ask permission for work inside the plan that stays on this machine, in DEV or is reversible: keep',
   'working until the plan is done or a step needs the user (a decision, an action only they can take, a customer-facing',
   'or PROD-changing step). Stop only for that, and say what you need in the Next for you block.',
   'Volunteer information only when it is a showstopper that needs the user to act: then end the reply with a',
   'block that starts with the exact line "## ▶ Next for you", followed by a numbered list of at most 5 items,',
-  'each one action with the concrete command, value or choice. Questions to the user go in that block.',
+  'each one action with the concrete command, value or choice, the same items as the you field. Questions to the',
+  'user go in that block.',
   'If nothing needs the user, say nothing beyond the answer. Keep file contents and code out of replies.',
 ].join(' ')
 
@@ -65,10 +74,21 @@ export const register: Register = (on, options) => {
       name: 'plan',
       isDeferred: false,
       description:
-        'One master plan for the whole job: 3-8 main steps, each with 2-5 children, a status each. Call again with the same steps to update statuses; do not restart it.',
+        'One master plan for the whole job: 3-8 main steps, each with 2-5 children, a status each. Call again with the same steps to update statuses; do not restart it. Also carries the board: next step, what you wait for from the user, what the user waits for from you.',
       inputSchema: {
         type: 'object',
         properties: {
+          next: { type: 'string', description: 'The one immediate next step.' },
+          you: {
+            type: 'array',
+            description: 'What waits for the user: approve (a go for a named action), answer (a question), do (an action only they can take).',
+            items: {
+              type: 'object',
+              properties: { kind: { type: 'string', enum: ['approve', 'answer', 'do'] }, text: { type: 'string' } },
+              required: ['kind', 'text'],
+            },
+          },
+          claude: { type: 'array', description: 'What the user waits for from you, with the reason if it is held.', items: { type: 'string' } },
           steps: {
             type: 'array',
             items: {
@@ -101,7 +121,8 @@ export const register: Register = (on, options) => {
   // The plan tool: replaces this loop's step list.
   on('tool.call', { tool: PLAN_TOOL }, async ($, e) => {
     const loop = (e as { agentId?: string }).agentId ?? MAIN
-    const steps = ((e as unknown as { steps?: Step[] }).steps ?? []).slice(0, 12)
+    const call = e as unknown as { steps?: Step[]; next?: string; you?: Ask[]; claude?: string[] }
+    const steps = (call.steps ?? []).slice(0, 12)
     const prev = (await read($, plans))[loop] ?? []
     const prevLeaves = leavesOf(prev)
     const sameJob = prevLeaves.some(l => leavesOf(steps).some(n => n.title === l.title))
@@ -109,6 +130,12 @@ export const register: Register = (on, options) => {
       await update($, carried, c => ({ ...c, [loop]: { done: (c[loop]?.done ?? 0) + prevLeaves.length, total: (c[loop]?.total ?? 0) + prevLeaves.length } }))
     }
     await update($, plans, p => ({ ...p, [loop]: steps }))
+    const at = await $.clock.now()
+    const nowTurn = await read($, turn)
+    await update($, board, b => ({
+      ...b,
+      [loop]: { next: String(call.next ?? ''), you: (call.you ?? []).slice(0, 5), claude: (call.claude ?? []).slice(0, 5), at, turn: nowTurn },
+    }))
     return { result: 'ok', text: 'Plan shown to the user.' } as never
   })
 
@@ -156,7 +183,9 @@ export const register: Register = (on, options) => {
       const endedAt = await $.clock.now()
       await update($, last, l => (l && l.startedAt === startedAt ? { ...l, endedAt, state: failed ? 'failed' : 'done' } : l))
     }
+    // the failure line stays until a later call succeeds, so it does not sit there for the rest of the session
     if (failed) $.ui.status(`${label} failed`)
+    else $.ui.status(undefined)
     return out
   })
 
@@ -174,6 +203,7 @@ export const register: Register = (on, options) => {
     timer?.cancel()
     timer = $.clock.every(400, () => { void update($, tick, n => n + 1) })
     void update($, done, () => 0)
+    await update($, turn, n => n + 1)
     return next(e)
   })
 
@@ -245,6 +275,8 @@ export const register: Register = (on, options) => {
     const label = await read($, names)
     const finished = await read($, done)
     const before = await read($, carried)
+    const boards = await read($, board)
+    const thisTurn = await read($, turn)
     const now = await $.clock.now()
     const { Box, Text } = $.ui.resolve(e)
     const rowsLeft = Math.max(6, e.props.maxRows - 2)
@@ -263,6 +295,29 @@ export const register: Register = (on, options) => {
           <Text dimColor>{'░'.repeat(b.off)}</Text>
           <Text bold>{` ${String(pct).padStart(2)}%`}</Text>
           <Text dimColor>{` ${Math.round(secs)}s of ~${Math.round(j.est)}s`}</Text>
+        </Box>
+      )
+    }
+
+    // The control panel: next step, what waits for the user, what the user waits for. Flagged when no recent turn updated it.
+    const KIND: Record<string, string> = { approve: 'approve', answer: 'answer ', do: 'do     ' }
+    const boardRows = (loop: string, b: Board | undefined, nowTurn: number, nowMs: number) => {
+      if (!b || (!b.next && b.you.length === 0 && b.claude.length === 0)) return null
+      const age = Math.max(0, Math.round((nowMs - b.at) / 60000))
+      const stale = nowTurn - b.turn >= 2
+      const room = Math.max(40, e.props.bodyColumns - 14)
+      const cut = (t: string) => (t.length > room ? t.slice(0, room - 1) + '…' : t)
+      used += (b.next ? 1 : 0) + b.you.length + b.claude.length + (stale ? 1 : 0)
+      return (
+        <Box key={`b-${loop}`} flexDirection="column">
+          {b.next ? <Text color="greenBright" bold>{`  ▶ Next   ${cut(b.next)}`}</Text> : null}
+          {b.you.map((a, i) => (
+            <Text key={`y${i}`} color="yellow" bold>{`  ▌ You ${KIND[a.kind] ?? a.kind}  ${cut(a.text)}`}</Text>
+          ))}
+          {b.claude.map((c, i) => (
+            <Text key={`c${i}`} color="cyan">{`  ◌ Me     ${cut(c)}`}</Text>
+          ))}
+          {stale ? <Text color="red">{`  ! board not updated for ${nowTurn - b.turn} turns (${age} min): ask for a refresh`}</Text> : null}
         </Box>
       )
     }
@@ -318,6 +373,7 @@ export const register: Register = (on, options) => {
               </Box>
             )
           })}
+          {boardRows(loop, boards[loop], thisTurn, now)}
           {mine.slice(0, 3).map(jobRow)}
         </Box>
       )

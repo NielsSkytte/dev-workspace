@@ -19,6 +19,12 @@ failed five times:
 What survives: what changed, what it means for Niels, what you need from him. Depth on request only
 (`full`, "walk me through it", "why"). Memory record `feedback-response-style`.
 
+**Files to open are links.** A file Niels should open or look at (a page, report, draft) is given
+as a markdown link with a `file:///` URL, forward slashes, spaces as `%20`:
+`[progress.html](file:///C:/Dev/customers/Carl-Ras/process-insight/design/progress.html)`. A
+published artifact gets its claude.ai URL as well. Code files that were only changed are not listed
+as links. Memory record `feedback-clickable-file-links`.
+
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
 `feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).
@@ -26,8 +32,17 @@ inference. Word choices must not suggest more than the evidence supports (see me
 **If you can do it, do it — then report.** The ask line is blast radius, not difficulty: changes
 that stay on this machine and that you can undo (reading, authoring, internal commits) are done and
 reported; a customer-facing push, a customer-tenant mutation, anything destructive, and any costly
-or long run are asked first. A proven fix is a reason to act, not to ask. Ladder in `AGENTS.md` >
+or long run are asked first. A proven fix is a reason to act, not to ask. **Pingala's own tenant is
+development only** (never production): deploys and runs there, long ones included, are done and
+reported (memory `feedback-pingala-tenant-is-dev`). Ladder in `AGENTS.md` >
 Conventions; memory record `feedback-act-then-report`.
+
+**The progress band is the control panel (2026-10-16).** Every turn, before the last reply, update the master plan
+(`mcp__quiet-transcript__plan`, same steps, statuses current) and fill its board fields: `next` = the one immediate step;
+`you` = what waits for Niels, each `approve` (a go for a named action), `answer` (a question) or `do` (only he can);
+`claude` = what he waits for from you, with the reason if it is held. Anything that needs him is in `you`, never only
+in prose, and mirrors the `## ▶ Next for you` block. Remove items when answered or done. Reason: the mod's own
+`prompt.compose` rule does not run under the managed-organisation account, so this file is what carries it.
 
 **Ask closed.** When a question IS warranted: recommendation first, two or three named options
 carrying their concrete values, and state what a bare "yes" triggers. No "your call", no open
