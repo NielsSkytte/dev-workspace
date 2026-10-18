@@ -435,7 +435,10 @@ there. Owned by M.
   - **Commit:** what we write: code, docs, specs, config, design, and small fixtures we wrote by hand.
   - **Never commit, in any repo:** (1) data taken from a system: extracts, samples, dumps, exports, API
     responses, metadata or lineage snapshots of a source, whatever their size (it may carry customer data);
-    (2) output a script in the repo regenerates (`out/`, caches, builds); (3) any single file over 5 MB.
+    (2) output a script in the repo regenerates (`out/`, caches, builds).
+  - **Files over 5 MB get a review before commit** when they came from a data enquiry (a query, extract or
+    download): name them to the owner and commit only on his word. A large file that is code alone (a vendored
+    library, generated code) needs no review.
   - **Where it goes instead:** a `data/` folder beside the code that uses it (ignored, below), with a line in that
     folder's README or the tool's docstring naming the source and the command that recreates it. Data that must
     outlive the machine goes to OneLake or OneDrive, not git.
