@@ -203,3 +203,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-20261016-capture-assistant-mojibake](eval-20261016-capture-assistant-mojibake.md) -- Sentinel 10-15/16: assistant bodies mojibake (cp1252 inference); pasted password captured verbatim, redacted at /log
 - [datacompare-swa-graphql-hosting](datacompare-swa-graphql-hosting.md) -- DataCompare closed SWA, no API server: JS core over Fabric GraphQL as the user, v5 append-only + v6 RLS, MI federated credential, Prod released by migrate scripts
 - [eval-20261018-browser-automation-entra-picker](eval-20261018-browser-automation-entra-picker.md) -- Entra sign-in loop: read the sign-in log (AADSTS700054) before blaming browser automation
+- [eval-20261018-weighted-and-skills](eval-20261018-weighted-and-skills.md) -- W42: Matas 450% weighted/registered right, process-insight 225% far too low; MS Learn/deployment skills maybe due, firing unknown; give % with hours
