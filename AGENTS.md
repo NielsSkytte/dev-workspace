@@ -431,6 +431,19 @@ there. Owned by M.
 
 - **Scripts are ASCII-only.** Anything this workspace executes under Windows PowerShell 5.1 — `SessionStart` hooks, `.ps1` files, any script PS parses — must use ASCII punctuation: plain `-` (not `—`), straight quotes (not `“ ” ‘ ’`), `...` (not `…`). PS 5.1 reads BOM-less UTF-8 as Windows-1252, where an em-dash's bytes decode to a smart quote `”` that the tokenizer treats as a string delimiter, silently corrupting the parse. (Found 2026-06-15: the session-start hook had this latent bug and never ran.) Encoding-proof alternative if non-ASCII is unavoidable: save as UTF-8 *with* BOM. ASCII-only is simpler — prefer it.
 
+- **What goes into git: what we author, never data (2026-10-18).** Decide by what a file *is*, not where it sits:
+  - **Commit:** what we write: code, docs, specs, config, design, and small fixtures we wrote by hand.
+  - **Never commit, in any repo:** (1) data taken from a system: extracts, samples, dumps, exports, API
+    responses, metadata or lineage snapshots of a source, whatever their size (it may carry customer data);
+    (2) output a script in the repo regenerates (`out/`, caches, builds); (3) any single file over 5 MB.
+  - **Where it goes instead:** a `data/` folder beside the code that uses it (ignored, below), with a line in that
+    folder's README or the tool's docstring naming the source and the command that recreates it. Data that must
+    outlive the machine goes to OneLake or OneDrive, not git.
+  - **Exception:** a reference file that genuinely belongs in the repo goes in deliberately with `git add -f`, and
+    the commit message says why.
+  (Generalised 2026-10-18 from the `data/` rule below, after two lineage/DQ sample inputs of 16 and 24 MB sat
+  untracked in `Carl-Ras/datahub/design/ax_dq/_inputs/`.)
+
 - **`data/` folders are never versioned.** Anything landing in a `data/` folder is either sensitive (customer personal data, API extracts) or bulky (samples, dumps, exports) — both are reasons not to commit it. The pattern is written into every unit repo's harness-managed `.gitignore` block by `ops/bin/heal-repos.ps1`, so the rule applies workspace-wide without per-repo upkeep. Reference material that genuinely belongs in a repo goes in deliberately with `git add -f` and stays tracked once added — the rule only stops *new* files being picked up, so existing tracked data (e.g. Carl Ras' sample Avro and the incumbent's SQL) is unaffected. (Decided 2026-07-31, after a Marketo extract put ~1,000 real customer email addresses in a repo that had no rule against it.)
 
 - **Secrets are barred from repos that go online, not from local ones.** A **local-only** repo may hold credentials — the eight customer unit repos and `own/` have no remote and are the private backup, so ignoring `.secrets/` there would leave secrets unbacked, which is worse. A repo with **any remote** must never carry them. Enforced where the boundary actually is: `heal-repos.ps1` > `Ensure-Excludes` adds `.secrets/` to the local `.git/info/exclude` of every sub-repo with a remote (customer-facing *and* internal — online is online), and the workspace repo `C:\Dev` (remote: `github.com/NielsSkytte/dev-workspace`) ignores `.secrets/` and `data/` in its own `.gitignore`. Deliberately **not** in the unit `.gitignore` block. Note `.git/info/exclude` is per-clone and never committed: it stops an accidental `git add` on this machine, it does not travel with the repo. (Decided 2026-07-31, correcting a same-day over-application that ignored `.secrets/` everywhere.)

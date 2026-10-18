@@ -230,7 +230,9 @@ function Set-ManagedIgnore($unit, $subrepos) {
     "# (customer personal data, API extracts) or bulky (samples, dumps). Reference",
     "# material that genuinely belongs in the repo goes in with 'git add -f' and",
     "# stays tracked once added - this rule only stops NEW files being picked up.",
-    "data/")
+    "# _inputs/ is the same kind (source extracts fed to a tool); see AGENTS.md > Conventions",
+    "# 'What goes into git'.",
+    "data/", "_inputs/")
   if ($subrepos.Count -gt 0) {
     $block += ""
     $block += "# Nested project repos with their own remote (DevOps/wiki): code backed up there, not here."
