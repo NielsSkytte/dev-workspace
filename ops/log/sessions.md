@@ -1587,3 +1587,8 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** 7 rows in `customers/Matas/DataCompare/CONTEXT_DECISIONS.md` (SWA without API server, append-only writes, UAT+Prod on Prod DB with RLS, SharePoint out, closed page with managed identity, code in `swa/`, Prod schema by migrate script while the pipeline SQLDB step fails).
 - **Tasks:** `2026-09-21-matas-datacompare-production` in progress, Progress rewritten 2026-10-18.
 - **Next:** on Matas's reply to email 07 run the go-live runbook (`prototype/README.md`); diagnose the pipeline SQLDB failure; UAT comparisons after Link to Fabric UAT; review/commit the MetaAtomic and Carl Ras notes.
+## 2026-10-19 (Carl Ras process-insight, overview review)
+- **Did:** Opened the process-insight overview in Lavish (`process-insight/.lavish/overview.html`) and applied Niels's two notes: Fusion moved to "Reused as is" as design choice D8 (live metrics tagged now, merge built in v2); the `ONT_Atomic` line removed. Jesper item removed from `CONTEXT.md` Blocked on others and `design/PLAN.md` Open items. Finalized 2026-10-18 timesheet and wrote its line descriptions.
+- **Decided:** `ONT_Atomic` thread closed (Niels and Jesper resolved it).
+- **Tasks:** none moved; no billing task was set for this session (`/switch-task` not run).
+- **Next:** `CLAUDE.md` Out of Scope still names `ONT_Atomic` alignment; review the 2026-10-18 decision row on stored columns (task Progress next step).

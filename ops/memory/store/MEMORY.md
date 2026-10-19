@@ -204,3 +204,6 @@ and the record shape live in [`../README.md`](../README.md).
 - [datacompare-swa-graphql-hosting](datacompare-swa-graphql-hosting.md) -- DataCompare closed SWA, no API server: JS core over Fabric GraphQL as the user, v5 append-only + v6 RLS, MI federated credential, Prod released by migrate scripts
 - [eval-20261018-browser-automation-entra-picker](eval-20261018-browser-automation-entra-picker.md) -- Entra sign-in loop: read the sign-in log (AADSTS700054) before blaming browser automation
 - [eval-20261018-weighted-and-skills](eval-20261018-weighted-and-skills.md) -- W42: Matas 450% weighted/registered right, process-insight 225% far too low; MS Learn/deployment skills maybe due, firing unknown; give % with hours
+- [carlras-process-insight-computed-columns-research-20261018](carlras-process-insight-computed-columns-research-20261018.md) -- C2R 57 computed columns: 11 hold, 34 fix, 6 customer value, 6 no source; FCR/SLA semantics; change request sent
+- [metaatomic-dq-weighted-score-20261019](metaatomic-dq-weighted-score-20261019.md) -- MetaAtomic DQ: tiers by measure/join reach, weighted score 68.0 vs mean 76.5, critical-gate cap dropped, F is a row count
+- [eval-20261019-lavish-and-capture](eval-20261019-lavish-and-capture.md) -- lavish loop worked; capture mojibake + harness markup in User bodies persist
