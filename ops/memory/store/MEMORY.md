@@ -207,3 +207,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-process-insight-computed-columns-research-20261018](carlras-process-insight-computed-columns-research-20261018.md) -- C2R 57 computed columns: 11 hold, 34 fix, 6 customer value, 6 no source; FCR/SLA semantics; change request sent
 - [metaatomic-dq-weighted-score-20261019](metaatomic-dq-weighted-score-20261019.md) -- MetaAtomic DQ: tiers by measure/join reach, weighted score 68.0 vs mean 76.5, critical-gate cap dropped, F is a row count
 - [eval-20261019-lavish-and-capture](eval-20261019-lavish-and-capture.md) -- lavish loop worked; capture mojibake + harness markup in User bodies persist
+- [metaatomic-fabric-app-spike-20261020](metaatomic-fabric-app-spike-20261020.md) -- Carl Ras = Fabric App, Matas = SWA; SSO, delegated connector, OneLake pages via function (25.9 MB 6.5 s), headless smoke via externalEntraExchange
+- [eval-20261020-fabric-app-spike](eval-20261020-fabric-app-spike.md) -- no Rayfin skill, rayfin docs search filled it; go headless before browser sign-in
