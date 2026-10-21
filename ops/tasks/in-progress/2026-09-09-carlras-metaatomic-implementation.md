@@ -46,11 +46,52 @@ staying on PAT (09-21); the engine path for `NB_DataQuality` through the `/lakeh
 the notebook has no default lakehouse, replaced by an `abfss://` copy (`d7f2424`).
 
 **Next:**
-1. Commit and push the pyz to Fabric-ETL (Niels's go); no Update from git needed (`NB_MetaAtomic` reads the pyz from its
-   clone, `NB_DataQuality` from Lakehouse_Util; the notebook diff is a comment). Then check the next run's page and mail
-   show the weighted headline and compare with the previous run's weighted score.
-2. **Copy Lineage** is parked: Niels will replace it with something else once the main work is implemented (10-20).
-3. `Landingzone-ETL` contributes 0 nodes — engine work, tracked in `own/MetaAtomic`.
+1. Pyz pushed to Fabric-ETL main `0b52618` (10-20); no Update from git needed (the notebook diff is a comment). Check the
+   next run's page and mail show the weighted headline and compare with the previous run's weighted score.
+2. Fabric App build: plan in `own/MetaAtomic/docs/fabric-app-build-plan.md` (6 phases, ~6.5 d + Carl Ras admin);
+   decided 10-20: app in Fabric-ETL-DEV for now, pack check in browser JS, develop against Carl Ras real data and show
+   them early. `service_drift.py` now never commits a new item of a type the branch does not hold. **Phase 1 live at
+   Carl Ras (10-21):** item `MetaAtomic` in Fabric-ETL-DEV, https://lyric-dove-2894621aef-westeurope.webapp.fabricapps.net ,
+   showing the daily run's index, lineage (28 MB), data quality (7.7 MB) and stream matrix (own `fcc0f6a`). Not yet seen
+   in a browser. Parity test (`fabric-app/scripts/parity.mjs`): 0 differences between the app and the pages on their
+   own (DQ 8 views 188 checks, index, stream matrix, lineage); `#` links fixed (`19bceba`, `8394570`).
+   **Phase 2 done (10-21, own `53d3c64`):** DQ store schema 4 is append-only (events + state views), pack overlays
+   added as the customer level beside Pingala's versions (Niels 10-21); a schema-3 store reads the same after
+   migration on SQLite and the Pingala Fabric SQL store. Plan now ~7.5 d (phase 3 +1 d for overlays).
+   **Phase 3 done (10-21, own `62cb1fe`):** `packcheck.js` = `packs.check` on 106 golden cases; overlays run store ->
+   `design/dq_packs/<name>.overlay.json` -> engine.
+   **Phase 4 done (10-21, own `a9ce7ca`):** in the Pingala app the DQ page writes the store through the app (delegated
+   connector); `scripts/e2e-dq.mjs` ran each call once, every row's actor the signed-in user. **Phase 5 done (own
+   `984d85a`):** role `metaatomic_page` (read + append only, trigger sets who/when/status); tested with a throwaway
+   principal, removed after. **Phase 6 started (10-21, Niels's go):** `MetaAtomic_Store` in Fabric-ETL-DEV Util/Data
+   (schema 4), app item moved to Util; engine `0.7.0+20261021.984d85a` in Lakehouse_Util and pushed with
+   `PL_UpdateLineage` STORE = MetaAtomic_Store (Fabric-ETL `abd16e6`). Next: Update from git (Niels's go; PL_UpdateLineage
+   conflicts with workspace noise, take the branch), a run loads the store, Carl Ras rayfin login, app redeploy against
+   the Carl Ras store. Entra group later (Niels; not via Kasper, who is CIO).
+   **Store loaded (10-21):** the manual PL_UpdateLineage run failed in NB_DataQuality (Python kernel segfault, exit -11,
+   in `profile._is_date` strptime after 46 min, before anything was written); a rerun of NB_DataQuality alone passed and
+   loaded run 2026-10-21 02:27 into MetaAtomic_Store (score 68.3, 1,740 findings). Both apps read it. Watch whether the
+   crash recurs on the 05:30 schedule.
+   **UI v2 (10-21, Niels's ask, own `accd9e5`):** redesign of layout, navigation and wording for business users,
+   deployed beside v1 as item `MetaAtomic_v2` (https://fast-quay-164f388232-westeurope.webapp.fabricapps.net), same
+   pages and store. **Niels chose v2 (10-21):** v2 is the app default (own `71e46d8`), deployed to both items; sidebar
+   folds to icons; Power BI layer renamed Semantic. The 05:30 scheduled run on 10-21 completed (no DQ crash). Open:
+   whether to delete the now-duplicate `MetaAtomic_v2` item; engine rendering v2 natively (later). Noted for later
+   (Niels): a browser's saved sign-in is refused after a redeploy (401 / connector error until a new profile); fix =
+   drop the saved session on 401 (build plan, own `64be47e`).
+   **Engine renders v2 (10-21, Niels's yes):** own `76ffa01`, pyz `0.7.0+20261021.76ffa01` pushed to Fabric-ETL main
+   `c7e468b` and uploaded to Lakehouse_Util; PL_UpdateLineage run `d50ff763` started 13:2x. `MetaAtomic_v2` item to be
+   deleted by Niels in the portal (API refuses app items). Known-limitation round trip still to show.
+   Runs from 13:00 fail in NB_MetaAtomic: AADSTS50076 (MFA) on the owner's (Niels's) user token; a pipeline runs as its
+   LastModifiedBy, not the caller. Re-stamp to the SPN is refused: Outlook connections cannot be shared ("not allowed to
+   add principals for MicrosoftOutlook"). Copy Lineage removed (DEV + Fabric-ETL `dbb40db`; no SharePoint, Niels).
+   Simpler DQ page (Niels's feedback, own `3c6bff7`): 5 views, overview > table > issue, Timeliness counted where
+   inherited. Deployed (Niels's go): pyz `0.7.0+20261021.3c6bff7` (Fabric-ETL `74081a3`, Lakehouse_Util), app
+   redeployed. Run `b2f898e6` (13:08-14:23 local): both notebooks Succeeded, all three pages engine-v2, store run 13:19
+   loaded; "Send DQ mail" Failed (connection 67345190 not resolved, DMTS_EntityNotFoundOrUnauthorized). Mail and the
+   pipeline's owner/MFA problem parked by Niels ("deal with it later").
+3. **Copy Lineage** is parked: Niels will replace it with something else once the main work is implemented (10-20).
+4. `Landingzone-ETL` contributes 0 nodes — engine work, tracked in `own/MetaAtomic`.
 
 ## Needs from customer
 

@@ -209,3 +209,6 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-20261019-lavish-and-capture](eval-20261019-lavish-and-capture.md) -- lavish loop worked; capture mojibake + harness markup in User bodies persist
 - [metaatomic-fabric-app-spike-20261020](metaatomic-fabric-app-spike-20261020.md) -- Carl Ras = Fabric App, Matas = SWA; SSO, delegated connector, OneLake pages via function (25.9 MB 6.5 s), headless smoke via externalEntraExchange
 - [eval-20261020-fabric-app-spike](eval-20261020-fabric-app-spike.md) -- no Rayfin skill, rayfin docs search filled it; go headless before browser sign-in
+- [metaatomic-ui2-and-app-ops-20261021](metaatomic-ui2-and-app-ops-20261021.md) -- UI v2 rendered by the engine; simpler DQ page and the BudgetLedger/Timeliness cause; Rayfin deploy/sign-in failure modes
+- [carlras-pipeline-owner-mfa-outlook-20261021](carlras-pipeline-owner-mfa-outlook-20261021.md) -- pipeline runs as LastModifiedBy; MFA broke runs; Outlook connection blocks SPN re-stamp; mail parked
+- [eval-20261021-metaatomic-ui](eval-20261021-metaatomic-ui.md) -- visual identity used; fabric-deployment lacks the unshareable-connection case; git add -A swept a fork's work
