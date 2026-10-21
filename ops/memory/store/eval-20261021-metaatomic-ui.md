@@ -16,3 +16,5 @@ description: "2026-10-21: pingala-visual-identity used for UI v2; fabric-deploym
   paths when a fork is working in the same repo.
 - Sentinel: capture_turn.py still writes UTF-8 as cp1252 mojibake and records expanded slash-command text and
   harness mid-turn notes in User lines (2 truncated in daily/2026-10-21.md).
+- Value model check (Niels, 10-21): W43 weighted hours (Carl Ras datahub 11.75 vs 6.00 registered, process-insight
+  9.50 vs 2.50) "look about right"; no disagreement.
