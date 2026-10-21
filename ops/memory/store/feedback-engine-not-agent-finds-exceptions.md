@@ -18,5 +18,9 @@ description: "Niels 2026-10-21: an agent must never derive a customer rule or ex
   counts and an earlier finding (MD-03). Niels: "the 989 is not something you should ever do, but exactly something an
   engine should do." The handwritten draft was withdrawn; the engine now suggests exceptions (failure concentrated in
   one value of a low-cardinality column), live counts, confirm/reject by the customer.
-- Still fine for an agent: authoring Pingala's generic check sets from general system knowledge (versioned, released
-  like code), reviewing engine output, and building the engine.
+- Refined by Niels the same evening: an agent MAY use a customer's data as an example to write GENERIC rules for a
+  Pingala check set (e.g. AX09, F&O) - "use Carl Ras as an example to create the generic ax09 data quality pack". What
+  an agent must never write is a rule specific to one customer (like 989 for Carl Ras), and it must not analyse data
+  as a routine in production: that is the engine's daily job, with the customer confirming.
+- So: generic check-set authoring from example data = agent, versioned and released like code; customer-specific rules
+  and exceptions = engine suggestion + customer confirmation; reviewing engine output and building the engine = agent.
