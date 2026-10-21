@@ -131,9 +131,11 @@ the notebook has no default lakehouse, replaced by an `abfss://` copy (`d7f2424`
    customer rule (memory `feedback-engine-not-agent-finds-exceptions`). The handwritten 989 draft (1.1+local.2) was
    withdrawn in both stores. In flight at session end: a fork building engine-suggested exceptions (failures
    concentrated in one value of a low-cardinality column, live counts, Confirm/Dismiss, stored per run; synthetic
-   tests only) in own repo; runs DEV `f44edda0` / TEST `d35b456e` on AX09 1.1. Next: check those runs and pages,
-   review the fork's commits, release the suggestions (pyz DEV + TEST, Fabric-ETL push, Niels's go), then plain
-   business names on rule lines are part of it.
+   tests only) in own repo; runs DEV `f44edda0` / TEST `d35b456e` on AX09 1.1. Suggestions built: own `f25bdc6`
+   (`suggest.py`: >= 80 % of >= 10 failures in up to 3 values of a 2-50 distinct column, >= 99 % pass elsewhere, values
+   cover <= 50 % of rows; Confirm writes an `exempt_when` local adjustment, Dismiss is an event; `dq.suggestion` table;
+   205 tests). Next: check those runs and pages; release `f25bdc6` (pyz DEV + TEST, Fabric-ETL push) and redeploy both
+   apps (Dismiss needs it) on Niels's go. Open: suggestions only for check-set checks with an id.
    **Mail parked (Niels, 10-21):** "easy fix later"; focus on deployment and functionality. A run counts as green when
    both notebooks succeed, whatever the mail step does.
 3. **Copy Lineage** is parked: Niels will replace it with something else once the main work is implemented (10-20).
