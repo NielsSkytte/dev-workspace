@@ -21,7 +21,15 @@ document lives in `Fabric-ETL/MetaAtomic/design/`.
 
 ## Progress
 
-**Now (2026-10-20):** DEV runs daily and is level with Fabric-ETL main at `f627fb6` (10-19). Lineage is whole: the
+**Now (2026-10-22, 01:00 Copenhagen):** engine-suggested exceptions (`f25bdc6`) released: Fabric-ETL `5294652` pushed,
+pyz in DEV + TEST `Lakehouse_Util`, both apps redeployed (lyric-dove, game-dove). Tonight's runs (`f44edda0` DEV green,
+`d35b456e` TEST notebooks green, mail parked) loaded the engine before the upload, so a TEST run `3af465cd` on `f25bdc6`
+was started at 00:48 for the first suggestions. **Check builder** built (Niels: a guided interface to create and modify
+rules): own repo `1f93be7` + `873b672`, 211 tests; All checks + `#build` wizard, overlay/own-check saving, out-of-date
+proposals brought up to date (`packs.replay`). Not released: needs a pyz push to Fabric-ETL + upload + a run (Niels's go).
+Local preview: relay on `127.0.0.1:8097` over the DEV run with a scratch store.
+
+**Earlier (2026-10-20):** DEV runs daily and is level with Fabric-ETL main at `f627fb6` (10-19). Lineage is whole: the
 10-18 DEV store has raw -> enriched 2,528 and enriched -> curated 881 column edges (the "all views partial" finding was a
 stale 10-12 snapshot). `NB_DataQuality` profiles entry, enriched and curated with the AX09 pack, reconciles row counts from
 the Delta log, and the run mail arrives (Niels, 10-20). Weighted score made the headline with the mean over tables beside

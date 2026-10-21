@@ -12,6 +12,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-response-style](feedback-response-style.md) — terse/brief/full sticky keywords; default brief; no edit narration unless asked; "plainly" = prose, no headers/bullets/citations
 - [feedback-commit-to-test](feedback-commit-to-test.md) — proactively offer commit+push when a push unblocks testing/deploy; user still approves (convention canonical in AGENTS.md)
 - [feedback-version-bump-revisions](feedback-version-bump-revisions.md) — on a major revision to a versioned client doc (SoW/offer), bump the version + add a Document History row, unprompted
+- [feedback-copenhagen-time](feedback-copenhagen-time.md) — tell Niels times in Copenhagen time (CET/CEST), not UTC; convert Fabric run timestamps
 - [feedback-time-attribution-dev-to-project](feedback-time-attribution-dev-to-project.md) — project-rooted time always stays; Dev-rooted time clearly a project's gets reassigned to it (out of Dev only)
 - [feedback-wrapup-commit-policy](feedback-wrapup-commit-policy.md) — at wrap-up//log always commit internal (personal) repos; DevOps/customer-facing repos always ask first
 - [feedback-fact-only-language](feedback-fact-only-language.md) — never imply; facts only, inference labeled as inference; check claims against recorded evidence; prefer the smaller true statement
