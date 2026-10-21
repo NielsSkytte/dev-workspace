@@ -90,6 +90,52 @@ the notebook has no default lakehouse, replaced by an `abfss://` copy (`d7f2424`
    redeployed. Run `b2f898e6` (13:08-14:23 local): both notebooks Succeeded, all three pages engine-v2, store run 13:19
    loaded; "Send DQ mail" Failed (connection 67345190 not resolved, DMTS_EntityNotFoundOrUnauthorized). Mail and the
    pipeline's owner/MFA problem parked by Niels ("deal with it later").
+   **TEST release (10-21 evening, Niels's go, option A = one MetaAtomic per stage):** PL_UpdateLineage + both notebooks
+   resolve `{workspace}`/`{Lakehouse_Util}` and the stage (from ENVIRONMENTS) where they run (Fabric-ETL `f525ccd`, own
+   `ffbf747`); DEV updated from git and its run passed both notebooks. TEST's old copy had run daily into DEV's
+   Lakehouse_Util; its schedule is off until a green TEST run. Deployed DEV -> TEST (`fabric_release.py`, "Test" OrgApp
+   items excluded): PL_UpdateLineage refused for the SPN (Outlook connection), so deployed as Niels and runs as him; rest
+   re-stamped to the SPN. Pre-existing in TEST: seed GetEnums fails (Key Vault in Pingala's tenant, since 10-12),
+   `VL_ConnectionId.Dataverse_Url` empty. TEST store `88bb93b1`, pyz in TEST Lakehouse_Util, TEST app item `e2d2e985`
+   https://game-dove-a742e1b587-westeurope.webapp.fabricapps.net . Run mail now fails on
+   `DMTS_OAuthTokenRefreshFailedError` (the Outlook connection's own sign-in expired; Niels to re-enter).
+   **Check editing A + AX09 (10-21, Niels's yes):** own `7167b9a` (editor saves only the customer's changes as an
+   overlay on Pingala's version; clash screen keep-yours/take-Pingala's and rebase), ax09 is Pingala's pack 1.0
+   (AX 2009 wording, own `0445c26`, `1e7b61f`); Carl Ras's differences in `ax09.overlay.json` (Fabric-ETL `280b028`,
+   pyz `1e7b61f` in DEV). DEV store: Pingala ax09 1.0 + overlay `1.0+local.1` standard; the stale published
+   `design/dq_packs/ax09.json` in DEV Lakehouse_Util deleted (NB_MetaAtomic copies but never removes pack files:
+   fix in the notebook later, needs an Update from git). Same release in TEST (Niels's go): pyz `1e7b61f` in TEST Lakehouse_Util, TEST store
+   switched the same way, stale published ax09.json deleted; run `fcfcaff1` started before it, so the next TEST run is
+   the first on the new engine. Outlook connection "MicrosoftOutlook EXT_NSKC" re-signed by Niels (10-21 evening).
+   TEST run `fcfcaff1` (old engine): both notebooks Succeeded, mail Failed `DMTS_EntityNotFoundOrUnauthorized` (TEST's
+   pipeline principal has no access to the connection; inference: the item was created by the SPN). DEV run `b5a8798c`
+   failed: `KeyError '_same_as_engine'` with an overlay in force; fixed own `9370171`, pyz to DEV + TEST and Fabric-ETL
+   `785a284`. NB_MetaAtomic now removes published pack files no longer in git (Fabric-ETL `ccd206b`, own `24c315f`):
+   DEV updated from git (Niels's go), notebook deployed to TEST as the SPN. Reruns DEV `e151c12c`, TEST `e30b4941`.
+   **Green in both (10-21 21:47):** DEV `e151c12c` and TEST `e30b4941` ran both notebooks on engine `9370171` with
+   ax09 1.0+local.1 (overlay on Pingala 1.0) for 90 tables; TEST store run 19:43 loaded (score 73.9, 159 tables). DEV
+   mail succeeded after the re-sign; TEST mail still `DMTS_EntityNotFoundOrUnauthorized`. TEST 05:30 schedule re-enabled
+   (owner SPN). Released after the runs: own `a166b27` (score card bands; Report impact scores along the lineage; a
+   stale row check fails every row, DEV headline 68.4 -> 53.2 on the same data, Niels's yes), pyz in DEV + TEST,
+   Fabric-ETL `a0a6a6e`; shows from the 05:30 runs.
+   **Issue quality (10-21 late, Niels's yeses):** impact follows use for general rules (own `8f503af`: a generic
+   finding on a column used nowhere past raw is low; notes recognised by content; plain "why" texts). AX09 check set 1.1
+   from a review of the rules (own `d4e1da3`, `62ef018`, `5e66e88`; report in the session scratchpad): AX general noise
+   rules low/accept, new field checks (company, cust/vendtrans, invoice voucher/account/currency, unit per company,
+   exchange rate > 0, names, country, payment terms, VAT number), SALESID check on ORIGSALESID; financial dimensions
+   open (engine change). Exceptions as data (`exempt_when`); a draft local adjustment is a proposal the customer
+   confirms on the page. Released: pyz `5e66e88` DEV + TEST, Fabric-ETL `e6d5968` (ax09.overlay.json = 1.1+local.1).
+   Both stores: ax09 1.1 + 1.1+local.1 standard, 1.1+local.2 (customer group 989 may have no VAT number) a draft
+   waiting for Carl Ras, the separate VATNUM expectation retired. Runs DEV `f44edda0`, TEST `d35b456e`.
+   **Rule (Niels, 10-21):** analytics of actual data is always the engine; agents build the engine but never create a
+   customer rule (memory `feedback-engine-not-agent-finds-exceptions`). The handwritten 989 draft (1.1+local.2) was
+   withdrawn in both stores. In flight at session end: a fork building engine-suggested exceptions (failures
+   concentrated in one value of a low-cardinality column, live counts, Confirm/Dismiss, stored per run; synthetic
+   tests only) in own repo; runs DEV `f44edda0` / TEST `d35b456e` on AX09 1.1. Next: check those runs and pages,
+   review the fork's commits, release the suggestions (pyz DEV + TEST, Fabric-ETL push, Niels's go), then plain
+   business names on rule lines are part of it.
+   **Mail parked (Niels, 10-21):** "easy fix later"; focus on deployment and functionality. A run counts as green when
+   both notebooks succeed, whatever the mail step does.
 3. **Copy Lineage** is parked: Niels will replace it with something else once the main work is implemented (10-20).
 4. `Landingzone-ETL` contributes 0 nodes — engine work, tracked in `own/MetaAtomic`.
 

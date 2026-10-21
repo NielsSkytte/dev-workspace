@@ -212,3 +212,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [metaatomic-ui2-and-app-ops-20261021](metaatomic-ui2-and-app-ops-20261021.md) -- UI v2 rendered by the engine; simpler DQ page and the BudgetLedger/Timeliness cause; Rayfin deploy/sign-in failure modes
 - [carlras-pipeline-owner-mfa-outlook-20261021](carlras-pipeline-owner-mfa-outlook-20261021.md) -- pipeline runs as LastModifiedBy; MFA broke runs; Outlook connection blocks SPN re-stamp; mail parked
 - [eval-20261021-metaatomic-ui](eval-20261021-metaatomic-ui.md) -- visual identity used; fabric-deployment lacks the unshareable-connection case; git add -A swept a fork's work
+- [feedback-engine-not-agent-finds-exceptions](feedback-engine-not-agent-finds-exceptions.md) -- an agent never derives a customer rule/exception from their data; the engine suggests them on every run, the customer confirms (Niels 2026-10-21)
