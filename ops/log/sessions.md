@@ -1610,3 +1610,15 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** one MetaAtomic per stage; mail parked; stale row check full weight; analytics of customer data is always the engine, agents never create a customer rule (the handwritten 989 draft withdrawn); the engine suggests exceptions every run.
 - **Tasks:** `2026-09-09-carlras-metaatomic-implementation` Progress updated.
 - **Next:** check runs DEV `f44edda0` / TEST `d35b456e`; review and release the engine-suggested exceptions (fork in flight); financial dimensions check (engine change); TEST mail principal.
+
+## 2026-10-22 (workspace: AtomicBase sync, Fabric skills out of the startup listing)
+- **Did:** AtomicBase (`pingala/AtomicBase`) fast-forwarded on `main` (`9dbbc07`) and the local checkout switched to `Development` (`0956afd`). Workspace commit+push was blocked by the auto-mode classifier earlier in the session. Q took the 12 Fabric skills out of the model-visible skill listing (`disable-model-invocation: true`, files in place) behind a new index skill `.claude/skills/fabric/SKILL.md`; fabric-back/semantic and three cross-referencing skills now point to the files by path; AGENTS.md convention + m.md capability note and WATCH entry. Listing ~10k -> ~6.1k tokens at startup.
+- **Decided:** skill families sit behind one index skill (AGENTS.md). Agent `skills:` preload rejected: it only takes model-invocable skills, so it saves nothing at startup.
+- **Tasks:** none moved.
+- **Next:** watch that Fabric work still reaches the right skill via the index (m.md WATCH); `_data-agent-eval` trigger evals for these skills no longer apply; optional: disable the 3 duplicate claude.ai Fabric skills.
+
+## 2026-10-23 (Aeven AtomicServiceNow: access check, full-load paging fix, handoff; session from 10-20)
+- **Did:** Fabric API at Aeven not reachable from the laptop (Conditional Access needs a compliant device, AADSTS53000), so a read-only check cell (`access_check_cell.py`, scratchpad) ran in `ITSM-ETL-Dev` on run `20261020T080536Z`: sys_choice fixed; `sys_dictionary.internal_type` empty, `alm_asset` count 0, empty fields on 13 tables, 13 tables land fewer rows than the stats count. Full loads now page to the stats count (Copy count -> Read count -> Copy pages full); delta keeps the empty-page stop (local `e499775`, synced and pushed to `MasterDataPlan` main `c783d94`; daily 06:00 schedule restored after the render overwrote it). Query access email restored to the sent version; field list as a follow-up email (`e9dc553`), sent by Niels. Handoff `1dae528`.
+- **Decided:** full-load paging bounded by the stats count (`CONTEXT_DECISIONS.md` 2026-10-20). Row gaps stay out of the email until a rerun with the fix.
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` in progress, Progress rewritten 10-23 (waiting on Aeven for permissions; first reply: many empty fields may be unused in test, which does not explain internal_type or the audit tables).
+- **Next:** on Aeven's answer: Update from git, `full_reload` run, rerun the check cell, send remaining row gaps. Fix `MAIN_SCHEDULE` in `tools/build_notebooks.py` before the next render.

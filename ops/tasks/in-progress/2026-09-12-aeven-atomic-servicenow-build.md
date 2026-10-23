@@ -8,7 +8,7 @@ priority: normal
 blocked_by:
 activity: 400760
 fno_task: none
-customer_ask: open
+customer_ask: sent 2026-10-21
 waiting_on:
 resume_on:
 source: session
@@ -20,12 +20,13 @@ to raw, then curated layer and semantic model. Single activity for all project w
 
 ## Progress
 
-**Now (2026-10-04):** Deployed by git to Aeven DEV `ITSM-ETL-Dev` (`1fd1bd43`), repo `MasterDataPlan`
-main at `66ea2c2`: 15 Atomic items, `PL_MainExecution` (concurrency 1, schedule off), variable libraries
-with UNSET defaults and value set AevenDev active. Last `PL_MainExecution` run 2026-10-03: Ingest,
-Metadata (catalogue fallback from mirrors) and Enriched succeeded; Curated failed 16 views because 8
-tables return 0 rows to the integration user (sys_dictionary, core_company, change_request, problem,
-sc_req_item, sc_request, sc_task, alm_asset) and sys_choice lacks name/element/value/language.
+**Now (2026-10-23):** Waiting on Aeven for permissions. Full `PL_MainExecution` run `20261020T080536Z`
+at Aeven ran without errors: sys_choice returns all fields (17,979 rows); still blocked are
+`sys_dictionary.internal_type` (empty in all 204,762 rows), `alm_asset` (count 0), and empty fields on 13
+tables; sys_audit / sys_audit_delete are not tested (`enabled: false`). 13 tables land fewer rows than
+the stats count (e.g. sys_user 3,061 / 175,296). Aeven's first reply: many of the empty fields may just
+be unfilled in test; that does not explain internal_type, alm_asset or the audit tables. Full-load
+paging to the stats count is pushed (local `e499775`, `MasterDataPlan` main `c783d94`), not run yet.
 Pingala `dataaidemo` at `1ab2a5f`.
 
 **Tried and dropped:** Direct Lake on SQL -> Direct Lake on OneLake (SQL refuses the calculated
@@ -33,19 +34,23 @@ measures table); a `paginationRules` block holding only `supportRFC5988` -> no r
 (it looped 6,955 requests in 23 min); plain `TRY_CAST` -> `TRY_CAST(NULLIF(col,''))` ('' casts to
 1900-01-01 / 0 in a Fabric warehouse).; a run-overlap lock file (`6ca7281`, reverted) -> pipeline Concurrency = 1; warehouse
 objects in git on a first sync (`DmsImportDatabaseException`) -> shell warehouses; Pingala ids as
-variable-library defaults -> UNSET defaults, one value set per environment.
+variable-library defaults -> UNSET defaults, one value set per environment; full loads stopping at
+the first empty page -> page to the stats count (inference: an ACL-emptied page can have readable rows after it).
 
 **Next:**
-1. Send `Aeven_ServiceNow_Read_Access_email.md`; on access, rerun `PL_MainExecution` and check Curated builds.
-2. Check the Ingest duration on the first run with 4 tables in parallel (pushed in `66ea2c2`).
+1. When Aeven answers: in `ITSM-ETL-Dev` Update from git (`c783d94`), run `PL_MainExecution` with
+   `full_reload` on, rerun `access_check_cell.py`, compare row gaps and fields with `20261020T080536Z`.
+2. Send Aeven the row gaps that remain after that run; check Curated builds.
 3. Serving to Aeven (local commit `c0ca888`) once Curated builds; `Incident Activity` waits for sys_audit.
 4. Per-environment disabled tables, then sync `dataaidemo`.
 5. Production per `docs/production-deployment.md` (Q1-Q7 decided 2026-10-03).
 
 ## Needs from customer
 
-- **Aeven:** read access on the test instance for the 8 tables above, all sys_choice fields, and
-  sys_audit / sys_audit_delete. Drafted 2026-10-03 (`Aeven_ServiceNow_Read_Access_email.md`), **not sent**.
+- **Aeven:** read on `sys_dictionary.internal_type`, query rights on `sys_updated_on`, `alm_asset`,
+  sys_audit / sys_audit_delete (`Aeven_ServiceNow_Query_Access_email.md`). Sent 2026-10-21.
+- **Aeven:** say which empty fields on 13 tables are unreadable vs unused in test
+  (`Aeven_ServiceNow_Field_Access_email.md`). Sent; first reply by 2026-10-23: many may be unused in test.
 - **Aeven:** production list (instance URL, integration user and roles, gateway and connection,
   ITSM-ETL-Prod workspace, run account). Drafted 2026-10-03 (`Aeven_Production_Requirements_email.md`), **not sent**.
 
@@ -66,3 +71,5 @@ a landing-zone workspace or directly into fabric-etl.
 - 2026-09-21 — check-in: fno_task 400760; reporting polish descoped (Aeven's responsibility); threads 3 and 6 dropped
 - 2026-10-02 — Aeven repo MasterDataPlan and ITSM-ETL-Dev connected; first git deploy (shell warehouses after DmsImportDatabaseException); PL_Ingest folds per table, count.json as copy-complete marker
 - 2026-10-03 — PL_MainExecution (concurrency 1), variable libraries as value sets (UNSET defaults), catalogue fallback with inferred types, 4 tables in parallel, production design + decisions Q1-Q7; access and production emails drafted
+- 2026-10-20 — access read-out of run 20261020T080536Z; full-load paging bounded by the stats count (e499775 / MasterDataPlan c783d94); field-access follow-up drafted
+- 2026-10-23 — waiting on Aeven for permissions; first reply: many empty fields may be unused in test
