@@ -19,6 +19,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-interview-one-question](feedback-interview-one-question.md) — interviews: one question at a time as AskUserQuestion cards (options + Other); never batched question lists; refines design-dialogue
 - [feedback-act-then-report](feedback-act-then-report.md) — if you can do it, do it, then report; the ask line is blast radius (7-rung ladder), never difficulty; a proven fix is a reason to act, not to ask (convention canonical in AGENTS.md)
 - [feedback-closed-questions](feedback-closed-questions.md) — when a question IS warranted: recommendation first, named options with concrete values, state what a bare "yes" triggers (convention canonical in AGENTS.md)
+- [feedback-bang-commands-are-bash](feedback-bang-commands-are-bash.md) — commands Niels runs with `!` are Git Bash: /c/... paths, &&, VAR=value cmd; never $env: or backslash paths (rule in CLAUDE.md)
 
 ## Project
 - [workspace-design](workspace-design.md) — two buckets (own/customers), two types (content/function), focus field, scale

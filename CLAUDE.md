@@ -25,6 +25,11 @@ as a markdown link with a `file:///` URL, forward slashes, spaces as `%20`:
 published artifact gets its claude.ai URL as well. Code files that were only changed are not listed
 as links. Memory record `feedback-clickable-file-links`.
 
+**Commands Niels runs with `!` are bash, not PowerShell.** Forward slashes and `/c/...` paths, `&&`
+to chain, `VAR=value cmd` for environment variables. Never `$env:`, `;`-chained PowerShell or
+backslash paths. A command that truly needs PowerShell is wrapped: `! powershell -NoProfile -Command
+"..."`. Read it once as bash before sending. Memory record `feedback-bang-commands-are-bash`.
+
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
 `feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).
