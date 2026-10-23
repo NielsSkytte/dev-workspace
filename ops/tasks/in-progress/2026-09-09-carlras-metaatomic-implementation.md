@@ -21,7 +21,15 @@ document lives in `Fabric-ETL/MetaAtomic/design/`.
 
 ## Progress
 
-**Now (2026-10-22, 01:00 Copenhagen):** engine-suggested exceptions (`f25bdc6`) released: Fabric-ETL `5294652` pushed,
+**Now (2026-10-23):** Carl Ras DEV on engine `dc73fff` (Fabric-ETL `9ed9ae0` pushed, Niels's go; DEV Lakehouse_Util;
+app redeployed). Lineage now sees sources in the same or another workspace (shortcuts with hot/cold schema, ingest
+pipelines via variable libraries -> `datastore_location`); DQ reaches them in their own workspace and falls back to raw
+`hot` (own repo `8d11dcb`, `dc73fff`). Fixes the empty Pingala-base check set (CustTable missing). Base AtomicBase
+(Development `4104a4a`) at `Fabric/00 - Services/MetaAtomic`, app item moved there by Niels. Online lineage now takes a
+fresh Fabric token per call (`7ba5140`, a long run hit 401); base lineage + DQ rerun in progress. Open: the base
+pipeline's git clone has no credential - Niels has no Azure DevOps admin; recommended a read-only PAT in `kvpingaladata`.
+
+**Earlier (2026-10-22, 01:00 Copenhagen):** engine-suggested exceptions (`f25bdc6`) released: Fabric-ETL `5294652` pushed,
 pyz in DEV + TEST `Lakehouse_Util`, both apps redeployed (lyric-dove, game-dove). Tonight's runs (`f44edda0` DEV green,
 `d35b456e` TEST notebooks green, mail parked) loaded the engine before the upload, so a TEST run `3af465cd` on `f25bdc6`
 was started at 00:48 for the first suggestions. **Check builder** built (Niels: a guided interface to create and modify
