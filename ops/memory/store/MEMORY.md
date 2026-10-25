@@ -220,3 +220,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [aeven-servicenow-access-20261020](aeven-servicenow-access-20261020.md) -- Aeven CA blocks Fabric API from the laptop (in-workspace check cell); run 20261020 access state; full loads page to stats count; generator overwrites the schedule
 - [carlras-process-insight-product-20261025](carlras-process-insight-product-20261025.md) -- process-insight by git push (G0-G9 rehearsed), review step one page + synthetic + provisional, Inventory to deliver onboarded, synthetic 22/22; next ITD on Lakehouse_Raw_FO
 - [eval-20261025-review-and-capture](eval-20261025-review-and-capture.md) -- no skill in play; heredoc patches lose backslash escapes (use Edit); capture mojibake/boilerplate persists
+- [fabric-python-notebook-long-run-20261025](fabric-python-notebook-long-run-20261025.md) -- Python notebook default node segfaulted on a long run; %%configure first cell (# MAGIC in git) to 8 vCores; fs.cp azcopy failure, fs.put fallback
+- [eval-20261025-metaatomic-base](eval-20261025-metaatomic-base.md) -- no skill for notebook sizing; heredoc backslash loss again; time split given in UTC not CET; sessions mixed
