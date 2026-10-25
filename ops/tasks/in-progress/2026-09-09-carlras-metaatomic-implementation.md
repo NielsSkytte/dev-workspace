@@ -21,7 +21,9 @@ document lives in `Fabric-ETL/MetaAtomic/design/`.
 
 ## Progress
 
-**Now (2026-10-23):** Carl Ras DEV on engine `dc73fff` (Fabric-ETL `9ed9ae0` pushed, Niels's go; DEV Lakehouse_Util;
+**Now (2026-10-25):** Pingala base `PL_UpdateLineage` runs end to end in Fabric (13:17-17:31, Completed): clone of AtomicBase via `GIT_PAT_FILE` (Lakehouse_Util `Files/MetaAtomic/git_pat.txt`, stopgap until SPN `d26a0ca0...` is in PingalaGlobal), lineage, DQ. Fixes on the way: publish copy falls back to `fs.put` when azcopy fails (`c52c741`), NB_MetaAtomic on 8 vCores via a first `%%configure` cell, the default node segfaulted (`b2b34ef`); AtomicBase `790a6a6`, `08aa5b4`. Next: SPN into PingalaGlobal then back to `GIT_SPN_SECRET`; Change buttons on CustTable.
+
+**Earlier (2026-10-23):** Carl Ras DEV on engine `dc73fff` (Fabric-ETL `9ed9ae0` pushed, Niels's go; DEV Lakehouse_Util;
 app redeployed). Lineage now sees sources in the same or another workspace (shortcuts with hot/cold schema, ingest
 pipelines via variable libraries -> `datastore_location`); DQ reaches them in their own workspace and falls back to raw
 `hot` (own repo `8d11dcb`, `dc73fff`). Fixes the empty Pingala-base check set (CustTable missing). Base AtomicBase
