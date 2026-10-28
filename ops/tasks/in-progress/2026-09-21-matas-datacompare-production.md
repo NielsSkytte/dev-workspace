@@ -8,7 +8,7 @@ priority: normal
 blocked_by:
 activity: 110383        # consultant activity on Task-72114 -- F&O derives it from the task (owner, 2026-09-29; was 111953)
 fno_task: Task-72114
-customer_ask: open
+customer_ask: dropped
 waiting_on:
 resume_on:
 source: checkin
@@ -63,6 +63,7 @@ including 2026-09-14 books to Task-65904.
 - Before this: `2026-09-08-matas-datacompare-engine-app` (Task-65904), closed 2026-09-21.
 
 ## Log
+- 2026-10-21 — Customer ask dropped: no longer relevant
 - 2026-09-21 - created at check-in; the owner named Task-72114 for all work after 2026-09-14.
   Matas heartbeats on 2026-09-18 and 2026-09-21 before the re-tag carry the engine-app slug and are
   corrected to Task-72114 in the timesheet at /log, never in the heartbeats.

@@ -8,7 +8,7 @@ priority: high
 blocked_by:
 activity:
 fno_task: CarlRData-480
-customer_ask: open
+customer_ask: dropped
 source: direct
 ---
 
@@ -110,6 +110,7 @@ SELECT YEAR(TransDate) y, COUNT(*) FROM enriched.GeneralLedgerTransactions GROUP
 ```
 
 ## Log
+- 2026-10-21 — Customer ask dropped: no longer relevant
 - 2026-08-31 — **VERIFIED, and PROD is now the materialised proof of the defect.**
   | env | `fact.GeneralLedgerTransactions` | live window |
   |---|---|---|

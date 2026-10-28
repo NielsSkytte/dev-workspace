@@ -8,7 +8,7 @@ priority: normal
 blocked_by:
 activity:
 fno_task: CarlRData-555
-customer_ask: open
+customer_ask: dropped
 source: session
 ---
 
@@ -29,7 +29,26 @@ Three parts, in the order they matter:
 
 ## Progress
 
-**Now (2026-10-13):** quarantine is built in MetaAtomic (ADR 0018, `54d9f95`, 136 tests pass). It reverses the 09-18
+**Now (2026-10-28):** the DQ mail names its environment (released to Carl Ras DEV + TEST, engine `c055c15`). The app
+now shows every page in its own bundled UI, and the menu shows the UI and engine versions. The TEST mail still fails:
+the Outlook connection is Niels's and Fabric refuses to share it (403). Mail route A/B/C is waiting for Niels. Built in
+own `823f5ba` and changed in `d673ab3` (Niels: no stored examples, live query only). Live on base only: a side panel per
+issue that reads the failing rows live through the app's `drill` function (mssql, app identity). The run stores only
+the query (`drill/<id>.json`), never the rows. Run time (`8e45433`): NB_DataQuality took 150 min on base on 10-25; the
+lineage lookup rebuilt the store graph per column (~50 min), now built once; tables run 8 at a time (`workers`), each
+with its own SQL hook; every table records its time per step (`timing`, summary in dq.json). Base test run of
+NB_DataQuality alone started 18:55 UTC (job `1770250a`). NB_MetaAtomic (lineage, ~105 min) not yet looked at. Also new: expectation kind `except`, which accepts a
+group of rows (a column and its values, covers later rows) or single rows (key plus failing value), with a review
+date. The run counts the rows it takes out and accepts an issue left with none. Carl Ras redeploy waits for Niels's
+MFA sign-in.
+
+**Earlier (2026-10-26):** the 10-13 block below is overtaken by the Fabric App build (own/MetaAtomic
+`docs/fabric-app-build-plan.md`; task `2026-09-09-carlras-metaatomic-implementation`). The store exists:
+`MetaAtomic_Store` in Fabric-ETL-DEV (schema 4, loaded by `PL_UpdateLineage` since 10-21) and a TEST store. The DQ page
+runs in the Fabric App at Carl Ras DEV + TEST: ax09 check set 1.1 with local adjustments, the check builder,
+engine-suggested exceptions. Quarantine has still not run in Fabric.
+
+**Earlier (2026-10-13):** quarantine is built in MetaAtomic (ADR 0018, `54d9f95`, 136 tests pass). It reverses the 09-18
 deferral for exact row-level rules, on Niels's 10-13 instruction: rules `validity.value_range` and
 `validity.allowed_values`, a scan that copies failing rows to a fix area (`quarantine.row`), a filter the load adds to its
 read, an alert per owner per run (Teams, e-mail, structured event) and `NB_DataQuality` MODE `quarantine`. It has not run in
@@ -44,7 +63,7 @@ last measured uncorrected on 08-31; not re-checked.
 an alert to the source owner every time it happens. Part 2 is built; part 3 (notification) is built as part of it.
 
 **Next:**
-1. Provision the Fabric SQL database for the store (ADR 0016) — Niels.
+1. ~~Provision the Fabric SQL database for the store~~ done: `MetaAtomic_Store` (10-21).
 2. Pick the Teams webhook and the Key Vault; name the owner of the AX09 source for the alert.
 3. Declare the Forecast Quantity rule in `dq_expectations.json` (value range, `RECID` as key, owner), then run
    `quarantine scan` in DEV before a load.
@@ -132,6 +151,7 @@ not the answer here either. Notification is part of the feature, not a follow-up
   `customers/Carl-Ras/datahub/design/ATOMIC_GENERATOR_CHANGES.md`.
 
 ## Log
+- 2026-10-21 — Customer ask dropped: no longer relevant
 - 2026-08-31 — **VERIFIED ACCURATE; premises hold and the evidence for them got stronger.** Nothing
   described here has been built: no reject/quarantine schema in `Warehouse_Enriched_AX09` or
   `Warehouse_Curated` in either environment, no rule table among `Lakehouse_Util`'s 26 tables, and no
