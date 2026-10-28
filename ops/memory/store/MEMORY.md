@@ -226,3 +226,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [link-to-fabric-views-and-dataverse-access](link-to-fabric-views-and-dataverse-access.md) -- views over Link to Fabric: IsDelete, option set metadata labels, no display names in the link, schema-only BI access
 - [eval-2026-10-28-kurs-memory-recall](eval-2026-10-28-kurs-memory-recall.md) -- fabric index had no fitting sub-skill; memory recall worked; capture_turn mojibake
 - [eval-2026-10-28-value-kurs-setup-undervalued](eval-2026-10-28-value-kurs-setup-undervalued.md) -- value model too low on Vestforbraending initial setup: 3.25 weighted h vs owner ~6 h
+- [process-insight-coverage-eight-states](process-insight-coverage-eight-states.md) -- coverage eight states (D36): ETL gap vs Not landed; onboarding needs a live snapshot
+- [atomic-vision-dev-process-models](atomic-vision-dev-process-models.md) -- Atomic Vision - Dev: repo, layout, PR rule, data kept in NielsWorkspace via Direct Lake on OneLake
+- [fabric-warehouse-no-col-length](fabric-warehouse-no-col-length.md) -- Fabric Warehouse has no COL_LENGTH; use INFORMATION_SCHEMA before ALTER TABLE ADD
+- [eval-2026-10-28-process-insight-skills](eval-2026-10-28-process-insight-skills.md) -- fabric-deployment helped; client page wanted as HTML file; unclaimed task switch misattributed time
