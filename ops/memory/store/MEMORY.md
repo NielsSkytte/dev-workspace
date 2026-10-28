@@ -222,3 +222,6 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-20261025-review-and-capture](eval-20261025-review-and-capture.md) -- no skill in play; heredoc patches lose backslash escapes (use Edit); capture mojibake/boilerplate persists
 - [fabric-python-notebook-long-run-20261025](fabric-python-notebook-long-run-20261025.md) -- Python notebook default node segfaulted on a long run; %%configure first cell (# MAGIC in git) to 8 vCores; fs.cp azcopy failure, fs.put fallback
 - [eval-20261025-metaatomic-base](eval-20261025-metaatomic-base.md) -- no skill for notebook sizing; heredoc backslash loss again; time split given in UTC not CET; sessions mixed
+- [fab-customer-tenant-and-schema-shortcuts](fab-customer-tenant-and-schema-shortcuts.md) -- fab guest-tenant login fix (profile auth.json), console needed; schema via OneLake DFS; shortcuts in schemas via REST CreateOrOverwrite
+- [link-to-fabric-views-and-dataverse-access](link-to-fabric-views-and-dataverse-access.md) -- views over Link to Fabric: IsDelete, option set metadata labels, no display names in the link, schema-only BI access
+- [eval-2026-10-28-kurs-memory-recall](eval-2026-10-28-kurs-memory-recall.md) -- fabric index had no fitting sub-skill; memory recall worked; capture_turn mojibake
