@@ -225,3 +225,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [fab-customer-tenant-and-schema-shortcuts](fab-customer-tenant-and-schema-shortcuts.md) -- fab guest-tenant login fix (profile auth.json), console needed; schema via OneLake DFS; shortcuts in schemas via REST CreateOrOverwrite
 - [link-to-fabric-views-and-dataverse-access](link-to-fabric-views-and-dataverse-access.md) -- views over Link to Fabric: IsDelete, option set metadata labels, no display names in the link, schema-only BI access
 - [eval-2026-10-28-kurs-memory-recall](eval-2026-10-28-kurs-memory-recall.md) -- fabric index had no fitting sub-skill; memory recall worked; capture_turn mojibake
+- [eval-2026-10-28-value-kurs-setup-undervalued](eval-2026-10-28-value-kurs-setup-undervalued.md) -- value model too low on Vestforbraending initial setup: 3.25 weighted h vs owner ~6 h
