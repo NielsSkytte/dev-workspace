@@ -1,6 +1,7 @@
 ---
 name: pingala-fabric-platform
 bundle: custom
+disable-model-invocation: true
 description: >
   How Pingala delivers Microsoft Fabric data platforms: architecture, workspace
   structure (LZ/Raw/Enriched/Curated), Pingala Atomic (Particles/Atoms/Molecules),

@@ -1,6 +1,7 @@
 ---
 name: fabric-data-agent-testing
 bundle: custom
+disable-model-invocation: true
 description: >
   How to test, evaluate, and regression-guard a Microsoft Fabric Data Agent using the
   `fabric-data-agent-sdk` Python evaluation harness. Use this skill whenever someone needs to

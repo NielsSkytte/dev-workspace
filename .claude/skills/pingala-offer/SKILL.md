@@ -78,7 +78,7 @@ An offer built from scratch tends to lose the *contractual* sections that a poli
 - **Delivery** - commercial basis (e.g. Time & Material), the estimate basis, and how out-of-scope work is handled (Change Request).
 - **Documents** - this SoW, the Pingala General Terms and Conditions, and the **DPA**.
 - **Purpose**, **Scope** (in-scope data/scope plus related/companion work), **Activities** (per phase), **Areas Not in Scope**.
-- **Licensing & consumption** - advisor-led and at business altitude; facts sourced from the `fabric-licensing` skill.
+- **Licensing & consumption** - advisor-led and at business altitude; facts sourced from the `fabric-licensing` skill (not auto-loaded: read `.claude/skills/fabric-licensing/SKILL.md`).
 - **Organisation** - the roles and named contacts on each side.
 - **Prerequisites** - including the technical go-live blockers the customer must satisfy: access and the **XMLA endpoint** on the model, agent and model in the **same region**, the required tenant settings, a named SME, and a current DPA. Missing any of these stalls kick-off, so they belong in every offer.
 - **Estimates** - hours, itemised per activity where the scope supports it.

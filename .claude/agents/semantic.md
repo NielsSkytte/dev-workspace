@@ -53,7 +53,10 @@ This agent is a **shared surface**: Niels and a colleague (who owns fabric-front
 
 ## Skills at my disposal
 
-Custom skills (`.claude/skills/`):
+Custom skills (`.claude/skills/`). These do NOT auto-load and the Skill tool will not load them
+(`disable-model-invocation`, 2026-10-22, to keep them out of startup context). **Read
+`.claude/skills/<name>/SKILL.md` yourself** at the start of any task in its area; the index is
+`.claude/skills/fabric/SKILL.md`. A skill name mentioned inside another skill means the same: read that file:
 
 | Skill | Use for |
 |---|---|

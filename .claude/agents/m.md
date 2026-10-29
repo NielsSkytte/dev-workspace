@@ -88,9 +88,12 @@ The Fabric domain is split in three around the semantic model (the model is the 
 | `/update-skills` | Pull the skills-for-fabric vendor submodule | DEV root |
 | `/cwd`, `/exit` | Show session cwd; graceful close (prompts /handoff + /log) | Any context |
 
-**Skills** (auto-invoked domain knowledge, `.claude/skills/` — 19 custom + vendor submodule): the
+**Skills** (auto-invoked domain knowledge, `.claude/skills/` — custom + vendor submodule): the
 authoritative list is the folder itself; each agent's definition names the skills it reaches for.
-Don't duplicate the list here — it drifts.
+Don't duplicate the list here — it drifts. **Fabric family (2026-10-22, Q):** the 12 Fabric skills
+carry `disable-model-invocation: true` and sit behind one auto-invoked index, `fabric`
+(`.claude/skills/fabric/SKILL.md`); agents and the main session read them by path. Cut ~4k tokens
+of startup context. A new Fabric skill joins the family the same way (flag + index row).
 
 ---
 
@@ -105,6 +108,7 @@ Keep entries factual and actionable. Q clears entries after incorporating feedba
 | Date | Agent | Project | Observation |
 |------|-------|---------|-------------|
 | 2026-10-23 | main session | own/MetaAtomic/fabric-app | RECURRING ("you always do this", Niels): `!` commands handed to Niels written in PowerShell (`cd C:\Dev\...; $env:X='y'; npx rayfin login ...`). `!` runs Git Bash: backslashes eaten (`cd: C:DevownMetaAtomicfabric-app: No such file`), `$env:` = "command not found", wrong folder. Fix (M, same day): rule in `CLAUDE.md` > Behaviour + memory `feedback-bang-commands-are-bash`. If it recurs, escalate to a hook/check. |
+| 2026-10-22 | fabric-back, semantic, main session | workspace | WATCH (Q): Fabric skills moved behind the `fabric` index with `disable-model-invocation` (no auto-load; the Skill tool refuses them). Log any Fabric task where the matching skill file was NOT read and the work went wrong; that is the signal to sharpen the index description. |
 | 2026-09-09 | main session (not fabric-back) | own/MetaAtomic -> customers/Carl-Ras/datahub/Fabric-ETL | Hand-wrote `PL_UpdateLineage.DataPipeline/pipeline-content.json` with `notebookId` = the notebook's workspace item id (from the REST items API). "Update from git" failed: `Missing Dependencies [ArtifactType: 'SynapseNotebook' ...]`. Correct value is the `.platform` `logicalId`; every sibling pipeline used it and the `.platform` was on screen. Root cause: `fabric-pipeline-notebook` (the skill that fires on "pipeline with a notebook activity") had no git-serialization content; the rule lived only in `fabric-rename-entity`, whose description triggers on rename only. Junctions were intact. Fix (Q, same day): rule + required sibling cross-check added to `fabric-pipeline-notebook`, description extended to trigger on `pipeline-content.json` / `logicalId` / `Missing Dependencies`; cross-link to `fabric-rename-entity`; `fabric-back` skill table updated. |
 
 <!-- Cleared 2026-07-15 (Q, same day): (1) writing-voice — Niels rewrote a drafted DA mail before

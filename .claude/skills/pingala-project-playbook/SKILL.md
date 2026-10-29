@@ -295,7 +295,8 @@ sequential.
 ## Related skills
 
 This playbook covers project *setup* (Phases 1–6, ending at backlog approval). The technical
-*delivery* that follows is documented separately:
+*delivery* that follows is documented separately. The two Fabric skills below do not auto-load:
+read `.claude/skills/<name>/SKILL.md` (index: `.claude/skills/fabric/SKILL.md`).
 
 - **pingala-fabric-platform** — how Pingala actually builds and operates the Fabric data
   platform (workspaces, Pingala Atomic, medallion layers, CI/CD) once the plan is approved.

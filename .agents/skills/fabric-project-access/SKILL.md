@@ -1,6 +1,7 @@
 ---
 name: fabric-project-access
 bundle: custom
+disable-model-invocation: true
 description: >
   Access, identity and environment discovery for starting a Pingala Fabric project (Phase 1 of
   `pingala-project-playbook`). Use it when planning or requesting what a new customer must provide:

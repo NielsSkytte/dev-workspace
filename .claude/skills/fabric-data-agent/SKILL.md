@@ -1,6 +1,7 @@
 ---
 name: fabric-data-agent
 bundle: custom
+disable-model-invocation: true
 description: >
   How to design, build, ground, and ship a production-grade Microsoft Fabric Data Agent
   (the conversational natural-language-to-data feature, formerly "AI Skill"). Use this skill

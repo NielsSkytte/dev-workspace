@@ -1,6 +1,7 @@
 ---
 name: fabric-data-agent-ops
 bundle: custom
+disable-model-invocation: true
 description: >
   How to operate a Microsoft Fabric Data Agent in production: capacity and cost (the token-based
   "AI Query" billing model, monitoring via the Capacity Metrics app, baselines and alerting so

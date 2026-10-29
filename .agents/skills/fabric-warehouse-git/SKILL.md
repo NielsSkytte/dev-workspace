@@ -1,6 +1,7 @@
 ---
 name: fabric-warehouse-git
 bundle: custom
+disable-model-invocation: true
 description: >
   How a Microsoft Fabric Warehouse behaves as code in a git-connected workspace, and what breaks on
   "Update from git". Use it when a warehouse schema change has to travel through git (adding,

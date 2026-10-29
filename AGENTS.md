@@ -175,6 +175,8 @@ These are three different axes, not three stages on one scale. A gap on any axis
 
 **Don't confuse the skill axis (depth) with the command axis (repeatability).** A skill is justified by a *demonstrated* failure — one concrete instance where the LLM got it wrong without the knowledge is enough. It need NOT recur first; "it's only happened once" is a repeatability argument and belongs to the command decision. If you defer a skill because it hasn't happened twice, you're applying the wrong test.
 
+**Keep startup context small: skill families sit behind one index skill (adopted 2026-10-22).** Every listed skill's description is loaded into every session. A family of domain skills that its agents own (today: the 12 Fabric skills) is taken out of the listing (Claude: `disable-model-invocation: true`) and reached through one short index skill (`fabric`) that names each member and when to read it; the owning agents read the member files by path. The knowledge stays in the same files. A new member gets the flag and an index row.
+
 **Graduation signals — one growing into another:**
 - Skill repeatedly reloaded with parameters → may be a command.
 - Command with conditional branches on earlier output → may be an agent.

@@ -37,7 +37,7 @@ Passive, agentless forms in the same family - rewrite into active, owned actions
 
 This is the calibration example. Same facts, ~40% the length.
 
-> **This is a VOICE demonstration, not a licensing reference.** The licensing *facts* in this passage are owned and kept current, cited to MS Learn, by the `fabric-licensing` skill - load that for anything factual about capacity, per-user licences, Copilot vs Copilot Credits, Teams consumption, data residency, or pricing. This example exists only to show how a dense licensing passage tightens into Niels's offer voice. If the facts here and the licensing skill ever disagree, the skill is authoritative.
+> **This is a VOICE demonstration, not a licensing reference.** The licensing *facts* in this passage are owned and kept current, cited to MS Learn, by the `fabric-licensing` skill (read `.claude/skills/fabric-licensing/SKILL.md`; it does not auto-load) - load that for anything factual about capacity, per-user licences, Copilot vs Copilot Credits, Teams consumption, data residency, or pricing. This example exists only to show how a dense licensing passage tightens into Niels's offer voice. If the facts here and the licensing skill ever disagree, the skill is authoritative.
 
 ### Before (AI-smelling)
 

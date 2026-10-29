@@ -1,6 +1,7 @@
 ---
 name: fabric-deployment
 bundle: custom
+disable-model-invocation: true
 description: >
   What breaks when Microsoft Fabric items are promoted between environments, and the release
   procedure that prevents it. Use it when an item moves DEV -> TEST -> PROD through a deployment

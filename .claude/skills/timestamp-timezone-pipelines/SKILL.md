@@ -1,6 +1,7 @@
 ---
 name: timestamp-timezone-pipelines
 bundle: custom
+disable-model-invocation: true
 description: Best practices for handling timestamps and timezones in data pipelines, particularly when data crosses system boundaries (APIs, databases, Delta tables). Use this skill whenever designing or debugging pipelines that involve timestamps, watermarks, date filters sent to external APIs, or data sources that return timezone-aware timestamps. Critical to consult when diagnosing missing records, watermark drift, or inconsistent data between systems in different timezones.
 ---
 

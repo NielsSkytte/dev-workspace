@@ -1,6 +1,7 @@
 ---
 name: fabric-rename-entity
 bundle: custom
+disable-model-invocation: true
 description: How to safely rename (or move) a Microsoft Fabric ITEM — notebook, lakehouse, warehouse, data pipeline, semantic model — when the workspace is connected to Git, without breaking references from other items. Use this skill whenever renaming or cleaning up the name of any Fabric item that is serialised to a Git repo (folders like `<Name>.Notebook`, `<Name>.Lakehouse`, `.platform` files), removing an import-artifact suffix on an ITEM name (e.g. a trailing `(1)` on a duplicated notebook), or whenever an item rename needs to survive a Fabric Source-control "Update" with no broken pipeline activities, notebook dependencies, or connection bindings. Also use when a rename via `git mv` produced a folder/displayName mismatch or a reference stopped resolving after a rename. NOT for a `(1)` suffix on a TABLE name inside a warehouse error or inside `xmla.json` — that is a legitimate semantic-model namespace collision, not an import artifact, and renaming it breaks the warehouse; use `fabric-warehouse-git`.
 ---
 

@@ -44,9 +44,10 @@ Conventions; memory record `feedback-act-then-report`.
 
 **The progress band is the control panel (2026-10-16).** Every turn, before the last reply, update the master plan
 (`mcp__quiet-transcript__plan`, same steps, statuses current) and fill its board fields: `next` = the one immediate step;
-`you` = what waits for Niels, each `approve` (a go for a named action), `answer` (a question) or `do` (only he can);
-`claude` = what he waits for from you, with the reason if it is held. Anything that needs him is in `you`, never only
-in prose, and mirrors the `## ▶ Next for you` block. Remove items when answered or done. Reason: the mod's own
+`you` = what waits for Niels, each `approve` (a go for a named action) or `do` (only he can); questions never go in
+`you`, only in the `## ▶ Next for you` block (Niels, 2026-10-23: the reply always ends with them).
+`claude` = what he waits for from you, with the reason if it is held. Every approval or action that needs him is in
+`you`, never only in prose. Remove items when done. Reason: the mod's own
 `prompt.compose` rule does not run under the managed-organisation account, so this file is what carries it.
 
 **Ask closed.** When a question IS warranted: recommendation first, two or three named options

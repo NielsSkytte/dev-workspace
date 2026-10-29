@@ -1,6 +1,7 @@
 ---
 name: fabric-licensing
 bundle: custom
+disable-model-invocation: true
 description: >
   Microsoft Fabric licensing and cost - capacity SKUs (F2 to F8192), the per-user tiers
   (Free / Pro / PPU), the F64 viewing threshold, how capacity is bought (pay-as-you-go vs a

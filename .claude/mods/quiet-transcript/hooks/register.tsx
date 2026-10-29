@@ -33,17 +33,17 @@ const RULE = [
   'is in_progress. When you dispatch an agent, tell it to keep its own plan the same way.',
   'THE BAND IS THE USER CONTROL PANEL, so EVERY turn call ' + PLAN_TOOL + ' once more before your last reply, even when no',
   'step changed, and fill the three board fields: next = the one immediate step; you = what you are waiting for from the',
-  'user, each {kind: approve | answer | do, text} (approve = a go for a named action, answer = a question, do = something',
-  'only they can do); claude = what the user is waiting for from you (a run, a build, a delivery) with its reason',
-  'if it is held. A thing that needs the user must be in you, never only in prose. Leave you empty only when nothing is',
-  'pending; remove an item when it is answered or done.',
+  'user, each {kind: approve | do, text} (approve = a go for a named action, do = something only they can do; a',
+  'question to the user is never put in you, it goes only in the Next for you block); claude = what the user is waiting',
+  'for from you (a run, a build, a delivery) with its reason if it is held. An approval or action that needs the user must',
+  'be in you, never only in prose. Leave you empty only when nothing is pending; remove an item when it is done.',
   'Do not stop to ask permission for work inside the plan that stays on this machine, in DEV or is reversible: keep',
   'working until the plan is done or a step needs the user (a decision, an action only they can take, a customer-facing',
   'or PROD-changing step). Stop only for that, and say what you need in the Next for you block.',
   'Volunteer information only when it is a showstopper that needs the user to act: then end the reply with a',
   'block that starts with the exact line "## ▶ Next for you", followed by a numbered list of at most 5 items,',
-  'each one action with the concrete command, value or choice, the same items as the you field. Questions to the',
-  'user go in that block.',
+  'each one action with the concrete command, value or choice: the items of the you field plus any questions. Questions',
+  'to the user go only in that block.',
   'If nothing needs the user, say nothing beyond the answer. Keep file contents and code out of replies.',
 ].join(' ')
 
@@ -81,10 +81,10 @@ export const register: Register = (on, options) => {
           next: { type: 'string', description: 'The one immediate next step.' },
           you: {
             type: 'array',
-            description: 'What waits for the user: approve (a go for a named action), answer (a question), do (an action only they can take).',
+            description: 'What waits for the user: approve (a go for a named action), do (an action only they can take). Questions go in the reply only.',
             items: {
               type: 'object',
-              properties: { kind: { type: 'string', enum: ['approve', 'answer', 'do'] }, text: { type: 'string' } },
+              properties: { kind: { type: 'string', enum: ['approve', 'do'] }, text: { type: 'string' } },
               required: ['kind', 'text'],
             },
           },
@@ -134,7 +134,7 @@ export const register: Register = (on, options) => {
     const nowTurn = await read($, turn)
     await update($, board, b => ({
       ...b,
-      [loop]: { next: String(call.next ?? ''), you: (call.you ?? []).slice(0, 5), claude: (call.claude ?? []).slice(0, 5), at, turn: nowTurn },
+      [loop]: { next: String(call.next ?? ''), you: (call.you ?? []).filter(a => a.kind !== ('answer' as string)).slice(0, 5), claude: (call.claude ?? []).slice(0, 5), at, turn: nowTurn },
     }))
     return { result: 'ok', text: 'Plan shown to the user.' } as never
   })
@@ -300,7 +300,7 @@ export const register: Register = (on, options) => {
     }
 
     // The control panel: next step, what waits for the user, what the user waits for. Flagged when no recent turn updated it.
-    const KIND: Record<string, string> = { approve: 'approve', answer: 'answer ', do: 'do     ' }
+    const KIND: Record<string, string> = { approve: 'approve', do: 'do     ' }
     const boardRows = (loop: string, b: Board | undefined, nowTurn: number, nowMs: number) => {
       if (!b || (!b.next && b.you.length === 0 && b.claude.length === 0)) return null
       const age = Math.max(0, Math.round((nowMs - b.at) / 60000))

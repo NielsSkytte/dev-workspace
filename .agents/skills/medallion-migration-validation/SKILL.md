@@ -1,6 +1,7 @@
 ---
 name: medallion-migration-validation
 bundle: custom
+disable-model-invocation: true
 description: Best practices for migrating, validating, and operating medallion architecture (bronze/silver/gold) data pipelines in Microsoft Fabric. Use this skill when planning a pipeline migration, validating a go-live, designing quality control queries, diagnosing data discrepancies between systems, or designing watermark and tracking table patterns. Also use when backfilling data after a bug fix or go-live gap is identified.
 ---
 

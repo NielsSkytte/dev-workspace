@@ -1,6 +1,7 @@
 ---
 name: fabric-pipeline-notebook
 bundle: custom
+disable-model-invocation: true
 description: Best practices for designing and debugging Microsoft Fabric pipelines that orchestrate notebooks. Use this skill whenever building, migrating, or troubleshooting any Fabric pipeline that includes notebook activities, JSON ingestion, Delta table writes, or REST API data extraction. Also use when diagnosing unexpected data volumes, silent data loss, or notebook behaviour that differs between interactive and pipeline-triggered runs. Also use when hand-writing or editing a pipeline definition in a git-serialized Fabric repo (`pipeline-content.json`, a `TridentNotebook` activity, `notebookId`, `workspaceId`, a `.platform` file, `logicalId`) and when "Update from git" fails with "Missing Dependencies" on a `SynapseNotebook` / pipeline reference.
 ---
 

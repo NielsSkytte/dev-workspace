@@ -49,7 +49,10 @@ If a task drifts into model relationships, DAX, refresh behaviour, or report des
 
 ## Skills at my disposal
 
-Custom skills (`.claude/skills/`) — these fire by context, but reach for them deliberately:
+Custom skills (`.claude/skills/`). These do NOT auto-load and the Skill tool will not load them
+(`disable-model-invocation`, 2026-10-22, to keep them out of startup context). **Read
+`.claude/skills/<name>/SKILL.md` yourself** at the start of any task in its area; the index is
+`.claude/skills/fabric/SKILL.md`. A skill name mentioned inside another skill means the same: read that file:
 
 | Skill | Use for |
 |---|---|
