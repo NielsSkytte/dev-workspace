@@ -262,7 +262,7 @@ An absent field means nothing extra is required. The table below stays the recor
 |---|---|---|---|---|
 | **Carl Ras** | `230-02`; **exception:** Dataverse write-back → `230-04` | **Task, always** — every line needs one; the `230-04` line is activity-level | **Never supplied by us.** F&O derives it from the task; `230-04` takes activity `112744`, Kategori `F` | 2026-08-31; exception 2026-10-05 |
 | **Matas** | `212-01` | Task | Filled automatically by F&O | 2026-08-31 |
-| Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31) |
+| Vestforbrænding | `222` | Activity `111749` | from the sheet | **Not billable** — F&O books it `No charge` (2026-08-31). **2026-10-29:** a new line on `222` / `111749` came up `Kategori N`, `Linjeegenskab Charge`, and `Linjeegenskab` is read-only in the journal line (derived), so `No charge` could not be set; October KURS not entered |
 | Element Logic | `6001-01` | Activity `600003` | **+ `Beskrivelse` required** — see below | 2026-09-02 |
 | Tystofte | `4048-1` | Activity `datakilder` | from the sheet | sheet — **unverified: F&O (PDK4) has `4048-01` Datamigration SOW1 and `4048-02` Power Portal SOW1, no `4048-1`** (2026-09-29) |
 | **Aeven** | `4058` (always), company **PDK4** | **Activity** `400760` "ServiceNow POC" — no tasks | F&O fills Kategori `N` and Linjeegenskab `Charge` | 2026-09-29 — `4058-1` does not exist in F&O |

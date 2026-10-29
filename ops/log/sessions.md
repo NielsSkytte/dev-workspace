@@ -1670,3 +1670,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** none.
 - **Tasks:** none moved.
 - **Next:** process-insight Proj ID still UNSET; W44 short 11.75 h so far.
+
+## 2026-10-29 (F&O October registration, part 1)
+- **Did:** `/fno 2026-10` via the browser path (owner's choice; Excel add-in to be tested next month). Pre-flight: no October journals in PING or PDK4; days final to 10-28. Entered at the F&O entry figure, not approved: PING 022855 W40 0,75 / 022856 W41 8,25 / 022857 W42 26,25; PDK4 005423 W40 9,50 / 005424 W41 5,75 / 005425 W43 2,00 / 005426 W44 2,00. 54,50 h. Every line read back; journal totals match the prepared rows.
+- **Decided:** register at the F&O entry figure (owner); Carl Ras process-insight and data-quality lines (CarlRData-555, CarlRData-666, process-insight, customer node) wait for a separate pass (owner).
+- **Tasks:** none moved.
+- **Next:** Niels reviews the 7 journals in F&O; KURS 5,25 h not entered (Linjeegenskab read-only, came up Charge; empty journal PING-022858 left); held Carl Ras lines; untasked datahub 2,75 h and Matas 1,00 h; 10-29..10-31 after finalize; approve (Godkendelse -> Finished) only on Niels's word.
