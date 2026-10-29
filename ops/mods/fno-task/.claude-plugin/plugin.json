@@ -1,0 +1,7 @@
+{
+  "name": "fno-task",
+  "version": "0.1.1",
+  "description": "Shows the F&O task and activity this session's time bills to, above the prompt",
+  "author": { "name": "Pingala" },
+  "keywords": ["time", "fno", "task"]
+}

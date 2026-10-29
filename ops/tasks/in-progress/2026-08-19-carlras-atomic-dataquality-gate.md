@@ -36,8 +36,21 @@ own `823f5ba` and changed in `d673ab3` (Niels: no stored examples, live query on
 issue that reads the failing rows live through the app's `drill` function (mssql, app identity). The run stores only
 the query (`drill/<id>.json`), never the rows. Run time (`8e45433`): NB_DataQuality took 150 min on base on 10-25; the
 lineage lookup rebuilt the store graph per column (~50 min), now built once; tables run 8 at a time (`workers`), each
-with its own SQL hook; every table records its time per step (`timing`, summary in dq.json). Base test run of
-NB_DataQuality alone started 18:55 UTC (job `1770250a`). NB_MetaAtomic (lineage, ~105 min) not yet looked at. Also new: expectation kind `except`, which accepts a
+with its own SQL hook; every table records its time per step (`timing`, summary in dq.json). Base test run
+`1770250a` (NB_DataQuality alone): 138 min, the last layer's table checks only 14 min; the time was CPU in
+`profile.infer_type` (strptime on every value in 11 formats, 85 %; GIL, so 8 threads do not help). Fixed in `329ee1e`
+(date shape gate, type cached per value; 56 s -> 3.3 s on 60 cols x 20k rows). Second base run `53922ec4`: 63 min
+(was 138); table checks ~2 min per layer; publish 10.5 min (298 files one by one, now 16 at a time: own `28a1813`,
+AtomicBase `5822be3` pushed, base not yet updated from git). Rest of the ~50 min unmeasured: phase times now go to
+`phases.json` beside dq.json (own `5bb6b30`). Third run `d689624a`: 68 min = sync 7 s, entry 16 min, enriched
+7 min, curated 3 min, store load 31 min, publish ~10 min. Store load cause: `connect_to_artifact(...).query()` slows
+faster than linear with batch text (probe on base: 100 rows 8 s, 300 rows 75 s; its ODBC cursor 0.03 s). Runner moved
+to the cursor (own `22a30ad`, AtomicBase `e1df795`, base updated from git 10-28 23:48). Fourth run `0447d346` from
+23:49 UTC: 28 min (entry 16, enriched 7, curated 3, store load 21 s, publish 1.5 min). The engine SQL hook
+(`fabric_run_sql`) now also uses the cursor (own `f640b94`, AtomicBase `69e98fa`, base updated); its values are
+cast to text or int by every consumer, NULL now None instead of NaN. Fifth run `b2eb6fcc`: 23 min (entry 11, enriched 6,
+curated 3, store load 19 s); same 13,946 findings, same score 56.6, same 7 table errors as the fourth run. What is
+left is mostly the sample query (6,300 of 8,200 table-seconds; SAMPLE rows over every column). NB_MetaAtomic (lineage, ~105 min) not yet looked at. Also new: expectation kind `except`, which accepts a
 group of rows (a column and its values, covers later rows) or single rows (key plus failing value), with a review
 date. The run counts the rows it takes out and accepts an issue left with none. Carl Ras redeploy waits for Niels's
 MFA sign-in.

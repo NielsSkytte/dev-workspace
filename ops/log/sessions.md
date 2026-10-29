@@ -1646,3 +1646,27 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** four rows in `customers/Carl-Ras/process-insight/CONTEXT_DECISIONS.md` (2026-10-28): D36 ETL gap split; Atomic Vision layout with data kept in NielsWorkspace; latest compat level; coverage report in the Atomic Vision theme.
 - **Tasks:** `2026-10-13-carlras-process-insight-v1` in progress, Progress Now dated 2026-10-28; session task switched to it.
 - **Next:** read the full installer rerun log (snapshot step proven only if clean); remaining deploy gaps (coverage in PL_PI_Main, models-only git deploy tool, git path with F&O, ITD golden test); Niels sends the AtomicBase note (deferred). When 2026-10-28 is finalized at the next /log: move session 80a43015's hours (4.9 h measured so far) from the datahub data-quality line to customers/Carl-Ras/process-insight (heartbeats carry the old task).
+
+## 2026-10-26 (Vestforbrænding customer node: two projects registered)
+- **Did:** two Vestforbrænding projects registered: `KURS` (active, code in the shared repo `Fabric-ETL/kurs-only/`, ADO `KURS 2.0` / `pingala-atomic`) and `atomic` (planned); `fabric-capacity` marked delivered. Folder `kurs-only` renamed to `KURS` (repo folder unchanged). Fabric-ETL excluded from the internal repo.
+- **Decided:** time tracks per project (`KURS` or `atomic`), no tasks, both on F&O 222 / 111749 (customer `CLAUDE.md`).
+- **Tasks:** none.
+- **Next:** see the KURS entry 2026-10-26 to 2026-10-28.
+
+## 2026-10-26 to 2026-10-29 (Carl Ras datahub: MetaAtomic DQ app and run time; session 38b6cca4)
+- **Did:** page size over the app's 30 MB response limit on base (lineage 115 MB, DQ 38 MB; Carl Ras lineage at 94 %): compact page data split into files of <= 8 M characters, v1 and v2 loaders (own `8c302b6`, `08d81d1`). Switch for a whole check set, Issues table filter, (blank) in row conditions, original layer names (Landing, Raw, Enriched, Curated, Semantic); released to Carl Ras DEV (lyric-dove) and TEST (game-dove). Pages show in their own bundled UI without a run; UI and engine version lines in the menu. DQ mail names its environment (Fabric-ETL `caaec48`). Stored examples replaced by a live drill-down query per issue with group/row accept (`d673ab3`, base only). NB_DataQuality on base 150 -> 23 min (lineage graph once, 8 tables at a time, date guess on date-shaped values only, ODBC cursor for store load 31 min -> 19 s, publish 16 files at a time; `8e45433`, `329ee1e`, `22a30ad`, `f640b94`, `28a1813`); same 13,946 issues and score 56.6.
+- **Decided:** no stored examples, live query only (Niels 2026-10-28); every UI and engine release carries a version id.
+- **Tasks:** `2026-08-19-carlras-atomic-dataquality-gate` in progress, Progress Now dated 2026-10-28.
+- **Next:** TEST mail route A/B/C (Outlook connection cannot be shared to the SPN, 403); release the run-time engine and drill-down to Carl Ras (Rayfin sign-in as EXT_NSKC); lineage step still ~1 h 45 min per run.
+
+## 2026-10-28 (Aeven AtomicServiceNow: choice labels in Enriched, traffic fix; session 0d50bc3e)
+- **Did:** choice labels moved from Curated to Enriched (`enriched.ChoiceLabel`, standard Atomic) and schedule generator writes daily 06:00 (`7d526a1`); pushed to `MasterDataPlan` main `2e0020c` (Aeven's UserDisabled schedule left as is). Aeven's "1TB" traffic report checked against ingest_log: 10 runs since 10-20, each a full load of 23 tables, ~410k rows, 0.44 GB, 3-5 min. Fix `42305a8`: deltas on `sys_updated_on`, Saturday full load, `sys_dictionary`/`sys_db_object` Saturdays only (`load_weekday`). Config moved to `SQL_Util.dbo.servicenow_tables`/`servicenow_columns`, one copy (`e257a81`). Reply drafted: `Aeven_ServiceNow_Traffic_email.md`. `42305a8` and `e257a81` local only.
+- **Decided:** SQL table is the only config, nothing repo-based (Niels); weekly Saturday full load, sys_audit_delete weekly.
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` in progress, Progress Now dated 2026-10-28 (does not yet name `e257a81`).
+- **Next:** fill Aeven's `SQL_Util` once, then push `42305a8` + `e257a81` (ask); Niels sends the traffic reply; on Aeven's answer: Update from git, `full_reload` run, check cell rerun.
+
+## 2026-10-29 (workspace: /log catch-up)
+- **Did:** 2026-10-28 timesheet: 5.00 h of session 80a43015 moved from datahub CarlRData-555 to process-insight; KURS line given activity 111749. Line descriptions and value record for 2026-10-28.
+- **Decided:** none.
+- **Tasks:** none moved.
+- **Next:** process-insight Proj ID still UNSET; W44 short 11.75 h so far.

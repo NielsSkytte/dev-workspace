@@ -230,3 +230,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [atomic-vision-dev-process-models](atomic-vision-dev-process-models.md) -- Atomic Vision - Dev: repo, layout, PR rule, data kept in NielsWorkspace via Direct Lake on OneLake
 - [fabric-warehouse-no-col-length](fabric-warehouse-no-col-length.md) -- Fabric Warehouse has no COL_LENGTH; use INFORMATION_SCHEMA before ALTER TABLE ADD
 - [eval-2026-10-28-process-insight-skills](eval-2026-10-28-process-insight-skills.md) -- fabric-deployment helped; client page wanted as HTML file; unclaimed task switch misattributed time
+- [fabric-app-function-30mb-limit](fabric-app-function-30mb-limit.md) -- Fabric App function response capped at 30 MB; MetaAtomic pages split into <= 8 M char parts
+- [metaatomic-dq-run-time-20261029](metaatomic-dq-run-time-20261029.md) -- NB_DataQuality 150 -> 23 min: graph once, 8 parallel, ODBC cursor, 16-file publish
+- [servicenow-landed-mode-full-load-traffic](servicenow-landed-mode-full-load-traffic.md) -- landed mode forced daily full loads at Aeven; deltas + Saturday full + SQL_Util config
+- [eval-2026-10-29-capture-encoding](eval-2026-10-29-capture-encoding.md) -- capture hook writes assistant text as mojibake; markup in User lines
