@@ -234,3 +234,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [metaatomic-dq-run-time-20261029](metaatomic-dq-run-time-20261029.md) -- NB_DataQuality 150 -> 23 min: graph once, 8 parallel, ODBC cursor, 16-file publish
 - [servicenow-landed-mode-full-load-traffic](servicenow-landed-mode-full-load-traffic.md) -- landed mode forced daily full loads at Aeven; deltas + Saturday full + SQL_Util config
 - [eval-2026-10-29-capture-encoding](eval-2026-10-29-capture-encoding.md) -- capture hook writes assistant text as mojibake; markup in User lines
+- [feedback-time-report-work-weighted-entry](feedback-time-report-work-weighted-entry.md) -- every time report shows work, weighted and F&O entry side by side (owner 2026-10-30)

@@ -12,13 +12,14 @@ value files instead showed moved lines as 0 keyboard / 0 weighted (2026-10-04, C
 
 Columns: keyboard = typing time (evidence); measured = the 15+5 model; registered = the
 timesheet hours (claimed, what F&O gets before the entry figure); weighted = value time, the
-ceiling. The F&O entry figure lies between registered and weighted and is computed only on the
-dashboard's entry page. `shared` = the line's measurement is a share of its project's day.
+ceiling; entry = the F&O entry figure, between registered and weighted (same formula as the Time
+page's entryOf in ops/web/time.js). `shared` = the line's measurement is a share of its project's day.
 
 Pure stdlib + ops/dashboard.py. Reads only.
 """
 import datetime
 import json
+import math
 import os
 import sys
 
@@ -26,7 +27,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import dashboard  # noqa: E402
 
-FIELDS = ("keyboard", "measured", "claimed", "weighted")
+FIELDS = ("keyboard", "measured", "claimed", "weighted", "entry")
+TURNS_PER_H, FILES_PER_H = 10, 8   # ops/web/time.js: the p90 densities
+
+
+def entry_of(l):
+    """The F&O entry figure for one line -- ops/web/time.js entryOf, kept identical."""
+    work, value = l.get("claimed") or 0.0, l.get("weighted") or 0.0
+    if not work or value <= work:
+        return work
+    x = (l.get("turns") or 0) / (TURNS_PER_H * work) + (l.get("files") or 0) / (FILES_PER_H * work)
+    return round((work + (1 - math.exp(-x)) * (value - work)) * 4) / 4
 
 
 def period(args, today):
@@ -57,6 +68,7 @@ def lines(start, end, today):
                             "measured": round(l.get("measured") or 0.0, 2),
                             "claimed": round(l.get("claimed") or 0.0, 2),
                             "weighted": round(l.get("weighted") or 0.0, 2),
+                            "entry": entry_of(l),
                             "shared": bool(l.get("shared")), "billable": bool(l.get("billable")),
                             "live": bool(l.get("live"))})
     return sorted(out, key=lambda x: (x["date"], x["project"], x["task"]))
@@ -69,21 +81,21 @@ def table(rows, key):
         a = agg.setdefault(k, dict.fromkeys(FIELDS, 0.0))
         for f in FIELDS:
             a[f] += r[f]
-    out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h | Weighted / registered |"
+    out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h | F&O entry h | Weighted / registered |"
            % ("Day | Project" if key(rows[0]).count("|") else "Project"),
-           "|---|---|---|---|---|---|" + ("---|" if key(rows[0]).count("|") else "")]
+           "|---|---|---|---|---|---|---|" + ("---|" if key(rows[0]).count("|") else "")]
     tot = dict.fromkeys(FIELDS, 0.0)
     for k in sorted(agg):
         a = agg[k]
         for f in FIELDS:
             tot[f] += a[f]
         ratio = "%d%%" % round(100 * a["weighted"] / a["claimed"]) if a["claimed"] else "-"
-        out.append("| %s | %.2f | %.2f | %.2f | %.2f | %s |"
-                   % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], ratio))
+        out.append("| %s | %.2f | %.2f | %.2f | %.2f | %.2f | %s |"
+                   % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], a["entry"], ratio))
     ratio = "%d%%" % round(100 * tot["weighted"] / tot["claimed"]) if tot["claimed"] else "-"
     pad = " |" if key(rows[0]).count("|") else ""
-    out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f | %s |"
-               % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], ratio))
+    out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f | %.2f | %s |"
+               % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], tot["entry"], ratio))
     return "\n".join(out)
 
 
@@ -99,7 +111,7 @@ def main(argv):
     if not rows:
         print("No time in %s .. %s." % (start, end))
         return 0
-    print("Hours %s .. %s (Time page data; F&O entry figure: dashboard entry page)\n" % (start, end))
+    print("Hours %s .. %s (Time page data)\n" % (start, end))
     if "--days" in flags:
         print(table(rows, lambda r: "%s | %s" % (r["date"], r["project"])))
     else:
