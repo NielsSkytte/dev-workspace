@@ -7,7 +7,7 @@ owner: fabric-back
 priority: normal
 blocked_by:
 activity:
-fno_task: CarlRData-738     # owner 2026-10-30: 738 = data quality (555 is operation hardening); not yet in F&O
+fno_task: CarlRData-738     # owner 2026-10-30: 738 = data quality (555 is operation hardening); in F&O 230-02, activity 112755
 customer_ask: dropped
 source: session
 ---
