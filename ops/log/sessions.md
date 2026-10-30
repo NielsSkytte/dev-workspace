@@ -1676,3 +1676,4 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** register at the F&O entry figure (owner); Carl Ras process-insight and data-quality lines (CarlRData-555, CarlRData-666, process-insight, customer node) wait for a separate pass (owner).
 - **Tasks:** none moved.
 - **Next:** Niels reviews the 7 journals in F&O; KURS 5,25 h not entered (Linjeegenskab read-only, came up Charge; empty journal PING-022858 left); held Carl Ras lines; untasked datahub 2,75 h and Matas 1,00 h; 10-29..10-31 after finalize; approve (Godkendelse -> Finished) only on Niels's word.
+- **2026-10-30 (KURS No charge):** Regnskab confirmed 222 is No charge with hours credited. July's 222/111749/N lines derived No charge; today's derive Charge and Linjeegenskab is read-only, so KURS 5,25 h stays out until the 222 setup is fixed in F&O. Test line deleted; PING-022858 empty. README 4.1 corrected.
