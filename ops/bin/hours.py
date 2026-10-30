@@ -12,7 +12,8 @@ value files instead showed moved lines as 0 keyboard / 0 weighted (2026-10-04, C
 
 Columns: keyboard = typing time (evidence); measured = the 15+5 model; registered = the
 timesheet hours (claimed, what F&O gets before the entry figure); weighted = value time, the
-ceiling; entry = the F&O entry figure, between registered and weighted (same formula as the Time
+ceiling, with its share of registered in brackets; in F&O = the journal lines entered, any status
+(ops/time/fno-journals.md); entry = the F&O entry figure, between registered and weighted (same formula as the Time
 page's entryOf in ops/web/time.js). `shared` = the line's measurement is a share of its project's day.
 
 Pure stdlib + ops/dashboard.py. Reads only.
@@ -26,8 +27,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import dashboard  # noqa: E402
+from lib import fnojournals  # noqa: E402
 
-FIELDS = ("keyboard", "measured", "claimed", "weighted", "entry")
+FIELDS = ("keyboard", "measured", "claimed", "weighted", "entry", "fno")
 TURNS_PER_H, FILES_PER_H = 10, 8   # ops/web/time.js: the p90 densities
 
 
@@ -68,10 +70,36 @@ def lines(start, end, today):
                             "measured": round(l.get("measured") or 0.0, 2),
                             "claimed": round(l.get("claimed") or 0.0, 2),
                             "weighted": round(l.get("weighted") or 0.0, 2),
-                            "entry": entry_of(l),
+                            "entry": entry_of(l), "fno": 0.0,
                             "shared": bool(l.get("shared")), "billable": bool(l.get("billable")),
                             "live": bool(l.get("live"))})
-    return sorted(out, key=lambda x: (x["date"], x["project"], x["task"]))
+    out.sort(key=lambda x: (x["date"], x["project"], x["task"]))
+    _attach_fno(out, start, end)
+    return out
+
+
+def _attach_fno(rows, start, end):
+    """What is in F&O (ops/time/fno-journals.md, any status) onto the hours lines. A journal line
+    goes to the line with the same customer, date and task (or activity); failing the date, to
+    that customer's line with the same task anywhere in the period; failing that, to a row of
+    its own for the customer, so nothing in F&O is ever dropped from the total."""
+    def cust(project):
+        parts = project.split("/")
+        return parts[1].lower() if len(parts) > 1 and parts[0] == "customers" else ""
+    for e in fnojournals.entries():
+        if not (start <= e["date"] <= end):
+            continue
+        dim = e["fno_task"] or e["activity"]
+        mine = [r for r in rows if cust(r["project"]) == e["customer"].lower()
+                and dim and dim in (r["task"], r["activity"])]
+        hit = [r for r in mine if r["date"] == e["date"]] or mine
+        if hit:
+            hit[0]["fno"] += e["hours"]
+            continue
+        rows.append({"date": e["date"], "project": "customers/" + e["customer"], "activity": e["activity"],
+                     "task": e["fno_task"], "keyboard": 0.0, "measured": 0.0, "claimed": 0.0,
+                     "weighted": 0.0, "entry": 0.0, "fno": e["hours"], "shared": False,
+                     "billable": True, "live": False})
 
 
 def table(rows, key):
@@ -81,7 +109,7 @@ def table(rows, key):
         a = agg.setdefault(k, dict.fromkeys(FIELDS, 0.0))
         for f in FIELDS:
             a[f] += r[f]
-    out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h | F&O entry h | Weighted / registered |"
+    out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h (of registered) | F&O entry h | In F&O h |"
            % ("Day | Project" if key(rows[0]).count("|") else "Project"),
            "|---|---|---|---|---|---|---|" + ("---|" if key(rows[0]).count("|") else "")]
     tot = dict.fromkeys(FIELDS, 0.0)
@@ -90,12 +118,12 @@ def table(rows, key):
         for f in FIELDS:
             tot[f] += a[f]
         ratio = "%d%%" % round(100 * a["weighted"] / a["claimed"]) if a["claimed"] else "-"
-        out.append("| %s | %.2f | %.2f | %.2f | %.2f | %.2f | %s |"
-                   % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], a["entry"], ratio))
+        out.append("| %s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
+                   % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], ratio, a["entry"], a["fno"]))
     ratio = "%d%%" % round(100 * tot["weighted"] / tot["claimed"]) if tot["claimed"] else "-"
     pad = " |" if key(rows[0]).count("|") else ""
-    out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f | %.2f | %s |"
-               % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], tot["entry"], ratio))
+    out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
+               % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], ratio, tot["entry"], tot["fno"]))
     return "\n".join(out)
 
 
