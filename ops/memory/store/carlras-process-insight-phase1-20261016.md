@@ -9,7 +9,7 @@ status: distilled
 description: "process-insight phase 1 done 2026-10-16: spec + onboarding (155 metrics), metric-to-DAX (162 defined, all run on a synthetic model), config/overlay + deploy_check; test source copied into Pingala NielsWorkspace_Dev; phase 2 next"
 ---
 
-- Product code in `own/Ontology` (commit `fdec8b0`, AAI `3206abc`): `tools/onboard.py`
+- Product code in `own/ProcessInsight` (commit `fdec8b0`, AAI `3206abc`): `tools/onboard.py`
   (procedure `docs/05-library-onboarding.md`), `tools/measures.py` (DAX), `tools/testmodel.py`
   (live check on a synthetic Direct Lake model in leita.dk), `tools/deploy_check.py`
   (config + overlay -> `spec.lock.yaml`), `tools/testsource_copy.py`.

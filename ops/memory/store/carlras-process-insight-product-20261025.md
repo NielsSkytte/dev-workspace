@@ -9,7 +9,7 @@ status: distilled
 description: "process-insight 2026-10-24/25: product deployable by git push (G0-G9 rehearsed in leita.dk), intake I1/I2, mixed sources in pi_ schemas, coverage report; review step = one page + synthetic check + provisional until proven; Inventory to deliver onboarded, synthetic 22/22"
 ---
 
-- own/Ontology local commits through `b51575f` (not pushed). Goal (Niels 10-24): deploy to a customer
+- own/ProcessInsight local commits through `b51575f` (not pushed). Goal (Niels 10-24): deploy to a customer
   with a git push; next library Inventory to deliver (F&O).
 - Rules: one `_Measures` table (`Measures` is reserved), folders = library area\process; existing
   Atomic setup reused with own `pi_*` schemas, own `PL_PI_`/`NB_PI_` items, shared functions stay

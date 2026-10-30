@@ -22,7 +22,7 @@ Observed 2026-10-16 on two leita.dk trials (process-insight test source):
   /v1/workspaces/{ws}/sqlEndpoints/{id}/refreshMetadata` brought it to 778 in ~5 minutes; a second
   call while one runs returns 409 `LockConflict`.
 - **Long OneLake copies outlive the token** (~60-75 min): renew both storage tokens every 30 min
-  and retry once on `authenticati|unauthorized` (`own/Ontology/tools/testsource_copy.py`). DuckDB
+  and retry once on `authenticati|unauthorized` (`own/ProcessInsight/tools/testsource_copy.py`). DuckDB
   `delta_scan` reads Link tables (deletion vectors); `deltalake.write_deltalake` writes the copy
   with `{'bearer_token', 'use_fabric_endpoint': 'true'}`. Set DuckDB `TimeZone='UTC'` or timestamps
   come back in local time.

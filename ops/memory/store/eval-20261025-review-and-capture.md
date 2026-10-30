@@ -10,7 +10,7 @@ description: "2026-10-25: no skill fired or was missed in the review-step work; 
 ---
 
 - No skill fired during the review-step and synthetic-check work; none was missed (the work was
-  own/Ontology product code, which no skill covers).
+  own/ProcessInsight product code, which no skill covers).
 - Repeat defect: Python string patches sent through a Bash heredoc lost `\n`/`\t` escapes three
   times (literal newlines in the file). Edit tool for any replacement holding a backslash.
 - Sentinel 2026-10-25: daily capture still writes mojibake (`â†’` etc.), stores harness boilerplate

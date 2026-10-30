@@ -6,12 +6,12 @@ scope: project:customers/Carl-Ras/process-insight
 source: /log
 tags: [carl-ras, process-insight, ontology, aai, dataverse, servicenow, product]
 status: distilled
-description: "process-insight is the Ontology accelerator's Dataverse slice (product = own/Ontology, Carl Ras = first deployment); product plan in own/Ontology/docs/01-product-plan.md, Carl Ras half in process-insight/design/PLAN.md; nothing built"
+description: "process-insight is the Ontology accelerator's Dataverse slice (product = own/ProcessInsight, Carl Ras = first deployment); product plan in own/ProcessInsight/docs/01-product-plan.md, Carl Ras half in process-insight/design/PLAN.md; nothing built"
 ---
 
-- Ontology (AAI, `own/Ontology`) is the product; process-insight is its Dataverse slice and
+- Ontology (AAI, `own/ProcessInsight`) is the product; process-insight is its Dataverse slice and
   Carl Ras its first deployment. MetaAtomic stays a separate product (lineage + evidence).
-- Product plan: `own/Ontology/docs/01-product-plan.md` (anonymised, synced to AAI main). Carl Ras
+- Product plan: `own/ProcessInsight/docs/01-product-plan.md` (anonymised, synced to AAI main). Carl Ras
   configuration, deployment and session record: `customers/Carl-Ras/process-insight/design/PLAN.md`
   (customer repo, uncommitted). Decisions: process-insight `CONTEXT_DECISIONS.md` D1-D13, P1-P7;
   brief D26-D32.

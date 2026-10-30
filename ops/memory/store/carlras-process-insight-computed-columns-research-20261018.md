@@ -6,12 +6,12 @@ scope: project:customers/Carl-Ras/process-insight
 source: /log
 tags: [process-insight, ontology, dataverse, servicenow, metric-library]
 status: distilled
-description: "Case to Resolution computed columns researched 2026-10-18 (own/Ontology 71a8ecb, 483ba89): of 57, 11 hold, 34 need a fix, 6 need a customer value, 6 have no Dataverse source (audit). Change request L1-L9 sent to the library author."
+description: "Case to Resolution computed columns researched 2026-10-18 (own/ProcessInsight 71a8ecb, 483ba89): of 57, 11 hold, 34 need a fix, 6 need a customer value, 6 have no Dataverse source (audit). Change request L1-L9 sent to the library author."
 ---
 
 - Computed columns are ordinary Curated columns derived once per row (e.g. `is_duplicate`,
   `first_response_business_minutes`), not synthetic data. Research note:
-  `own/Ontology/docs/06-dataverse-semantics.md` (sources under `docs/research/dataverse/`).
+  `own/ProcessInsight/docs/06-dataverse-semantics.md` (sources under `docs/research/dataverse/`).
 - Of 57: 11 hold as written, 34 need a fix (4 only partly computable), 6 need a customer-set value
   (e.g. mandatory stages, second-line queue), 6 have no source today (need audit; Link to Fabric does not export it).
 - Industry/ServiceNow track: no common vendor FCR definition (industry adds no escalation, no callback);

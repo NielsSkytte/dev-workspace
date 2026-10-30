@@ -9,7 +9,7 @@ status: distilled
 description: "Coverage has eight states since 2026-10-28 (D36): ETL gap = landed, our pipeline must carry it; Not landed = source holds it, landing does not. Onboarding needs a live landed-tables snapshot, else everything reads as ETL gap"
 ---
 
-Niels split the old ETL gap state on 2026-10-28 (product brief D36, own/Ontology 931fa72):
+Niels split the old ETL gap state on 2026-10-28 (product brief D36, own/ProcessInsight 931fa72):
 **ETL gap** means the data is landed and our pipeline (Enriched, binding, Curated, measure) must
 change; **Not landed** means the source system holds it but the table or column is not in landing
 (not linked, not exported, not onboarded from an API). Empty is unchanged: landed and built, no rows
