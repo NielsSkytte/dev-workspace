@@ -1,8 +1,9 @@
 """Hours per F&O line: keyboard, measured, registered, weighted -- the dashboard's own numbers.
 
-    python ops/bin/hours.py                    this ISO week, a table per project
+    python ops/bin/hours.py                    this ISO week, a table per project and task
     python ops/bin/hours.py last|month|YYYY-MM-DD [YYYY-MM-DD]
-    python ops/bin/hours.py ... --days         a table per day and project
+    python ops/bin/hours.py ... --days         a table per day, project and task
+    python ops/bin/hours.py ... --projects     a table per project (default: per project and task)
     python ops/bin/hours.py ... --json         the lines as JSON (the hours-chart mod reads this)
 
 One source for every view of time: the Time page's week data (dashboard.collect_audit), which
@@ -102,7 +103,7 @@ def _attach_fno(rows, start, end):
                      "billable": True, "live": False})
 
 
-def table(rows, key):
+def table(rows, key, label):
     agg = {}
     for r in rows:
         k = key(r)
@@ -110,8 +111,7 @@ def table(rows, key):
         for f in FIELDS:
             a[f] += r[f]
     out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h (of registered) | F&O entry h | In F&O h |"
-           % ("Day | Project" if key(rows[0]).count("|") else "Project"),
-           "|---|---|---|---|---|---|---|" + ("---|" if key(rows[0]).count("|") else "")]
+           % label, "|---" * (label.count("|") + 7) + "|"]
     tot = dict.fromkeys(FIELDS, 0.0)
     for k in sorted(agg):
         a = agg[k]
@@ -121,7 +121,7 @@ def table(rows, key):
         out.append("| %s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
                    % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], ratio, a["entry"], a["fno"]))
     ratio = "%d%%" % round(100 * tot["weighted"] / tot["claimed"]) if tot["claimed"] else "-"
-    pad = " |" if key(rows[0]).count("|") else ""
+    pad = " |" * label.count("|")
     out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
                % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], ratio, tot["entry"], tot["fno"]))
     return "\n".join(out)
@@ -140,10 +140,13 @@ def main(argv):
         print("No time in %s .. %s." % (start, end))
         return 0
     print("Hours %s .. %s (Time page data)\n" % (start, end))
+    task = lambda r: next((d for d in (r["task"], r["activity"]) if d and d != "none"), "-")
     if "--days" in flags:
-        print(table(rows, lambda r: "%s | %s" % (r["date"], r["project"])))
+        print(table(rows, lambda r: "%s | %s | %s" % (r["date"], r["project"], task(r)), "Day | Project | Task"))
+    elif "--projects" in flags:
+        print(table(rows, lambda r: r["project"], "Project"))
     else:
-        print(table(rows, lambda r: r["project"]))
+        print(table(rows, lambda r: "%s | %s" % (r["project"], task(r)), "Project | Task"))
     if any(r["live"] for r in rows):
         print("\nIncludes a day not finalized yet (live): its numbers move until the rollup.")
     return 0
