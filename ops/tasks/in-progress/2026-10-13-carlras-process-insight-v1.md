@@ -7,7 +7,7 @@ owner: architect
 priority: normal
 blocked_by:
 activity:
-fno_task: none        # new Proj ID not yet agreed with Carl Ras
+fno_task: none        # Case to Resolution part: CarlRData-740 (230-02, activity 112930), owner 2026-10-31; rest Proj ID not agreed
 customer_ask: none
 waiting_on:
 resume_on:
