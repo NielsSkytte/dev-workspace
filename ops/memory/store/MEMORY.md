@@ -238,3 +238,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [fabric-tools-folder](fabric-tools-folder.md) -- own/FabricTools + ADO Pingala Atomic Tools/FabricTools; fabric_identity.py; Carl Ras copy stays (fabric_release.py calls it)
 - [carlras-c2r-hours-on-740](carlras-c2r-hours-on-740.md) -- C2R hours booked on 740 (Ingest and model, under 739 Case to Resolution), Niels 10-31
 - [eval-2026-11-02-own-repos-atomic-tools](eval-2026-11-02-own-repos-atomic-tools.md) -- own-repos skill knows AAI only, not ADO Pingala Atomic Tools
+- [eval-2026-11-02-value-datahub-over-600](eval-2026-11-02-value-datahub-over-600.md) -- Niels: datahub 690% weighted/registered too high; denominator cut by re-split, value records not re-split
