@@ -167,6 +167,13 @@ function Get-ProjectRoots($unit) {
   return $out
 }
 
+function Test-Room($dir) {
+  # A Project Room repo carries SPEC.md starting with "# Project Room".
+  $spec = Join-Path $dir "SPEC.md"
+  if (-not (Test-Path $spec)) { return $false }
+  return ((Get-Content $spec -TotalCount 1) -like "# Project Room*")
+}
+
 function Ensure-Excludes($repo) {
   # Local ignore (never committed) so a repo WITH A REMOTE can NEVER carry internal-only
   # harness files or credentials, even if one is accidentally created inside it.
@@ -311,13 +318,20 @@ function Heal-Unit($unit) {
   foreach ($r in $nestedRepos) {
     $sp = $r.Dir.FullName
     Link-Harness $sp | Out-Null
+    if (Test-Room $sp) {
+      # A Project Room (SPEC.md, own/AtomicCortex) is SHARED knowledge: its AGENTS.md/CLAUDE.md
+      # must stay committable, so no Ensure-Excludes and no .project-meta copy. Its own
+      # .gitignore keeps .claude/ and secrets out. (Added 2026-11-02.)
+      Write-Host "     $($r.Rel): project room -> ignored by the unit, not guarded"
+      continue
+    }
     switch (Get-RemoteClass $sp) {
       "customer" { Ensure-Excludes $sp; Write-Host "     $($r.Rel): customer-facing -> ignored + guarded" }
       "internal" { Ensure-Excludes $sp; Write-Host "     $($r.Rel): internal remote -> ignored + guarded (wiki/shared: internal metadata still excluded)" }
       "none"     { Write-Host "     $($r.Rel): WARN no remote -> fold into the unit repo or add a remote" }
     }
   }
-  Sync-SubrepoMeta $unit $nestedRepos
+  Sync-SubrepoMeta $unit @($nestedRepos | Where-Object { -not (Test-Room $_.Dir.FullName) })
 
   # Harness link for every project root, so a session rooted at the project (the documented way
   # to open one) resolves commands/skills/agents. Link-only: no git init, no sub-repo metadata -
