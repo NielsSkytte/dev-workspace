@@ -46,7 +46,7 @@ the first empty page -> page to the stats count (inference: an ACL-emptied page 
 2. Send Aeven the row gaps that remain after that run; check Curated builds.
 3. Serving to Aeven (local commit `c0ca888`) once Curated builds; `Incident Activity` waits for sys_audit.
 4. Per-environment disabled tables, then sync `dataaidemo`.
-5. Production per `docs/production-deployment.md` (Q1-Q7 decided 2026-10-03).
+5. Production per `project-room/docs/production-deployment.md` (Q1-Q7 decided 2026-10-03).
 
 ## Needs from customer
 
