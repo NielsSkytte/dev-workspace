@@ -189,6 +189,25 @@ class NoRegisteredLine(unittest.TestCase):
         self.assertAlmostEqual(got["CarlRData-666"]["weighted"] + got["CarlRData-555"]["weighted"],
                                20.0, places=2)
 
+    def test_a_partial_move_takes_its_share_of_the_evidence(self):
+        # 2026-10-28: 5.00 h of a datahub session moved to process-insight; datahub keeps a line.
+        sheet = [sheet_row("customers/Carl-Ras/datahub", task="CarlRData-738", hours=1.25),
+                 sheet_row("customers/Carl-Ras/process-insight", task="", hours=5.5)]
+        out = dashboard.line_rows(
+            "2026-10-28", sheet,
+            [sheet_row("customers/Carl-Ras/datahub", task="CarlRData-738", hours=6.25),
+             sheet_row("customers/Carl-Ras/process-insight", task="", hours=0.5)],
+            [value("customers/Carl-Ras/datahub", task="CarlRData-738", weighted=12.5,
+                   keyboard=2.5, turns=50)],
+            [{"date": "2026-10-28", "from": "customers/Carl-Ras/datahub",
+              "to": "customers/Carl-Ras/process-insight", "tasks": [], "hours": 5.0}])
+        got = by_task(out)
+        self.assertEqual(got["CarlRData-738"]["measured"], 1.25)
+        self.assertEqual(got[""]["measured"], 5.5)
+        self.assertAlmostEqual(got["CarlRData-738"]["weighted"], 2.5, places=2)   # 1.25/6.25
+        self.assertAlmostEqual(got[""]["weighted"], 10.0, places=2)
+        self.assertAlmostEqual(sum(r["weighted"] for r in out), 12.5, places=2)
+
     def test_several_stale_keys_give_one_line_not_several(self):
         out = rows([], [sheet_row("customers/A/p", task="X", hours=2.0)],
                    [value("customers/A/p", task="Y", weighted=12.0)])

@@ -383,10 +383,36 @@ def line_rows(date, sheet, measured_rows, values, moves=()):
             slots[kk]["shared"] = True
         agg_by.pop(k)
 
+    # A PART of a line moved at /log while its project keeps a line that date (2026-10-28:
+    # 5.00 h of a datahub session moved to process-insight). The move names the hours; that
+    # many measured hours leave the `From` lines, and the same share of their evidence with
+    # them, spread over the `To` lines. Hours are conserved.
+    for mv in moves:
+        if not mv.get("hours"):
+            continue
+        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
+                and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
+        srcs = [k for k in slots if k.split("|", 1)[0] == mv["from"]]
+        total = sum(slots[k]["meas"] for k in srcs)
+        if not keys or total <= 0:
+            continue
+        f = min(1.0, mv["hours"] / total)
+        for k in srcs:
+            take_m, take_a = slots[k]["meas"] * f, _scale_agg(slots[k]["agg"], f)
+            slots[k]["meas"] = round(slots[k]["meas"] - take_m, 2)
+            slots[k]["agg"] = _scale_agg(slots[k]["agg"], 1.0 - f)
+            for kk, w in _weights(slots, keys):
+                slots[kk]["meas"] = round(slots[kk]["meas"] + take_m * w, 2)
+                _merge_agg(slots[kk]["agg"], _scale_agg(take_a, w))
+                slots[kk]["shared"] = True
+            slots[k]["shared"] = True
+
     # A line moved to ANOTHER project at /log, written down in ops/time/measure-moves.md
     # (lib/measuremoves.py): its measurement goes where the hours went, over the named
     # tasks' lines. Only measurement with no line of its own on its project gets here.
     for mv in moves:
+        if mv.get("hours"):
+            continue
         keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
                 and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
         if not keys:

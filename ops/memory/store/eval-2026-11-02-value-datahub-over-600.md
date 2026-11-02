@@ -23,3 +23,5 @@ Facts behind it:
   but not the value records (open item in the 11-01 session log).
 - 10-29 alone: 0.27 h keyboard -> 5.25 h weighted (19x).
 Evidence for the ADR-004 re-evaluation.
+
+Outcome 2026-11-02: partial moves (measure-moves.md `Hours` column) for 10-27 (1.75 h) and 10-28 (5.00 h) to process-insight. W44 after: 738 392%, 666 509%, process-insight 198% / 168%.

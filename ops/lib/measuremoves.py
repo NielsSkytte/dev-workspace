@@ -19,6 +19,10 @@ in the timesheet file directly. Applied by dashboard.line_rows only to measureme
 `From` that has no line of its own that date, spread over the `To` lines named in `Tasks`
 (every `To` line when `-`) in proportion to their registered hours. Hours are conserved.
 
+Optional 7th column `Hours` (by hand): a PART of `From`'s day moved while `From` keeps a
+line that date. That many measured hours, and the same share of keyboard and weighted
+time, leave the `From` lines for the `To` lines.
+
 Pure stdlib, ASCII-only.
 """
 import datetime
@@ -63,9 +67,14 @@ def entries(root=None):
         if len(c) < 3 or not DATE_RE.match(c[0]) or not c[1] or not c[2]:
             continue
         tasks = c[3] if len(c) > 3 else ""
+        try:
+            hours = float(c[6].replace(",", ".")) if len(c) > 6 and c[6] not in ("", "-") else None
+        except ValueError:
+            hours = None
         out.append({"date": c[0], "from": c[1], "to": c[2],
                     "tasks": [] if tasks in ("", "-")
-                    else [t.strip() for t in tasks.split(",") if t.strip()]})
+                    else [t.strip() for t in tasks.split(",") if t.strip()],
+                    "hours": hours})
     return out
 
 
