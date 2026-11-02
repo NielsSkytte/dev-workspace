@@ -1686,3 +1686,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** Case to Resolution bills to CarlRData-740 (owner). Rest of process-insight (Inventory to deliver + remaining engine, 39,50 h at F&O entry) held. Approval done on owner's word.
 - **Tasks:** process-insight v1 task `fno_task` comment names CarlRData-740.
 - **Next:** value records to follow the Carl Ras re-split (666/738 Time page vs F&O); utilisation page recalculates; 10-29..10-31 timesheets; held process-insight hours; MetaAtomic AAI merge conflict.
+
+## 2026-11-02 (own: FabricTools; session fff04b8f)
+- **Did:** New folder `own/FabricTools` for small Fabric admin scripts. `fabric_identity.py` (SPN identity migration) copied from `customers/Carl-Ras/datahub/tools/` with a README and a `.gitignore` for `.spn.env`; own commit `581dba8`. Pushed to ADO `Pingala Atomic Tools/FabricTools` (`66e649b`), customer-name scan clean. Fixed a crash in the connection grant (`self.spn_object_id` -> `self.spn`) in both copies; Carl Ras datahub commit `8d205a1`, not pushed. `/log` catch-up finalized 10-29 to 11-01 and described their lines.
+- **Decided:** The Carl Ras copy stays in place, because `tools/fabric_release.py:369` calls it from its own folder (owner chose option A). Carl Ras credentials stay in datahub; the shared copy uses `--env-file`.
+- **Tasks:** none.
+- **Next:** push Carl Ras datahub `8d205a1` with the next customer push; W44 at 23.25 h of 37.50 h (10-29/10-30 short); `FabricTools` is not in the AAI hook FOLDERS (Niels's call).

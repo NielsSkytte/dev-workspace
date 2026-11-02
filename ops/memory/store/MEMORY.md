@@ -235,3 +235,6 @@ and the record shape live in [`../README.md`](../README.md).
 - [servicenow-landed-mode-full-load-traffic](servicenow-landed-mode-full-load-traffic.md) -- landed mode forced daily full loads at Aeven; deltas + Saturday full + SQL_Util config
 - [eval-2026-10-29-capture-encoding](eval-2026-10-29-capture-encoding.md) -- capture hook writes assistant text as mojibake; markup in User lines
 - [feedback-time-report-work-weighted-entry](feedback-time-report-work-weighted-entry.md) -- every time report shows work, weighted and F&O entry side by side (owner 2026-10-30)
+- [fabric-tools-folder](fabric-tools-folder.md) -- own/FabricTools + ADO Pingala Atomic Tools/FabricTools; fabric_identity.py; Carl Ras copy stays (fabric_release.py calls it)
+- [carlras-c2r-hours-on-740](carlras-c2r-hours-on-740.md) -- C2R hours booked on 740 (Ingest and model, under 739 Case to Resolution), Niels 10-31
+- [eval-2026-11-02-own-repos-atomic-tools](eval-2026-11-02-own-repos-atomic-tools.md) -- own-repos skill knows AAI only, not ADO Pingala Atomic Tools
