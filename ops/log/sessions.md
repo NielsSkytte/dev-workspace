@@ -1692,3 +1692,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** The Carl Ras copy stays in place, because `tools/fabric_release.py:369` calls it from its own folder (owner chose option A). Carl Ras credentials stay in datahub; the shared copy uses `--env-file`.
 - **Tasks:** none.
 - **Next:** push Carl Ras datahub `8d205a1` with the next customer push; W44 at 23.25 h of 37.50 h (10-29/10-30 short); `FabricTools` is not in the AAI hook FOLDERS (Niels's call).
+
+## 2026-11-03 (time: weighted follows moves, hour bank; session fff04b8f)
+- **Did:** `measure-moves.md` gained an `Hours` column (partial move while the source keeps a line) and `From` as `project@task` (move between tasks); recorded moves now apply before the same-project attach. Moves recorded: 10-27 1.75 h and 10-28 5.00 h datahub -> process-insight/own, 10-21 8.50 h and 10-22 2.00 h datahub 666 -> 738. Hour bank built: `ops/time/bank.md`, `ops/lib/bank.py`, `ops/bin/bank.py`, Time page card, README section 9; `reclaim.md` folded in as R1/R2. Deposits: B1 = October process-insight no-task lines moved to own/ProcessInsight, 42.75 h, for Carl Ras; B2 = datahub 666 lineage October difference, 3.50 h on own/MetaAtomic, for Carl Ras. own/ProcessInsight Identity block restored (`fno_code INTERNAL-RND`, own `ab36a4a`, pushed to AAI by the hook). 10-29/10-30 recorded as days off. 11-02 finalized and described.
+- **Decided:** (owner) banked hours sit on the own/ project whose work it was; B1/B2 terms decided later. The rest of the October gap (10.75 h) is skipped. Datahub W44 weighted judged too high (memory `eval-2026-11-02-value-datahub-over-600`).
+- **Tasks:** none.
+- **Next:** set B1/B2 terms when decided; stall finding 2026-11-03 session e62e6265 (Carl Ras) needs a verdict; push Carl Ras datahub `8d205a1` with the next customer push.
