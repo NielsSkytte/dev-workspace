@@ -21,7 +21,8 @@ in the timesheet file directly. Applied by dashboard.line_rows only to measureme
 
 Optional 7th column `Hours` (by hand): a PART of `From`'s day moved while `From` keeps a
 line that date. That many measured hours, and the same share of keyboard and weighted
-time, leave the `From` lines for the `To` lines.
+time, leave the `From` lines for the `To` lines. With `Hours`, `From` may name a task as
+`project@task`, and `To` may be the same project: a move between tasks of one project.
 
 Pure stdlib, ASCII-only.
 """

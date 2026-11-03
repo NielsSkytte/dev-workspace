@@ -390,9 +390,13 @@ def line_rows(date, sheet, measured_rows, values, moves=()):
     for mv in moves:
         if not mv.get("hours"):
             continue
-        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
+        # `From` may name a task (`project@task`): a move between tasks of one project
+        # (2026-10-21: datahub 666 -> 738, re-split by session content at /log).
+        src_proj, _, src_task = mv["from"].partition("@")
+        srcs = [k for k in slots if k.split("|", 1)[0] == src_proj
+                and (not src_task or k.split("|", 2)[2] == src_task)]
+        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"] and k not in srcs
                 and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
-        srcs = [k for k in slots if k.split("|", 1)[0] == mv["from"]]
         total = sum(slots[k]["meas"] for k in srcs)
         if not keys or total <= 0:
             continue

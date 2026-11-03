@@ -208,6 +208,23 @@ class NoRegisteredLine(unittest.TestCase):
         self.assertAlmostEqual(got[""]["weighted"], 10.0, places=2)
         self.assertAlmostEqual(sum(r["weighted"] for r in out), 12.5, places=2)
 
+    def test_a_partial_move_between_tasks_of_one_project(self):
+        # 2026-10-21: registered hours re-split 666 -> 738; the evidence stayed on 666.
+        p = "customers/Carl-Ras/datahub"
+        out = dashboard.line_rows(
+            "2026-10-21",
+            [sheet_row(p, task="CarlRData-666", hours=0.75),
+             sheet_row(p, task="CarlRData-738", hours=8.5)],
+            [sheet_row(p, task="CarlRData-666", hours=9.25)],
+            [value(p, task="CarlRData-666", weighted=7.4, keyboard=1.85, turns=37)],
+            [{"date": "2026-10-21", "from": p + "@CarlRData-666", "to": p,
+              "tasks": ["CarlRData-738"], "hours": 8.5}])
+        got = by_task(out)
+        self.assertEqual(got["CarlRData-666"]["measured"], 0.75)
+        self.assertEqual(got["CarlRData-738"]["measured"], 8.5)
+        self.assertAlmostEqual(got["CarlRData-666"]["weighted"], 0.6, places=2)
+        self.assertAlmostEqual(got["CarlRData-738"]["weighted"], 6.8, places=2)
+
     def test_several_stale_keys_give_one_line_not_several(self):
         out = rows([], [sheet_row("customers/A/p", task="X", hours=2.0)],
                    [value("customers/A/p", task="Y", weighted=12.0)])
