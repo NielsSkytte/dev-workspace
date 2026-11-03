@@ -754,3 +754,22 @@ the current week plus the previous one. It writes nothing. It reports:
 
 `absence.md` is tracked in git (unlike the rest of `ops/time/`, which is data); it is a decision
 record, not derived output.
+
+## 9. Hour bank (2026-11-03)
+
+Hours already spent but not ready for invoicing. Register: `ops/time/bank.md`; reader:
+`ops/lib/bank.py`; balances: `python ops/bin/bank.py`; Time page: "Hour bank" card under
+the month check.
+
+- **Deposit.** Move the timesheet lines to the `own/` project whose work it was (Time page
+  reassign, or `dashboard.reassign`). Internal lines are not entered into F&O. Add a
+  Deposits row: Hours = F&O entry figure when banked; Work h and Weighted h = evidence;
+  For = customer(s) or `-`; Terms = when and how it may be invoiced.
+- **Withdrawal.** Add hours to a customer line on a later, open day (timesheet file, by
+  hand), then add a Withdrawals row naming the deposit. Never touch a closed month. The
+  month check shows drawn hours in the "From bank" column and keeps them out of the
+  multiplier.
+- **Reclaim** (under-billed hours recovered in a later month) is a deposit with Holding `-`.
+  The former `reclaim.md` is deposits R1/R2.
+- **Evidence follows the lines.** A move recorded in `measure-moves.md` is applied before
+  the same-project attach. Partial moves name `Hours`; `From` may be `project@task`.

@@ -240,3 +240,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-c2r-hours-on-740](carlras-c2r-hours-on-740.md) -- C2R hours booked on 740 (Ingest and model, under 739 Case to Resolution), Niels 10-31
 - [eval-2026-11-02-own-repos-atomic-tools](eval-2026-11-02-own-repos-atomic-tools.md) -- own-repos skill knows AAI only, not ADO Pingala Atomic Tools
 - [eval-2026-11-02-value-datahub-over-600](eval-2026-11-02-value-datahub-over-600.md) -- Niels: datahub 690% weighted/registered too high; denominator cut by re-split, value records not re-split
+- [hour-bank](hour-bank.md) -- hours held from F&O on own/ projects (bank.md); B1 = 42.75 h process-insight October for Carl Ras

@@ -1315,12 +1315,12 @@ function MonthCheck({ D, per, F }) {
         Work: the timesheet.<br/>
         F&O entry: what the entry blocks put into F&O.<br/>
         In F&O: what F&O holds, read back after entry (ops/time/fno-journals.md). Red where it differs from F&O entry. * = in a journal that is not approved yet.<br/>
-        Reclaim: hours from an earlier month placed on these days (ops/time/reclaim.md); measured then, not now.<br/>
-        Multiplier: (F&O entry − reclaim) ÷ measured.</p>
+        From bank: hours drawn from the hour bank onto these days (ops/time/bank.md); measured when banked, not now.<br/>
+        Multiplier: (F&O entry − from bank) ÷ measured.</p>
       ${!list.length ? html`<${Empty}>No billable time in ${per.label}.<//>` : html`
         <div style="overflow-x:auto"><table class="autable">
           <thead><tr><th>Customer / F&O line</th><th class="r">Measured</th><th class="r">Work</th>
-            <th class="r">F&O entry</th><th class="r">In F&O</th><th class="r">Reclaim</th>
+            <th class="r">F&O entry</th><th class="r">In F&O</th><th class="r">From bank</th>
             <th class="r">Multiplier</th></tr></thead>
           <tbody>
             ${list.map(c => html`
@@ -1336,6 +1336,39 @@ function MonthCheck({ D, per, F }) {
       ${unmeasured ? html`<p class="sub" style="margin:8px 0 0">No measurement:
         ${hrs(r2(unmeasured))} h F&O entry. These lines have no heartbeat line behind them
         and count as 0 measured.</p>` : null}
+    </div>
+    <${BankCard} D=${D}/>`;
+}
+
+/* The hour bank (ops/time/bank.md): hours spent but held back from F&O, per deposit. */
+function BankCard({ D }) {
+  const open = ((D.entry || {}).bank || []).filter(b => b.remaining > 0.005);
+  const r2 = v => Math.round(v * 100) / 100;
+  const total = open.reduce((s, b) => s + b.remaining, 0);
+  return html`
+    <div class="card ausec" style="margin-bottom:14px">
+      <h3>Hour bank — open deposits</h3>
+      <p class="sub">Hours spent but not entered into F&O. Source: ops/time/bank.md.<br/>
+        Holding: the own/ project the lines sit on.<br/>
+        Remaining: hours that may still be placed on a customer line.<br/>
+        Work / Weighted: evidence at deposit.</p>
+      ${!open.length ? html`<${Empty}>No open deposits.<//>` : html`
+        <div style="overflow-x:auto"><table class="autable">
+          <thead><tr><th>Id</th><th>Opened</th><th>Holding</th><th>For</th>
+            <th class="r">Hours</th><th class="r">Drawn</th><th class="r">Remaining</th>
+            <th class="r">Work</th><th class="r">Weighted</th><th>Terms</th></tr></thead>
+          <tbody>
+            ${open.map(b => html`
+              <tr key=${b.id}><td>${b.id}</td><td>${b.opened}</td><td>${b.holding}</td>
+                <td>${b.for.join(', ') || '–'}</td>
+                <td class="r">${hrs(r2(b.hours))}</td><td class="r">${hrs(r2(b.drawn))}</td>
+                <td class="r" style="font-weight:600">${hrs(r2(b.remaining))}</td>
+                <td class="r">${hrs(r2(b.work))}</td><td class="r">${hrs(r2(b.weighted))}</td>
+                <td>${b.terms}</td></tr>`)}
+            <tr style="font-weight:700"><td colspan="6">Total</td>
+              <td class="r">${hrs(r2(total))}</td><td colspan="3"></td></tr>
+          </tbody>
+        </table></div>`}
     </div>`;
 }
 

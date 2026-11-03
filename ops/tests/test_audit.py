@@ -225,6 +225,22 @@ class NoRegisteredLine(unittest.TestCase):
         self.assertAlmostEqual(got["CarlRData-666"]["weighted"], 0.6, places=2)
         self.assertAlmostEqual(got["CarlRData-738"]["weighted"], 6.8, places=2)
 
+    def test_a_recorded_move_wins_over_the_same_project_attach(self):
+        # 2026-10-15: the no-task line was banked on own/ProcessInsight while the project
+        # kept a 740 line; the measurement goes where the owner moved it.
+        pi = "customers/Carl-Ras/process-insight"
+        out = dashboard.line_rows(
+            "2026-10-15",
+            [sheet_row(pi, task="CarlRData-740", hours=2.25),
+             sheet_row("own/ProcessInsight", hours=5.25)],
+            [sheet_row(pi, task="CarlRData-740", hours=0.5), sheet_row(pi, task="none", hours=7.0)],
+            [],
+            [{"date": "2026-10-15", "from": pi, "to": "own/ProcessInsight", "tasks": [],
+              "hours": None}])
+        got = {r["project"]: r for r in out}
+        self.assertEqual(got[pi]["measured"], 0.5)
+        self.assertEqual(got["own/ProcessInsight"]["measured"], 7.0)
+
     def test_several_stale_keys_give_one_line_not_several(self):
         out = rows([], [sheet_row("customers/A/p", task="X", hours=2.0)],
                    [value("customers/A/p", task="Y", weighted=12.0)])

@@ -51,6 +51,7 @@ from lib import fnotasks
 from lib import sessionlines
 from lib import measuremoves
 from lib import fnojournals
+from lib import bank
 
 ROOT = os.environ.get("DEV_WORKSPACE", r"C:\Dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -363,6 +364,28 @@ def line_rows(date, sheet, measured_rows, values, moves=()):
         if k in slots:
             _merge_agg(slots[k]["agg"], agg_by.pop(k))
 
+    # A line moved to ANOTHER project at /log, written down in ops/time/measure-moves.md
+    # (lib/measuremoves.py): its measurement goes where the hours went, over the named
+    # tasks' lines. Only measurement with no exact line of its own gets here. A recorded move
+    # is the owner's decision, so it runs before the inferred same-project attach below
+    # (2026-11-03: banked process-insight lines, while the project keeps a 740 line).
+    for mv in moves:
+        if mv.get("hours"):
+            continue
+        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
+                and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
+        if not keys:
+            continue
+        for src in (meas_by, agg_by):
+            for k in [k for k in src if k.split("|", 1)[0] == mv["from"]]:
+                for kk, f in _weights(slots, keys):
+                    if src is meas_by:
+                        slots[kk]["meas"] = round(slots[kk]["meas"] + src[k] * f, 2)
+                    else:
+                        _merge_agg(slots[kk]["agg"], _scale_agg(src[k], f))
+                    slots[kk]["shared"] = True
+                src.pop(k)
+
     by_proj = {}
     for k in slots:
         by_proj.setdefault(k.split("|", 1)[0], []).append(k)
@@ -410,26 +433,6 @@ def line_rows(date, sheet, measured_rows, values, moves=()):
                 _merge_agg(slots[kk]["agg"], _scale_agg(take_a, w))
                 slots[kk]["shared"] = True
             slots[k]["shared"] = True
-
-    # A line moved to ANOTHER project at /log, written down in ops/time/measure-moves.md
-    # (lib/measuremoves.py): its measurement goes where the hours went, over the named
-    # tasks' lines. Only measurement with no line of its own on its project gets here.
-    for mv in moves:
-        if mv.get("hours"):
-            continue
-        keys = [k for k in slots if k.split("|", 1)[0] == mv["to"]
-                and (not mv["tasks"] or k.split("|", 2)[2] in mv["tasks"])]
-        if not keys:
-            continue
-        for src in (meas_by, agg_by):
-            for k in [k for k in src if k.split("|", 1)[0] == mv["from"]]:
-                for kk, f in _weights(slots, keys):
-                    if src is meas_by:
-                        slots[kk]["meas"] = round(slots[kk]["meas"] + src[k] * f, 2)
-                    else:
-                        _merge_agg(slots[kk]["agg"], _scale_agg(src[k], f))
-                    slots[kk]["shared"] = True
-                src.pop(k)
 
     # A project with no line that date whose CUSTOMER has one was moved between that
     # customer's projects at /log (2026-09-12 Aeven: ServiceNowPOC -> AtomicServiceNow; a
@@ -1018,33 +1021,15 @@ def collect_entry(entries, customers, today, projects=None, tasks=None):
         "unmapped": sorted(({"customer": k, "hours": v} for k, v in unmapped.items()),
                            key=lambda x: -x["hours"]),
         "no_project": sorted(c["kunde"] for c in comp if c["key"] not in ws_keys),
-        "reclaim": reclaim_placed(),
+        # hours drawn from the hour bank onto a later day (ops/time/bank.md)
+        "reclaim": bank.placed(),
+        "bank": bank.balances(),
         # what F&O holds, as read back after entry (ops/time/fno-journals.md)
         "registered": fnojournals.entries(),
         # faktureringsprocent = billable F&O hours / "Timer per maaned" (ops/time/bonus.py)
         "bases": bonus.BASES,
         "tiers": [list(t) for t in bonus.TIERS],
     }
-
-
-def reclaim_placed():
-    """Reclaimed hours placed on a later day (ops/time/reclaim.md, consumption log) ->
-    [{date, project, hours}]. Registered on that date, not worked on it, so a check of
-    what was billed against what was measured has to hold them apart."""
-    out = []
-    try:
-        with open(os.path.join(ROOT, "ops", "time", "reclaim.md"), encoding="utf-8") as f:
-            text = f.read()
-    except Exception:
-        return out
-    for line in text.split("Consumption log:", 1)[-1].splitlines():
-        c = [x.strip() for x in line.strip().strip("|").split("|")]
-        if len(c) >= 3 and re.match(r"^\d{4}-\d{2}-\d{2}$", c[0]):
-            try:
-                out.append({"date": c[0], "project": c[1], "hours": float(c[2])})
-            except ValueError:
-                pass
-    return out
 
 
 def _turns_today(today):
