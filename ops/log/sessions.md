@@ -1698,3 +1698,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** (owner) banked hours sit on the own/ project whose work it was; B1/B2 terms decided later. The rest of the October gap (10.75 h) is skipped. Datahub W44 weighted judged too high (memory `eval-2026-11-02-value-datahub-over-600`).
 - **Tasks:** none.
 - **Next:** set B1/B2 terms when decided; at the 11-03 finalize apply the stall verdict (e62e6265 waiting: Carl Ras datahub -0.75 h, `stalls.md`); push Carl Ras datahub `8d205a1` with the next customer push.
+
+## 2026-11-03 (own: MetaAtomic; session 8167e793)
+- **Did:** Fabric app 30 MB failsafe: `pageRange` UDF + `readPage` fallback (MetaAtomic `7f1d4a9`), deployed to the Pingala and Carl Ras apps. Publish removes stale data parts (`ce20e34`); deployed to AtomicBase (`d409fc6`, pushed, workspace updated). Pipeline renamed `PL_MetaAtomic` (`4f81b4a`; AtomicBase `5816dc9`). Carl Ras Fabric-ETL `0cddc47` + `042691c` pushed, DEV updated from git: PL_MetaAtomic Saturdays 05:30, 2 vCores.
+- **Decided:** (owner) data quality, lineage and progress status run weekends only at Carl Ras; the pipeline is called PL_MetaAtomic; Carl Ras TEST deploy and further Carl Ras work go to the datahub session (e62e6265).
+- **Tasks:** none moved.
+- **Next:** Carl Ras TEST still has PL_UpdateLineage daily (datahub session owns it); AtomicBase stale `lineage.data.004.part` goes at its next run; pre-existing failure `tests/test_dq_store.py::test_the_notebook_runner_answers_every_batch_with_rows_and_none_for_null`.

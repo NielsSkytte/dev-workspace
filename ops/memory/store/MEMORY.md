@@ -241,3 +241,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-02-own-repos-atomic-tools](eval-2026-11-02-own-repos-atomic-tools.md) -- own-repos skill knows AAI only, not ADO Pingala Atomic Tools
 - [eval-2026-11-02-value-datahub-over-600](eval-2026-11-02-value-datahub-over-600.md) -- Niels: datahub 690% weighted/registered too high; denominator cut by re-split, value records not re-split
 - [hour-bank](hour-bank.md) -- hours held from F&O on own/ projects (bank.md); B1 = 42.75 h process-insight October for Carl Ras
+- [metaatomic-30mb-failsafe-pl-metaatomic](metaatomic-30mb-failsafe-pl-metaatomic.md) -- app pageRange failsafe >30 MB; stale parts removed; PL_MetaAtomic; Carl Ras Saturdays; TEST via deployment pipeline f0498924
+- [eval-2026-11-03-parallel-sessions](eval-2026-11-03-parallel-sessions.md) -- two sessions on Carl Ras MetaAtomic deploy; ListAgents blind across accounts, ~/.claude-priv/projects transcripts show it
