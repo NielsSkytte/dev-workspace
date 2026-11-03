@@ -19,6 +19,7 @@ Read by `ops/lib/bank.py`; `python ops/bin/bank.py` prints the balances.
 | R1 | 2026-09-07 | - | 14.50 | 13.50 | 28.00 | Matas | reclaim in 2026-09 on 212-01 / Task-65904 / 111953 | July 16 - Aug 3 backend build (config store, canonical layer, match engine): billed 13.50 h measured vs 28.00 h weighted (ops/time/value/*) |
 | R2 | 2026-09-08 | - | 11.50 | 5.25 | 16.75 | Matas | reclaim in 2026-09 on 212-01 / Task-65904 / 111953 | ESTIMATE: 8 billed July days with no value record; keyboard 2.31 h x 7.26 = 16.75 h weighted, less 5.25 h billed (owner's method, 2026-09-08) |
 | B1 | 2026-11-03 | own/ProcessInsight | 42.75 | 16.50 | 53.39 | Carl Ras | held by owner at the October close (2026-11-01); terms to be decided later (owner, 2026-11-03) | process-insight lines with no task, October, moved to own/ProcessInsight 2026-11-03 (F&O entry h as banked): 10-15 9.25, 10-19 4.50, 10-21 4.00, 10-23 8.25, 10-25 7.75, 10-27 3.50, 10-28 5.50 |
+| B2 | 2026-11-03 | own/MetaAtomic | 3.50 | 4.50 | 11.74 | Carl Ras | terms to be decided later (owner, 2026-11-03) | datahub CarlRData-666 (lineage), October: F&O entry 11.50 h, in F&O 8.00 h; the 3.50 h difference is banked. The timesheet lines stay on datahub (8.00 h of them are in F&O); Work h / Weighted h are the whole October line |
 
 ## Withdrawals
 
