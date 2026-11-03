@@ -20,7 +20,9 @@ to raw, then curated layer and semantic model. Single activity for all project w
 
 ## Progress
 
-**Now (2026-10-28):** Aeven reported heavy traffic ("1TB of transactions") after the daily schedule; schedule is UserDisabled at Aeven. ingest_log 10-20..10-28: 10 runs, each a full read of 23 tables, ~410k rows, 0.44 GB, 3-5 min; 1 TB not explained by these runs. Fix committed locally `42305a8` (deltas in landed mode, Saturday full, sys_dictionary/sys_db_object Saturdays only via `load_weekday`), not pushed. Reply drafted: `Aeven_ServiceNow_Traffic_email.md`.
+**Now (2026-11-04):** OAuth (client credentials) built and proven on PDI dev443926 + NielsWorkspace_Dev; `ServiceNow_Auth` (VL_RunSettings) switches basic/oauth per value set; basic rerun on the same pipeline passes. On MasterDataPlan main `3b8ab2e` with Aeven = basic. OAuth email sent to Aeven (client, property, 2 gateway connections); waiting for their connection ids. Aeven run 2026-11-03 (`20261103T144624Z`) clean, 23 tables / 43,273 rows; `enriched.ChoiceLabel` 0 rows because sys_choice returns only label, sys_id, sys_domain, sys_domain_path (on 10-20 it returned all fields: access changed at Aeven). On the PDI `personalize_choices` opens all sys_choice fields plus full sys_dictionary / sys_db_object; email sent asking for it or a read-only role. Kresten moved the SQL_Util config to schema `config` (done at Aeven); room rule added for who syncs to Aeven (`499c458`).
+
+**Earlier (2026-10-28):** Aeven reported heavy traffic ("1TB of transactions") after the daily schedule; schedule is UserDisabled at Aeven. ingest_log 10-20..10-28: 10 runs, each a full read of 23 tables, ~410k rows, 0.44 GB, 3-5 min; 1 TB not explained by these runs. Fix committed locally `42305a8` (deltas in landed mode, Saturday full, sys_dictionary/sys_db_object Saturdays only via `load_weekday`), not pushed. Reply drafted: `Aeven_ServiceNow_Traffic_email.md`.
 
 **Earlier (2026-10-23):** Waiting on Aeven for permissions. Full `PL_MainExecution` run `20261020T080536Z`
 at Aeven ran without errors: sys_choice returns all fields (17,979 rows); still blocked are
@@ -40,6 +42,8 @@ variable-library defaults -> UNSET defaults, one value set per environment; full
 the first empty page -> page to the stats count (inference: an ACL-emptied page can have readable rows after it).
 
 **Next:**
+- When Aeven sends the two OAuth connection ids: set them in the AevenDev value set, `ServiceNow_Auth = oauth`, sync, run.
+- When Aeven grants the sys_choice role: rerun, check ChoiceLabel and the sys_dictionary catalogue.
 0. Send the traffic email; push `42305a8` to MasterDataPlan only after Aeven replies.
 1. When Aeven answers: in `ITSM-ETL-Dev` Update from git (`2e0020c`: paging + choice labels in Enriched), run `PL_MainExecution` with
    `full_reload` on, rerun `access_check_cell.py`, compare row gaps and fields with `20261020T080536Z`.
@@ -47,6 +51,7 @@ the first empty page -> page to the stats count (inference: an ACL-emptied page 
 3. Serving to Aeven (local commit `c0ca888`) once Curated builds; `Incident Activity` waits for sys_audit.
 4. Per-environment disabled tables, then sync `dataaidemo`.
 5. Production per `project-room/docs/production-deployment.md` (Q1-Q7 decided 2026-10-03).
+6. OAuth test on the PDI: room task `project-room/tasks/2026-11-02-oauth-for-servicenow-extraction.md` (owner Niels, taken 2026-11-03).
 
 ## Needs from customer
 
@@ -77,3 +82,4 @@ a landing-zone workspace or directly into fabric-etl.
 - 2026-10-20 — access read-out of run 20261020T080536Z; full-load paging bounded by the stats count (e499775 / MasterDataPlan c783d94); field-access follow-up drafted
 - 2026-10-23 — waiting on Aeven for permissions; first reply: many empty fields may be unused in test
 - 2026-10-28 — Aeven traffic complaint: measured 0.44 GB/run; deltas + weekly full built (42305a8); traffic email drafted
+- 2026-11-03 — project shared with Kresten via project-room/ (atompower4us/aeven-atomicservicenow-room, CI green); originals moved; OAuth room task taken by Niels

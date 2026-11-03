@@ -243,3 +243,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [hour-bank](hour-bank.md) -- hours held from F&O on own/ projects (bank.md); B1 = 42.75 h process-insight October for Carl Ras
 - [metaatomic-30mb-failsafe-pl-metaatomic](metaatomic-30mb-failsafe-pl-metaatomic.md) -- app pageRange failsafe >30 MB; stale parts removed; PL_MetaAtomic; Carl Ras Saturdays; TEST via deployment pipeline f0498924
 - [eval-2026-11-03-parallel-sessions](eval-2026-11-03-parallel-sessions.md) -- two sessions on Carl Ras MetaAtomic deploy; ListAgents blind across accounts, ~/.claude-priv/projects transcripts show it
+- [servicenow-oauth-and-sys-choice-role](servicenow-oauth-and-sys-choice-role.md) -- OAuth client credentials in a Fabric pipeline (two connections, header rules, basic/oauth switch); personalize_choices opens sys_choice + dictionary; Aeven sys_choice at 4 fields
+- [project-room-sync-collision](project-room-sync-collision.md) -- evaluative: both people synced the same change to Aeven; room rule: pull + read the other's now/ before, note the commit after
