@@ -30,6 +30,12 @@ to chain, `VAR=value cmd` for environment variables. Never `$env:`, `;`-chained 
 backslash paths. A command that truly needs PowerShell is wrapped: `! powershell -NoProfile -Command
 "..."`. Read it once as bash before sending. Memory record `feedback-bang-commands-are-bash`.
 
+**Sign-ins: start them yourself (2026-11-04).** When an Azure / Fabric sign-in is needed (`az
+login`, `fab auth`, an expired token), run the sign-in command yourself at once; never ask Niels
+to type it. Tell him which account to pick in the browser: `nchristensen@pingala.eu` for the
+Pingala tenant `5e8d3c87-f9c4-4575-a670-d76860aa43e2`, the customer's account for a customer
+tenant. Memory record `feedback-start-sign-in-yourself`.
+
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
 `feedback-fact-only-language`). Before asserting a defect, cite the record (file + line).

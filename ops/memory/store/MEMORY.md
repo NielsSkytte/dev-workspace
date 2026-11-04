@@ -20,6 +20,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-act-then-report](feedback-act-then-report.md) — if you can do it, do it, then report; the ask line is blast radius (7-rung ladder), never difficulty; a proven fix is a reason to act, not to ask (convention canonical in AGENTS.md)
 - [feedback-closed-questions](feedback-closed-questions.md) — when a question IS warranted: recommendation first, named options with concrete values, state what a bare "yes" triggers (convention canonical in AGENTS.md)
 - [feedback-bang-commands-are-bash](feedback-bang-commands-are-bash.md) — commands Niels runs with `!` are Git Bash: /c/... paths, &&, VAR=value cmd; never $env: or backslash paths (rule in CLAUDE.md)
+- [feedback-start-sign-in-yourself](feedback-start-sign-in-yourself.md) — az login / fab auth / expired token: start the sign-in yourself, tell Niels which account to pick (Pingala: nchristensen@pingala.eu) (rule in CLAUDE.md)
 
 ## Project
 - [workspace-design](workspace-design.md) — two buckets (own/customers), two types (content/function), focus field, scale
