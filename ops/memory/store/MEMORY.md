@@ -250,3 +250,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-prod-schedule-and-dq-mail](carlras-prod-schedule-and-dq-mail.md) -- first green PROD 11-03, weekdays 06:30; DQ mail runs as last saver; pyz release = push to main
 - [aeven-metadata-driven-views](aeven-metadata-driven-views.md) -- metadata + shared generator writes plain SQL, changed views only, marked block in hand-owned views
 - [eval-2026-11-05-capture-user-line](eval-2026-11-05-capture-user-line.md) -- evaluative: daily stream capture defects (encoding, skill bodies in User line); no filter while summarization is off
+- process-insight-ax09-key-form — AX09 keyed DataAreaId-RecId, others hash; revisit two key forms (2026-11-04)
+- process-insight-house-star — star in AtomicBase house shape, FK -1, Curated reads Enriched only (2026-11-04)
