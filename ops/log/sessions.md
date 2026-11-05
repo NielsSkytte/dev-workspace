@@ -1710,3 +1710,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** (owner) `input/` belongs in the project room, never in the customer repo. Room rule: before syncing to Aeven pull and read the other's `now/`, after it note the commit in your own (`499c458`), after Kresten and Niels synced the same change within an hour.
 - **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` Progress updated (2026-11-04). Room task OAuth stays doing until Aeven switches.
 - **Next:** Aeven's two OAuth connection ids -> AevenDev value set `oauth`, sync, run; when the sys_choice role is granted, rerun and check ChoiceLabel and the catalogue. PDI `svc_fabric_oauth` keeps `personalize_choices`.
+
+## 2026-11-05 (Matas DataCompare: SWA access answer; session 0231b775)
+- **Did:** Checked Matas's reply on the Static Web App setup against `setup_swa.ps1`, `deploy_swa.ps1` and email 07. Contributor on the resource group covers the Azure steps; app registration ownership covers the federated credential and redirect URIs. Three gaps named: "Assignment required" and group assignment missing from Matas's list, resource provider registration on both subscriptions unconfirmed, resource group and app names not yet given. `/log` finalized 11-04, described the 11-03 and 11-04 lines, and applied the two 11-03 carry-overs (stall e62e6265 datahub -0.75 h; Aeven no-task 0.50 h merged into 400760).
+- **Decided:** (owner) "Team" in Matas's reply means Niels plus someone with F&O access. Niels has already written to Matas himself, so no email 08.
+- **Tasks:** `2026-09-21-matas-datacompare-production` held for this session, status unchanged.
+- **Next:** Matas's plan is two resource groups in two subscriptions (MatasGroup D365FO Dev and Prod), the runbook assumes one `rg-datacompare` and the scripts have no subscription setting: update `prototype/README.md` and the scripts when the names arrive, then run the go-live for UAT first.

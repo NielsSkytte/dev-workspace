@@ -246,3 +246,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-03-parallel-sessions](eval-2026-11-03-parallel-sessions.md) -- two sessions on Carl Ras MetaAtomic deploy; ListAgents blind across accounts, ~/.claude-priv/projects transcripts show it
 - [servicenow-oauth-and-sys-choice-role](servicenow-oauth-and-sys-choice-role.md) -- OAuth client credentials in a Fabric pipeline (two connections, header rules, basic/oauth switch); personalize_choices opens sys_choice + dictionary; Aeven sys_choice at 4 fields
 - [project-room-sync-collision](project-room-sync-collision.md) -- evaluative: both people synced the same change to Aeven; room rule: pull + read the other's now/ before, note the commit after
+- [datacompare-swa-two-subscriptions](datacompare-swa-two-subscriptions.md) -- Matas SWA plan: two RGs in D365FO Dev/Prod subscriptions; Contributor enough; gaps: Assignment required, provider registration, names
+- [carlras-prod-schedule-and-dq-mail](carlras-prod-schedule-and-dq-mail.md) -- first green PROD 11-03, weekdays 06:30; DQ mail runs as last saver; pyz release = push to main
+- [aeven-metadata-driven-views](aeven-metadata-driven-views.md) -- metadata + shared generator writes plain SQL, changed views only, marked block in hand-owned views
+- [eval-2026-11-05-capture-user-line](eval-2026-11-05-capture-user-line.md) -- evaluative: daily stream capture defects (encoding, skill bodies in User line); no filter while summarization is off
