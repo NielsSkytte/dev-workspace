@@ -257,3 +257,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-fno-sync-follows-parent-wp](carlras-fno-sync-follows-parent-wp.md) -- F&O task sync follows the parent WP (Formaal + activity); hours stay (2026-11-11)
 - [carlras-ado-backlog-structure](carlras-ado-backlog-structure.md) -- Carl Ras ADO: Data platform / Process insight in, Business area delivers; one WP + one booking Task per Feature (2026-11-11)
 - [eval-2026-11-11-design-regression-own-rule](eval-2026-11-11-design-regression-own-rule.md) -- evaluative: a silent self-imposed safeguard undid an agreed design; ask or test instead (2026-11-11)
+- [eval-2026-11-11-weighted-gut](eval-2026-11-11-weighted-gut.md) - owner: weighted should normally sit a bit above registered
