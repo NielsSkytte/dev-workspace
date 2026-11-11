@@ -366,4 +366,10 @@ if ($Only) {
   if (Test-Path $ownRoot) { $units += $ownRoot }
   foreach ($u in $units) { Heal-Unit $u }
 }
+
+# Zed: one task per project x agent (alt-a a picker). Regenerated here so a new project
+# appears without a manual step; /new-project and every /log run this script.
+if (Get-Command python -ErrorAction SilentlyContinue) {
+  try { python (Join-Path $Dev "ops/bin/zed-tasks.py") } catch { Write-Host "   zed tasks: $_" }
+}
 Write-Host "done."

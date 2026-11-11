@@ -4,8 +4,8 @@ Zed names a task tab after the task label and ignores the terminal title, so the
 label carries the project name and a coloured square for the agent. alt-a a opens
 Zed's task picker; type part of the project and agent (e.g. "matas priv").
 Projects = folders with a CLAUDE.md under customers\\ and own\\ (dot-folders skipped).
-Hand-written tasks (labels without the agent squares) are kept. Re-run after adding
-a project: python C:/Dev/ops/bin/zed-tasks.py
+Hand-written tasks (labels without the agent squares) are kept. Run automatically by
+ops/bin/heal-repos.ps1 (so by /new-project and every /log).
 """
 import json
 import os
