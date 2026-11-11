@@ -7,7 +7,7 @@ owner: fabric-back
 priority: high
 blocked_by:
 activity:
-fno_task: CarlRData-480
+fno_task: CarlRData-855     # ADO restructure 2026-11-11: AX09: Data correctness booking Task (was 480 until 2026-11-10)
 customer_ask: dropped
 source: direct
 ---
@@ -157,3 +157,4 @@ SELECT YEAR(TransDate) y, COUNT(*) FROM enriched.GeneralLedgerTransactions GROUP
   `2026-08-18-carlras-directlake-conversion`; the tag was switched there on 08-19 17:25Z. Reassign the
   08-18 and 08-19 hours at the review gate.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
+- 2026-11-11 — fno_task -> CarlRData-855 (ADO restructure: AX09: Data correctness booking Task)

@@ -7,7 +7,7 @@ owner: fabric-back
 priority: normal
 blocked_by:
 activity:
-fno_task: CarlRData-555
+fno_task: CarlRData-855     # ADO restructure 2026-11-11: AX09: Data correctness booking Task (was 555 until 2026-11-10)
 customer_ask: none
 source: direct
 ---
@@ -319,4 +319,4 @@ Grouped as the join actually compares, `inventsumdim` has zero duplicated keys a
              (same investigation, same fix window). Open work is now: GeneralLedgerTransactions
              +4, the 28-expectation audit, and the raw key-map re-key + repair + audit.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
-
+- 2026-11-11 — fno_task -> CarlRData-855 (ADO restructure: AX09: Data correctness booking Task)

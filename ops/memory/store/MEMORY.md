@@ -252,3 +252,8 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-05-capture-user-line](eval-2026-11-05-capture-user-line.md) -- evaluative: daily stream capture defects (encoding, skill bodies in User line); no filter while summarization is off
 - process-insight-ax09-key-form — AX09 keyed DataAreaId-RecId, others hash; revisit two key forms (2026-11-04)
 - process-insight-house-star — star in AtomicBase house shape, FK -1, Curated reads Enriched only (2026-11-04)
+- [datacompare-uat-app-live](datacompare-uat-app-live.md) - DataCompare UAT app live 2026-11-10 on Prod data; MSAL redirect.html fix; GraphQL limits; licence facts
+- [eval-2026-11-11-matas-datacompare](eval-2026-11-11-matas-datacompare.md) - microsoft-docs should precede licensing claims
+- [carlras-fno-sync-follows-parent-wp](carlras-fno-sync-follows-parent-wp.md) -- F&O task sync follows the parent WP (Formaal + activity); hours stay (2026-11-11)
+- [carlras-ado-backlog-structure](carlras-ado-backlog-structure.md) -- Carl Ras ADO: Data platform / Process insight in, Business area delivers; one WP + one booking Task per Feature (2026-11-11)
+- [eval-2026-11-11-design-regression-own-rule](eval-2026-11-11-design-regression-own-rule.md) -- evaluative: a silent self-imposed safeguard undid an agreed design; ask or test instead (2026-11-11)

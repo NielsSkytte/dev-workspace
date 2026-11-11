@@ -9,7 +9,7 @@ blocked_by:
 activity: 110383        # consultant activity on Task-72114 -- F&O derives it from the task (owner, 2026-09-29; was 111953)
 fno_task: Task-72114
 customer_ask: dropped
-waiting_on:
+waiting_on: Matas (Prod resource group, app registration, group)
 resume_on:
 source: checkin
 ---
@@ -20,7 +20,13 @@ the master switch to GFO, and getting Matas's people onto the app.
 
 ## Progress
 
-**Now (2026-10-18):** Prod released 2026-10-18: DB on schema v6 by migrate_v4/v5/v6.sql (the pipeline's SQLDB
+**Now (2026-11-11):** UAT app live since 2026-11-10: https://zealous-rock-09f016303.6.azurestaticapps.net
+(swa-datacompare-uat, rg-datacompare-weu-uat, app reg bce553fe). Interim (owner): deployed `-Environment prod
+-AppEnvironment uat`, so it shows Prod data; the UAT group is in dc_uat and dc_prod. Sign-in loop fixed (anonymous
+redirect.html), MetaAtomic v2 design with a data-source badge, load about 6 s -> 3 s, Guide tab, method card removed;
+fabric `dev` d3bf5c5 pushed. Sara Jeftic (non-admin) signed in and saw data 2026-11-10. Waiting on Matas for Prod.
+
+**2026-10-18:** Prod released 2026-10-18: DB on schema v6 by migrate_v4/v5/v6.sql (the pipeline's SQLDB
 step failed twice, CopyOverwriteResult.GenericError, cause unknown); GQL_DataCompare (0d80e0f3) + notebook by
 pipeline; Prod run 12:41-12:43 UTC Completed (Vendor 11,609 matched, 40,909 open, 0 rules). Closed Static Web
 App (Standard, Entra sign-in, managed identity as federated credential) tested end to end on leita.dk, test
@@ -35,24 +41,25 @@ Pipeline release of SQLDB (fails with a generic error, 2026-10-18) -> migrate sc
 SWA Free plan -> Standard (Matas requires a closed page, 2026-10-17).
 
 **Next:**
-1. On Matas's reply to email 07: run the go-live runbook (prototype/README.md > Static Web App); then check a
-   non-admin user, an Entra group as the database role member, and an outsider refused.
-2. UAT comparisons (compare_pair.environment = 'uat') after Link to Fabric for F&O UAT. Inference: the
-   notebook may need source configuration for UAT.
-3. Diagnose the pipeline's SQLDB deploy failure; until then schema changes reach Prod by migrate script.
-4. Customer page with 0 matched: show the missing lists first and say why (offered 2026-10-09, not answered).
-5. Rule builder slice 2: missing-record rules, conditions on other fields (DESIGN-custom-rules.md).
-6. Master flag MFO -> GFO and people at Matas in the app, both by 2026-11-01.
+1. On Matas's Prod resources (resource group, app registration, group): run the go-live runbook for the Prod app
+   (prototype/README.md > Static Web App); check a non-admin user and an outsider refused.
+2. CNAME `datacompare-uat.matasgroup.com` -> `zealous-rock-09f016303.6.azurestaticapps.net` (owner asks Matas IT);
+   then add the custom domain to the SWA and its redirect URIs to the app registration.
+3. After Link to Fabric for F&O UAT: UAT comparisons (compare_pair.environment = 'uat'), redeploy the UAT app with
+   `-Environment uat`, drop the UAT group from dc_prod. Inference: the notebook may need source configuration for UAT.
+4. Diagnose the pipeline's SQLDB deploy failure; until then schema changes reach Prod by migrate script.
+5. Customer page with 0 matched: show the missing lists first and say why (offered 2026-10-09, not answered).
+6. Rule builder slice 2: missing-record rules, conditions on other fields (DESIGN-custom-rules.md).
+7. Master flag MFO -> GFO (agreed for 2026-11-01, not done).
 
 ## Needs from customer
 
 - **Matas:** rulings on the big buckets (on-hold All->No 2,497; the `%1` address placeholder; bank
   accounts and person names not migrated; 90 vendors without a GFO address; 38 on-hold vendors not
   migrated). Each ruling becomes an acceptance rule. **Owed.**
-- **Matas:** hosting as two closed Static Web Apps (UAT, Prod; Standard plan; both on the Prod DB, split by
-  environment): resource group + Contributor, two app registrations (Niels owner, assignment required, User.Read +
-  GraphQLApi.Execute.All consented), two groups, Link to Fabric for F&O UAT. Email 07 **sent by the owner
-  by 2026-10-18** (his own wording, to Sara, Thomas and Ben). Awaiting their reply.
+- **Matas:** hosting (email 07, sent by 2026-10-18). UAT delivered 2026-11-10 (subscription, rg-datacompare-weu-uat,
+  app reg bce553fe, group "DataCompare UAT users"). **Owed:** Prod resource group + Contributor, Prod app
+  registration, Prod group; Link to Fabric for F&O UAT.
 
 ## Why
 Task-72114 is the F&O task for all Matas work after 2026-09-14 (owner, 2026-09-21). Work up to and
@@ -63,6 +70,7 @@ including 2026-09-14 books to Task-65904.
 - Before this: `2026-09-08-matas-datacompare-engine-app` (Task-65904), closed 2026-09-21.
 
 ## Log
+- 2026-11-11 - UAT app live (2026-11-10) on Prod data; sign-in loop fix, design v2 + data badge, load ~3 s, Guide tab, method card removed; fabric dev d3bf5c5.
 - 2026-10-21 — Customer ask dropped: no longer relevant
 - 2026-09-21 - created at check-in; the owner named Task-72114 for all work after 2026-09-14.
   Matas heartbeats on 2026-09-18 and 2026-09-21 before the re-tag carry the engine-app slug and are

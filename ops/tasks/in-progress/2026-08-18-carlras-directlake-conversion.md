@@ -8,7 +8,7 @@ priority: high
 blocked_by:
 waiting_on: decision
 activity:
-fno_task: CarlRData-555
+fno_task: CarlRData-857     # ADO restructure 2026-11-11: Semantic model: Direct Lake booking Task (was 555 until 2026-11-10)
 customer_ask: none
 source: session
 ---
@@ -187,3 +187,4 @@ dims. Deploying the model first would fail on framing.
   08-19 17:25Z, so the earlier hours need reassigning at the review gate.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
 - 2026-09-21 — check-in: parked (waiting_on: decision). DEV work complete. CTAS-merge content merged in. Production Direct Lake go/no-go undecided.
+- 2026-11-11 — fno_task -> CarlRData-857 (ADO restructure: Semantic model: Direct Lake booking Task)
