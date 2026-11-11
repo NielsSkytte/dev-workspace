@@ -13,6 +13,14 @@ const tick = atom({ plugin: 'quiet-transcript', key: 'tick' } as const, 0)
 const done = atom({ plugin: 'quiet-transcript', key: 'done' } as const, 0)
 const board = atom({ plugin: 'quiet-transcript', key: 'board' } as const, {} as Record<string, Board>)
 const turn = atom({ plugin: 'quiet-transcript', key: 'turn' } as const, 0)
+const showCode = atom({ plugin: 'quiet-transcript', key: 'showCode' } as const, false)
+const openCode = atom({ plugin: 'quiet-transcript', key: 'openCode' } as const, {} as Record<string, boolean>)
+const CODE_HREF = 'https://code.quiet-transcript.local/'
+const hashOf = (s: string): string => {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
 
 const EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit']
 const SHELL_TOOLS = ['Bash', 'PowerShell']
@@ -115,7 +123,13 @@ export const register: Register = (on, options) => {
         required: ['steps'],
       },
     })
+    await $.command.register({ name: 'code', description: 'Show or hide code blocks in replies.', immediate: true })
     return next(e)
+  })
+
+  on('command.run', { command: 'code' }, async ($) => {
+    const shown = await update($, showCode, v => !v)
+    return { text: shown ? 'Code blocks shown. /code hides them again.' : 'Code blocks hidden. /code shows them.' }
   })
 
   // The plan tool: replaces this loop's step list.
@@ -244,15 +258,35 @@ export const register: Register = (on, options) => {
     return <Box />
   })
 
-  // Fenced code blocks in replies fold to a one-line marker; ctrl+o still shows the stored message.
-  on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {
+  // Fenced code blocks in replies fold to a clickable "show code" line, each block on its own;
+  // /code opens every block at once.
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     const text = e.props.text
     if (!text.includes('```')) return next(e)
-    const folded = text.replace(FENCE, (_m, body: string) => {
+    if (await read($, showCode)) return next(e)
+    const open = await read($, openCode)
+    const hrefs: string[] = []
+    const folded = text.replace(FENCE, (block: string, body: string) => {
+      const href = CODE_HREF + hashOf(body)
+      hrefs.push(href)
+      if (open[href]) return `[▾ hide code](${href})\n\n${block}`
       const lines = body.replace(/\n$/, '').split('\n').length
-      return `▸ code hidden (${lines} lines)`
+      return `[▸ show code (${lines} lines)](${href})`
     })
-    return next({ ...e, props: { ...e.props, text: folded } })
+    const { Box, Text, Markdown } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="row">
+        <Text>{e.props.isFirstOfReply ? '● ' : '  '}</Text>
+        <Box flexDirection="column" flexGrow={1}>
+          <Markdown
+            key="qt-code"
+            text={folded}
+            pressableLinks={hrefs}
+            onLinkPress={link => { void update($, openCode, o => ({ ...o, [link.href]: !o[link.href] })) }}
+          />
+        </Box>
+      </Box>
+    )
   })
 
   // Your own prompts: bold, coloured, with a marker, so they are easy to find when scrolling.

@@ -17,6 +17,8 @@ declare module 'claude-code' {
       done: number
       board: Record<string, Board>
       turn: number
+      showCode: boolean
+      openCode: Record<string, boolean>
     }
   }
 }
