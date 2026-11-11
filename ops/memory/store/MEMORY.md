@@ -259,3 +259,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-11-design-regression-own-rule](eval-2026-11-11-design-regression-own-rule.md) -- evaluative: a silent self-imposed safeguard undid an agreed design; ask or test instead (2026-11-11)
 - [eval-2026-11-11-weighted-gut](eval-2026-11-11-weighted-gut.md) - owner: weighted should normally sit a bit above registered
 - [aeven-fabric-connections](aeven-fabric-connections.md) -- Aeven DEV connections: ServiceNow_Test_BasicAuth_http_v2 (494578c4) for ServiceNow, CON_Fabric_SQL (d7263d88) for SQL_Util; production connection asked 2026-11-11
+- [value-gut-matas-uat-deploy-undercounted](value-gut-matas-uat-deploy-undercounted.md) -- evaluative: Matas W46 UAT deploy weighted far too low by owner gut; deployment work under-weighted (inference)
