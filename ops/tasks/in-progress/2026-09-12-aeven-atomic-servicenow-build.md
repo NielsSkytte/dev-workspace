@@ -20,7 +20,9 @@ to raw, then curated layer and semantic model. Single activity for all project w
 
 ## Progress
 
-**Now (2026-11-04, late):** Metadata-driven views (decision 2026-11-04 rewritten): Enriched views generated at runtime from SQL_Util by MetaAtomic `atomic_views` 0.2 (own `b85353d`), house formatting, ownership via `servicenow_tables.view_mode`, breaking-change guard, persist in dependency waves, repo copy via DevOps API (waits for a dataaidemo PAT in Key Vault). Dev: dataaidemo `fd05db3`, flag test passed (blocked + free change). Room commits `d703c29`, `1244fb4` local, not pushed. Task - ServiceNow (ITSM) phase-1 model deployed in dev. AtomicSQL / AtomicInstructionSets reviewed, findings sent to the process-insight session. Not synced to Aeven: needs `Warehouse_SqlEndpoint` for aeven-dev. Curated persist still in its notebook.
+**Now (2026-11-11):** Aeven DEV connection is `ServiceNow_Test_BasicAuth_http_v2` (`494578c4-…`, WebForPipeline, Basic, Aeven gateway), verified by Niels and named in `environments.json` (room `35eb6e7`). `CON_Fabric_SQL` (`d7263d88-…`) reads the plan config from SQL_Util (Kresten). Niels asked Aeven for a production Web v2 connection (he cannot create it).
+
+**Earlier (2026-11-04, late):** Metadata-driven views (decision 2026-11-04 rewritten): Enriched views generated at runtime from SQL_Util by MetaAtomic `atomic_views` 0.2 (own `b85353d`), house formatting, ownership via `servicenow_tables.view_mode`, breaking-change guard, persist in dependency waves, repo copy via DevOps API (waits for a dataaidemo PAT in Key Vault). Dev: dataaidemo `fd05db3`, flag test passed (blocked + free change). Room commits `d703c29`, `1244fb4` local, not pushed. Task - ServiceNow (ITSM) phase-1 model deployed in dev. AtomicSQL / AtomicInstructionSets reviewed, findings sent to the process-insight session. Not synced to Aeven: needs `Warehouse_SqlEndpoint` for aeven-dev. Curated persist still in its notebook.
 
 **Earlier (2026-11-04):** OAuth (client credentials) built and proven on PDI dev443926 + NielsWorkspace_Dev; `ServiceNow_Auth` (VL_RunSettings) switches basic/oauth per value set; basic rerun on the same pipeline passes. On MasterDataPlan main `3b8ab2e` with Aeven = basic. OAuth email sent to Aeven (client, property, 2 gateway connections); waiting for their connection ids. Aeven run 2026-11-03 (`20261103T144624Z`) clean, 23 tables / 43,273 rows; `enriched.ChoiceLabel` 0 rows because sys_choice returns only label, sys_id, sys_domain, sys_domain_path (on 10-20 it returned all fields: access changed at Aeven). On the PDI `personalize_choices` opens all sys_choice fields plus full sys_dictionary / sys_db_object; email sent asking for it or a read-only role. Kresten moved the SQL_Util config to schema `config` (done at Aeven); room rule added for who syncs to Aeven (`499c458`).
 
@@ -62,7 +64,7 @@ the first empty page -> page to the stats count (inference: an ACL-emptied page 
 - **Aeven:** say which empty fields on 13 tables are unreadable vs unused in test
   (`Aeven_ServiceNow_Field_Access_email.md`). Sent; first reply by 2026-10-23: many may be unused in test.
 - **Aeven:** production list (instance URL, integration user and roles, gateway and connection,
-  ITSM-ETL-Prod workspace, run account). Drafted 2026-10-03 (`Aeven_Production_Requirements_email.md`), **not sent**.
+  ITSM-ETL-Prod workspace, run account). Production connection asked 2026-11-11; rest of the list drafted 2026-10-03 (`Aeven_Production_Requirements_email.md`), **not sent**.
 
 ## Why
 Signed Q3 POC engagement (project 4058). First gate: ServiceNow data landed in raw, deployable to
@@ -85,3 +87,4 @@ a landing-zone workspace or directly into fabric-etl.
 - 2026-10-23 — waiting on Aeven for permissions; first reply: many empty fields may be unused in test
 - 2026-10-28 — Aeven traffic complaint: measured 0.44 GB/run; deltas + weekly full built (42305a8); traffic email drafted
 - 2026-11-03 — project shared with Kresten via project-room/ (atompower4us/aeven-atomicservicenow-room, CI green); originals moved; OAuth room task taken by Niels
+- 2026-11-11 — aeven-dev connection named in environments.json (room 35eb6e7).

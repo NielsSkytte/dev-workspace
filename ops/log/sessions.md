@@ -1734,3 +1734,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** data source = area path, Feature = finite deliverable; one WP per Feature with one `SyncToPingala` booking Task; requests = untagged `Request` Task in the other's WP; three Epic types (Data platform, Process insight in; Business area delivers). Five rows in `datahub/CONTEXT_DECISIONS.md`.
 - **Tasks:** created `2026-11-11-carlras-ado-restructure` (in-progress, customer_ask open). `fno_task` changed: 08-14 and 08-17 -> CarlRData-855, 08-18 -> CarlRData-857.
 - **Next:** Carl Ras ADO admin: four area paths + Shared Queries write; Original Estimate on 855/857; Mads's answer (158/159 move, orphans).
+
+## 2026-11-11 (Aeven AtomicServiceNow: DEV connection named; session f254bdb6)
+- **Did:** Identified the Aeven DEV ServiceNow connection as `ServiceNow_Test_BasicAuth_http_v2` (`494578c4-…`, WebForPipeline); Niels verified it. Named it in `project-room/tooling/config/environments.json`, pushed room `35eb6e7`. The pull brought Kresten's `CON_Fabric_SQL` (`d7263d88-…`) for SQL_Util. Niels asked Aeven for a production Web v2 connection.
+- **Decided:** none.
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` Progress rewritten (2026-11-11), still in progress.
+- **Next:** unchanged: Aeven's OAuth connection ids, sys_choice role, production connection.
