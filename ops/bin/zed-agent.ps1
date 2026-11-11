@@ -2,9 +2,10 @@
 # Project root = nearest folder at or above the active file that holds a CLAUDE.md,
 # stopping at C:\Dev. Zed passes only the open file, never a folder selected in the
 # file tree, so when no open file points to a project the script lists the projects
-# and asks which one. Called by the tasks in %APPDATA%\Zed\tasks.json.
+# and asks which one. Without -Agent (alt-a a) it always asks for the project, Enter =
+# the open file's project, then asks for the agent. Called by the tasks in %APPDATA%\Zed\tasks.json.
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('claude', 'claude-priv', 'gemini', 'antigravity')][string]$Agent,
+    [ValidateSet('', 'claude', 'claude-priv', 'gemini', 'antigravity')][string]$Agent = '',
     [string]$FilePath = 'none',
     [string]$WorktreeRoot = 'C:\Dev'
 )
@@ -26,20 +27,34 @@ if ($dir -like "$devRoot*") {
 }
 if (-not $root) { $root = $dir }
 
-if ($root -eq $devRoot) {
+if ($root -eq $devRoot -or -not $Agent) {
     # Projects = folders with a CLAUDE.md under customers\ and own\ (dot-folders skipped).
     $projects = @(Get-ChildItem "$devRoot\customers", "$devRoot\own" -Filter CLAUDE.md -Recurse -Depth 2 -File -ErrorAction SilentlyContinue |
         ForEach-Object { $_.DirectoryName } |
         Where-Object { $_ -notmatch '\\\.' } |
         Sort-Object -Unique)
-    Write-Host "[$Agent] Pick a project:"
+    Write-Host "Pick a project:"
     Write-Host ("  {0,2}  {1}" -f 0, 'C:\Dev (workspace)')
     for ($i = 0; $i -lt $projects.Count; $i++) {
         Write-Host ("  {0,2}  {1}" -f ($i + 1), $projects[$i].Substring($devRoot.Length + 1))
     }
-    $pick = Read-Host 'Number (Enter = 0)'
+    $pick = Read-Host "Number (Enter = $($root.Substring([Math]::Min($root.Length, $devRoot.Length + 1)) -replace '^$', '0'))"
     $n = 0
-    if ([int]::TryParse($pick, [ref]$n) -and $n -ge 1 -and $n -le $projects.Count) { $root = $projects[$n - 1] }
+    if ([int]::TryParse($pick, [ref]$n)) {
+        if ($n -eq 0) { $root = $devRoot }
+        elseif ($n -le $projects.Count) { $root = $projects[$n - 1] }
+    }
+}
+
+if (-not $Agent) {
+    $agents = 'claude', 'claude-priv', 'gemini', 'antigravity'
+    $labels = 'Claude (enterprise)', 'Claude (private)', 'Gemini', 'Antigravity IDE'
+    Write-Host "Pick an agent:"
+    for ($i = 0; $i -lt $agents.Count; $i++) { Write-Host ("  {0,2}  {1}" -f ($i + 1), $labels[$i]) }
+    $pick = Read-Host 'Number (Enter = 1)'
+    $n = 1
+    if (-not ([int]::TryParse($pick, [ref]$n) -and $n -ge 1 -and $n -le $agents.Count)) { $n = 1 }
+    $Agent = $agents[$n - 1]
 }
 
 Set-Location $root
