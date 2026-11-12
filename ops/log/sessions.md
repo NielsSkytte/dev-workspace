@@ -1740,3 +1740,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** none.
 - **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` Progress rewritten (2026-11-11), still in progress.
 - **Next:** unchanged: Aeven's OAuth connection ids, sys_choice role, production connection.
+
+## 2026-11-12 (Matas DataCompare: Prod app live; session 36cf4bee)
+- **Did:** Microsoft.Web + Microsoft.ManagedIdentity registered on Prod subscription 9d2e9d4c (Syed). Created `swa-datacompare-prod` (Standard) in rg-datacompare-weu-prod with managed identity `id-swa-datacompare-prod` (principal c8573a9b) and sign-in app settings; deployed the closed page: https://salmon-grass-03a388b03.3.azurestaticapps.net. Teams message to Syed drafted; Syed applied federated credential, Web + SPA redirect URIs and ID token issuance on app reg 820c064e. Niels shared SQLDB/GQL items with "DataCompare Prod users" (2 members: Sara, Niels) and ran `grant_access.py prod --prod-group` (group in dc_prod). Data loads on the Prod app (owner).
+- **Decided:** none.
+- **Tasks:** `2026-09-21-matas-datacompare-production` log + Next updated; still in progress.
+- **Next:** owner adds users to the Prod group; two CNAMEs ordered from Matas IT (UAT -> zealous-rock, Prod -> salmon-grass), then custom domains on both SWAs and redirect URIs to Syed; outsider-refused check not done. Git Bash gotchas met: `az` resource ids need `MSYS_NO_PATHCONV=1`; Python-printed values carry `\r` into `az` args.

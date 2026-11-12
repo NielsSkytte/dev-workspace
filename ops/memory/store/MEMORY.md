@@ -260,3 +260,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-11-weighted-gut](eval-2026-11-11-weighted-gut.md) - owner: weighted should normally sit a bit above registered
 - [aeven-fabric-connections](aeven-fabric-connections.md) -- Aeven DEV connections: ServiceNow_Test_BasicAuth_http_v2 (494578c4) for ServiceNow, CON_Fabric_SQL (d7263d88) for SQL_Util; production connection asked 2026-11-11
 - [value-gut-matas-uat-deploy-undercounted](value-gut-matas-uat-deploy-undercounted.md) -- evaluative: Matas W46 UAT deploy weighted far too low by owner gut; deployment work under-weighted (inference)
+- [datacompare-prod-app-live](datacompare-prod-app-live.md) -- DataCompare Prod app live 2026-11-12 (salmon-grass); app-reg values via Syed; Git Bash az path/CR gotchas
+- [eval-2026-11-12-writing-voice-teams](eval-2026-11-12-writing-voice-teams.md) -- evaluative: writing-voice did not fire for a customer Teams message
