@@ -2,7 +2,7 @@
 
 alt-a a opens Zed's task picker; type part of the project, Enter. The task runs
 ops/bin/zed-agent.ps1 -Project <dir>, which asks for the agent in the terminal.
-Zed names the tab after the task label: customer/project (own/<project> for own work).
+Zed names the tab after the task label: the project folder name only.
 Projects = folders with a CLAUDE.md under customers\\ and own\\ (dot-folders skipped).
 Hand-written tasks (no -Project argument) are kept. Run automatically by
 ops/bin/heal-repos.ps1 (so by /new-project and every /log).
@@ -29,9 +29,8 @@ def projects():
 
 
 def title(proj):
-    """customers/Matas/DataCompare -> Matas/DataCompare; own/X -> own/X (Zed cuts tab labels at 25 chars)."""
-    rel = proj.relative_to(DEV).parts
-    return "/".join(rel[1:] if rel[0] == "customers" else rel)
+    """Last folder only: customers/Matas/DataCompare -> DataCompare, customers/Matas -> Matas, own/X -> X."""
+    return proj.name
 
 
 def main():
