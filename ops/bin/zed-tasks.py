@@ -30,7 +30,10 @@ def projects():
 
 def title(proj):
     """Path below customers/ or own/: customers/Matas/DataCompare -> Matas/DataCompare, own/X -> X."""
-    return "/".join(proj.relative_to(DEV).parts[1:])
+    # Zed sorts the picker by label (byte order). An invisible WORD JOINER in front of own/
+    # labels sorts them after every customer label without showing in the tab.
+    rel = proj.relative_to(DEV).parts
+    return ("⁠" if rel[0] == "own" else "") + "/".join(rel[1:])
 
 
 def main():
