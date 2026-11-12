@@ -310,7 +310,7 @@ def header_bytes(date):
 
 
 def main():
-    raw = sys.stdin.read()
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")  # hook JSON is UTF-8; text-mode stdin is cp1252 on Windows
     try:
         hook = json.loads(raw)
     except Exception:
