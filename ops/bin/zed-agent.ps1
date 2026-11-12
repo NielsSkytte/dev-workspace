@@ -64,10 +64,10 @@ if (-not $Agent) {
 Set-Location $root
 Write-Host "[$Agent] $root"
 
-# Tab title = coloured square for the agent + project folder name (OSC 2). Zed has no
+# Tab title = coloured square for the agent + customer/project (OSC 2). Zed has no
 # per-tab colour, so the square carries it. Claude's own title would overwrite ours.
 $square = @{ 'claude' = 0x1F7E6; 'claude-priv' = 0x1F7EA; 'gemini' = 0x1F7E9; 'antigravity' = 0x1F7E7 }[$Agent]
-$name = if ($root -eq $devRoot) { 'Dev' } else { Split-Path $root -Leaf }
+$name = if ($root -eq $devRoot) { 'Dev' } else { $root.Substring($devRoot.Length + 1) -replace '^customers\\', '' -replace '\\', '/' }
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 [Console]::Write("$([char]27)]2;$([char]::ConvertFromUtf32($square)) $name$([char]7)")
 $env:CLAUDE_CODE_DISABLE_TERMINAL_TITLE = '1'

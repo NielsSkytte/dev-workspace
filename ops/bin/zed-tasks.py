@@ -2,9 +2,9 @@
 
 alt-a a opens Zed's task picker; type part of the project, Enter. The task runs
 ops/bin/zed-agent.ps1 -Project <dir>, which asks for the agent in the terminal.
-Zed names the tab after the task label (the project), so the tab has no agent colour.
+Zed names the tab after the task label: customer/project (own/<project> for own work).
 Projects = folders with a CLAUDE.md under customers\\ and own\\ (dot-folders skipped).
-Hand-written tasks (labels without the folder icon or old agent squares) are kept. Run automatically by
+Hand-written tasks (no -Project argument) are kept. Run automatically by
 ops/bin/heal-repos.ps1 (so by /new-project and every /log).
 """
 import json
@@ -14,8 +14,7 @@ from pathlib import Path
 DEV = Path("C:/Dev")
 TASKS = Path(os.environ["APPDATA"]) / "Zed" / "tasks.json"
 
-PREFIX = "📁"  # folder icon marks generated tasks
-OLD = ("🟦", "🟪", "🟩")  # per-agent tasks from the previous layout
+OLD = ("📁", "🟦", "🟪", "🟩")  # labels of earlier generated layouts
 LAUNCHER = "C:/Dev/ops/bin/zed-agent.ps1"
 
 
@@ -29,14 +28,21 @@ def projects():
     return sorted(found, key=lambda p: str(p).lower())
 
 
+def title(proj):
+    """customers/Matas/DataCompare -> Matas/DataCompare; own/X -> own/X (Zed cuts tab labels at 25 chars)."""
+    rel = proj.relative_to(DEV).parts
+    return "/".join(rel[1:] if rel[0] == "customers" else rel)
+
+
 def main():
     text = TASKS.read_text(encoding="utf-8") if TASKS.exists() else "[]"
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("//"))
-    kept = [t for t in json.loads(body) if not t.get("label", "").startswith((PREFIX,) + OLD)]
+    kept = [t for t in json.loads(body)
+            if "-Project" not in t.get("args", []) and not t.get("label", "").startswith(OLD)]
     generated = []
     for proj in projects():
         generated.append({
-            "label": f"{PREFIX} {proj.name}",
+            "label": title(proj),
             "command": "powershell",
             "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", LAUNCHER,
                      "-Project", str(proj)],
