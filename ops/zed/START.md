@@ -1,7 +1,7 @@
 # Start a session
 
-1. `alt-a a`. Type project + agent, e.g. `matas priv`, `carl claude`, `aeven gemini`. Enter.
-2. Tab colour: 🟦 Claude enterprise · 🟪 Claude private · 🟩 Gemini.
+1. `alt-a a`. Type part of the project, e.g. `matas`, `datahub`. Enter.
+2. In the terminal, pick the agent: 1 Claude enterprise, 2 Claude private, 3 Gemini, 4 Antigravity. Enter = 1.
 3. Claude reads the project context. In a customer project it asks which task to bill. Answer, then work.
 4. End with `/exit` (or `/log`).
 

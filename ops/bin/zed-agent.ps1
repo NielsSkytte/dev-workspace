@@ -3,11 +3,14 @@
 # stopping at C:\Dev. Zed passes only the open file, never a folder selected in the
 # file tree, so when no open file points to a project the script lists the projects
 # and asks which one. Without -Agent (alt-a a) it always asks for the project, Enter =
-# the open file's project, then asks for the agent. Called by the tasks in %APPDATA%\Zed\tasks.json.
+# the open file's project, then asks for the agent. With -Project (the per-project tasks
+# from zed-tasks.py) it skips the project question and asks only for the agent.
+# Called by the tasks in %APPDATA%\Zed\tasks.json.
 param(
     [ValidateSet('', 'claude', 'claude-priv', 'gemini', 'antigravity')][string]$Agent = '',
     [string]$FilePath = 'none',
-    [string]$WorktreeRoot = 'C:\Dev'
+    [string]$WorktreeRoot = 'C:\Dev',
+    [string]$Project = ''
 )
 
 $devRoot = 'C:\Dev'
@@ -27,7 +30,8 @@ if ($dir -like "$devRoot*") {
 }
 if (-not $root) { $root = $dir }
 
-if ($root -eq $devRoot -or -not $Agent) {
+if ($Project) { $root = $Project }
+elseif ($root -eq $devRoot -or -not $Agent) {
     # Projects = folders with a CLAUDE.md under customers\ and own\ (dot-folders skipped).
     $projects = @(Get-ChildItem "$devRoot\customers", "$devRoot\own" -Filter CLAUDE.md -Recurse -Depth 2 -File -ErrorAction SilentlyContinue |
         ForEach-Object { $_.DirectoryName } |
