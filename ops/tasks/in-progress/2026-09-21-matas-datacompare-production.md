@@ -9,7 +9,7 @@ blocked_by:
 activity: 110383        # consultant activity on Task-72114 -- F&O derives it from the task (owner, 2026-09-29; was 111953)
 fno_task: Task-72114
 customer_ask: dropped
-waiting_on: Matas/Syed (resource providers on Prod subscription, owner on Prod app reg, Prod group members)
+waiting_on: none
 resume_on:
 source: checkin
 ---
@@ -20,14 +20,11 @@ the master switch to GFO, and getting Matas's people onto the app.
 
 ## Progress
 
-**Now (2026-11-11):** UAT app live since 2026-11-10: https://zealous-rock-09f016303.6.azurestaticapps.net
-(swa-datacompare-uat, rg-datacompare-weu-uat, app reg bce553fe). Interim (owner): deployed `-Environment prod
--AppEnvironment uat`, so it shows Prod data; the UAT group is in dc_uat and dc_prod. Sign-in loop fixed (anonymous
-redirect.html), MetaAtomic v2 design with a data-source badge, load about 6 s -> 3 s, Guide tab, method card removed;
-fabric `dev` d3bf5c5 pushed. Sara Jeftic (non-admin) signed in and saw data 2026-11-10.
-Prod resources delivered 2026-11-11: subscription MatasGroup D365FO Prod 9d2e9d4c, rg-datacompare-weu-prod, app reg
-820c064e, group "DataCompare Prod users" (0 members), Contributor by PIM. setup_swa.ps1 failed
-(MissingSubscriptionRegistration: Microsoft.Web, Microsoft.ManagedIdentity); nothing created in Prod.
+**Now (2026-11-12):** Prod app live 2026-11-12: https://salmon-grass-03a388b03.3.azurestaticapps.net
+(swa-datacompare-prod, rg-datacompare-weu-prod, sub 9d2e9d4c, MI id-swa-datacompare-prod principal c8573a9b, app reg
+820c064e). Syed applied federated credential, redirect URIs and ID token issuance; "DataCompare Prod users" (2
+members: Sara Jeftic, Niels) in dc_prod by grant_access.py; items shared by the owner; data loads (owner, admin account).
+UAT app live since 2026-11-10 (zealous-rock), on Prod data (interim, owner).
 
 **2026-10-18:** Prod released 2026-10-18: DB on schema v6 by migrate_v4/v5/v6.sql (the pipeline's SQLDB
 step failed twice, CopyOverwriteResult.GenericError, cause unknown); GQL_DataCompare (0d80e0f3) + notebook by
@@ -45,11 +42,10 @@ SWA Free plan -> Standard (Matas requires a closed page, 2026-10-17).
 Owner on the app registrations (Matas policy refuses, Syed 2026-11-11) -> Syed applies the app-registration values.
 
 **Next:**
-1. Prod app live 2026-11-12 (https://salmon-grass-03a388b03.3.azurestaticapps.net). Owner adds users to
-   "DataCompare Prod users". Outsider-refused check not yet done.
-2. Two CNAMEs ordered from Matas IT (owner, 2026-11-12): UAT -> `zealous-rock-09f016303.6.azurestaticapps.net`, Prod ->
+1. Two CNAMEs ordered from Matas IT (owner, 2026-11-12): UAT -> `zealous-rock-09f016303.6.azurestaticapps.net`, Prod ->
    `salmon-grass-03a388b03.3.azurestaticapps.net`. When in DNS: add each custom domain to its SWA, then send Syed the
    new Web + SPA redirect URIs for bce553fe (UAT) and 820c064e (Prod).
+2. Outsider-refused and non-admin checks on the Prod app: not done.
 3. After Link to Fabric for F&O UAT: UAT comparisons (compare_pair.environment = 'uat'), redeploy the UAT app with
    `-Environment uat`, drop the UAT group from dc_prod. Inference: the notebook may need source configuration for UAT.
 4. Diagnose the pipeline's SQLDB deploy failure; until then schema changes reach Prod by migrate script.
@@ -62,14 +58,9 @@ Owner on the app registrations (Matas policy refuses, Syed 2026-11-11) -> Syed a
 - **Matas:** rulings on the big buckets (on-hold All->No 2,497; the `%1` address placeholder; bank
   accounts and person names not migrated; 90 vendors without a GFO address; 38 on-hold vendors not
   migrated). Each ruling becomes an acceptance rule. **Owed.**
-- **Matas:** hosting (email 07, sent by 2026-10-18). UAT delivered 2026-11-10 (subscription, rg-datacompare-weu-uat,
-  app reg bce553fe, group "DataCompare UAT users"). Prod delivered 2026-11-11 (subscription MatasGroup D365FO Prod
-  9d2e9d4c, rg-datacompare-weu-prod, app reg "DataCompare Prod" 820c064e, group "DataCompare Prod users"; Contributor
-  by PIM). **Owed (Teams to Syed, sent 2026-11-11):** register Microsoft.Web + Microsoft.ManagedIdentity on
-  9d2e9d4c (setup_swa.ps1 failed: MissingSubscriptionRegistration); members in the Prod group. Owner on app
-  registrations refused by Matas policy (Syed, 2026-11-11; UAT Owner to be removed too): Niels creates SWA + identity +
-  app settings, then sends Syed the federated credential (subject = MI principalId), the Web + SPA redirect URIs and
-  ID token issuance to apply; same route for later app-registration changes. Still owed: Link to Fabric for F&O UAT.
+- **Matas:** hosting (email 07). UAT delivered 2026-11-10; Prod delivered 2026-11-11 and applied 2026-11-12 (providers
+  registered, app-registration values applied by Syed; Owner on app registrations refused by Matas policy, Syed applies
+  later changes). **Owed:** two CNAMEs (Matas IT, ordered 2026-11-12); Link to Fabric for F&O UAT.
 
 ## Why
 Task-72114 is the F&O task for all Matas work after 2026-09-14 (owner, 2026-09-21). Work up to and
