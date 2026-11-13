@@ -7,7 +7,7 @@ description: Fill the Pingala Statement of Work Word template (.docx) from an of
 
 Everything lives in `C:\Dev\own\SoWSkill` (git, synced to AAI):
 
-- Procedure: read `C:\Dev\own\SoWSkill\skill\fill-sow.md` in full and follow it.
+- Procedure: read `C:\Dev\own\SoWSkill\skill\fill-sow\SKILL.md` (its `<SOWSKILL>` is `C:\Dev\own\SoWSkill`) in full and follow it.
 - Script: `C:\Dev\own\SoWSkill\sow_fill.py`
 - Templates: `C:\Dev\own\SoWSkill\templates\` (`EN_` / `DA_Statement of Work_work order.docx`)
 - Placeholder scan: `C:\Dev\own\SoWSkill\sow_analyse_template.py <template>`
