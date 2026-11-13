@@ -23,9 +23,11 @@ run to a Word-verified output):
    `update_company_property` rewrites app.xml in the saved package.
 3. **Page header holds a literal `<` `Customer` `>` run triplet** (not a control) — one
    occurrence, rendered on every page. Fixed: `update_customer_name` now sweeps headers/footers.
-4. Still open: `C:\Dev\own\SoWSkill\sow_analyse_template.py` has a hardcoded stale template path
-   (`c:\Dev\Projects\Joe\...`) — scan inline instead, or fix it next time it's needed.
-5. `~/.claude/tools/` is **not a git repo** — the sow_fill.py fixes are unversioned.
+4. Fixed 2026-11-13: `sow_analyse_template.py` takes the template path as its argument.
+5. 2026-11-13: the source in `~/.claude/tools/` was lost (that folder was never in git). It was
+   rebuilt from the compiled `.pyc` into `own/SoWSkill/sow_fill.py`, with the procedure in
+   `own/SoWSkill/skill/fill-sow.md` (git, synced to AAI). `.claude/skills/fill-sow` is a pointer.
+   The `.pyc` lacked fix 3 (the header sweep); it was re-added.
 6. Template estimates table has 4 `<list>` rows; more activities require row duplication
    (deepcopy `w:tr`), and `w:rPr` children are schema-ordered (e.g. `w:b` before `w:highlight`)
    — Word rejects out-of-order run properties.
