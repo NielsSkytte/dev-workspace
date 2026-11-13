@@ -29,7 +29,7 @@ import sys, os, json, glob, re, datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib import heartbeats as hbrec           # the raw measurement record
 from lib.substrate import file_field
-from lib.workspace import billing_entity, identity_file, task_file
+from lib.workspace import billing_entity, task_file, IDENTITY_FILES
 from lib import noinvoice
 
 ROOT = os.environ.get("TIME_ROOT", r"C:\Dev\ops\time")
@@ -181,8 +181,16 @@ def project_id(project):
     """The F&O Project ID for a workspace project folder."""
     if project == "Dev":
         return DEV_CODE
-    return file_field(identity_file(os.path.join(DEV_WORKSPACE, project.replace("/", os.sep))),
-                       "fno_code") or "UNSET"
+    d = os.path.join(DEV_WORKSPACE, project.replace("/", os.sep))
+    # AGENTS.md first, then CLAUDE.md: a tool-neutral AGENTS.md may carry no identity block
+    # (own/AtomicCortex keeps it in CLAUDE.md), so a missing field falls through.
+    for name in IDENTITY_FILES:
+        f = os.path.join(d, name)
+        if os.path.isfile(f):
+            v = file_field(f, "fno_code")
+            if v:
+                return v
+    return "UNSET"
 
 
 def task_dims(slug):
