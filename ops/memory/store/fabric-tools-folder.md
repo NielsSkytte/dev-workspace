@@ -18,3 +18,6 @@ description: "Small Fabric admin scripts live in own/FabricTools, published to A
 - The Carl Ras copy `customers/Carl-Ras/datahub/tools/fabric_identity.py` stays: `fabric_release.py:369`
   calls it from its own folder (Niels, 2026-11-02). Credentials stay there; use `--env-file`.
 - Both copies had a crash in the connection grant (`self.spn_object_id`), fixed 2026-11-02.
+- 2026-11-13: `own/SoWSkill` published to Atomic Tools as `FabricTools/SoWSkill/` (`cd26bd1`), by hand.
+  Left out: `examples/CustomerX_Data_Platform_SoW_v2.*` and `templates/Data_Statement*.docx`, which hold a real
+  customer's name.
