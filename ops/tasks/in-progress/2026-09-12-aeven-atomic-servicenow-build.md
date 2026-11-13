@@ -20,7 +20,9 @@ to raw, then curated layer and semantic model. Single activity for all project w
 
 ## Progress
 
-**Now (2026-11-11):** Aeven DEV connection is `ServiceNow_Test_BasicAuth_http_v2` (`494578c4-…`, WebForPipeline, Basic, Aeven gateway), verified by Niels and named in `environments.json` (room `35eb6e7`). `CON_Fabric_SQL` (`d7263d88-…`) reads the plan config from SQL_Util (Kresten). Niels asked Aeven for a production Web v2 connection (he cannot create it).
+**Now (2026-11-12):** Aeven PROD exists: workspace `ITSM-ETL-Prod` (`a9483211-...`, empty), connection `ServiceNow_Prod_BasicAuth_http_v2` (`9d0cd0a3-...`), in `_aeven-prod` (room). Built and run on the PDI: stage guard + model bind, `PL_Preflight_ServiceNow`, `NB_Bootstrap_Warehouse_ServiceNow` (room `8d8906e`, local; dataaidemo `8da559d`). Rehearsal DEV -> PROD (`ServiceNow_Rehearsal_Prod`, pipeline `nsc test`): from empty through Curated; Process Insight fails where `sys_audit` never landed (`enriched.Audit` missing). Rehearsal workspace still up. Nothing synced to Aeven.
+
+**Earlier (2026-11-11):** Aeven DEV connection is `ServiceNow_Test_BasicAuth_http_v2` (`494578c4-…`, WebForPipeline, Basic, Aeven gateway), verified by Niels and named in `environments.json` (room `35eb6e7`). `CON_Fabric_SQL` (`d7263d88-…`) reads the plan config from SQL_Util (Kresten). Niels asked Aeven for a production Web v2 connection (he cannot create it).
 
 **Earlier (2026-11-04, late):** Metadata-driven views (decision 2026-11-04 rewritten): Enriched views generated at runtime from SQL_Util by MetaAtomic `atomic_views` 0.2 (own `b85353d`), house formatting, ownership via `servicenow_tables.view_mode`, breaking-change guard, persist in dependency waves, repo copy via DevOps API (waits for a dataaidemo PAT in Key Vault). Dev: dataaidemo `fd05db3`, flag test passed (blocked + free change). Room commits `d703c29`, `1244fb4` local, not pushed. Task - ServiceNow (ITSM) phase-1 model deployed in dev. AtomicSQL / AtomicInstructionSets reviewed, findings sent to the process-insight session. Not synced to Aeven: needs `Warehouse_SqlEndpoint` for aeven-dev. Curated persist still in its notebook.
 

@@ -26,3 +26,5 @@ and ignored for the others. Keep the table sorted by date.
 | 2026-09-30 | offline | Dev | conference; owner, at /log 2026-10-04 |
 | 2026-10-29 | vacation | | fridag; owner, at /log 2026-11-02; lidt arbejde registreret (1.50 h) |
 | 2026-10-30 | vacation | | fridag; owner, at /log 2026-11-02; lidt arbejde registreret (2.00 h) |
+| 2026-11-06 | vacation | | owner, at /log 2026-11-11 |
+| 2026-11-09 | vacation | | owner, at /log 2026-11-11 |

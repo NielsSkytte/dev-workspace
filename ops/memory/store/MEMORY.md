@@ -258,7 +258,10 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-ado-backlog-structure](carlras-ado-backlog-structure.md) -- Carl Ras ADO: Data platform / Process insight in, Business area delivers; one WP + one booking Task per Feature (2026-11-11)
 - [eval-2026-11-11-design-regression-own-rule](eval-2026-11-11-design-regression-own-rule.md) -- evaluative: a silent self-imposed safeguard undid an agreed design; ask or test instead (2026-11-11)
 - [eval-2026-11-11-weighted-gut](eval-2026-11-11-weighted-gut.md) - owner: weighted should normally sit a bit above registered
-- [aeven-fabric-connections](aeven-fabric-connections.md) -- Aeven DEV connections: ServiceNow_Test_BasicAuth_http_v2 (494578c4) for ServiceNow, CON_Fabric_SQL (d7263d88) for SQL_Util; production connection asked 2026-11-11
+- [aeven-fabric-connections](aeven-fabric-connections.md) -- Aeven connections: DEV ServiceNow_Test_BasicAuth_http_v2 (494578c4), PROD ServiceNow_Prod_BasicAuth_http_v2 (9d0cd0a3), CON_Fabric_SQL (d7263d88) for SQL_Util
+- [aeven-repo-access-only](aeven-repo-access-only.md) -- No access to Aeven from here, only the MasterDataPlan repo; never query Aeven's Fabric, ask Niels
 - [value-gut-matas-uat-deploy-undercounted](value-gut-matas-uat-deploy-undercounted.md) -- evaluative: Matas W46 UAT deploy weighted far too low by owner gut; deployment work under-weighted (inference)
 - [datacompare-prod-app-live](datacompare-prod-app-live.md) -- DataCompare Prod app live 2026-11-12 (salmon-grass); app-reg values via Syed; Git Bash az path/CR gotchas
 - [eval-2026-11-12-writing-voice-teams](eval-2026-11-12-writing-voice-teams.md) -- evaluative: writing-voice did not fire for a customer Teams message
+- [eval-2026-11-13-own-repos-worktree-hook](eval-2026-11-13-own-repos-worktree-hook.md) -- AAI post-commit push fails from a git worktree (GIT_DIR); own-repos still lacks Atomic Tools
+- [sowskill-examples-not-anonymised](sowskill-examples-not-anonymised.md) -- SoWSkill CustomerX SoW_v2 + Data_Statement templates hold a real customer name; keep out of staff publishes

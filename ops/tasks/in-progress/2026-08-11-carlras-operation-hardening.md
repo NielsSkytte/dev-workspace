@@ -75,7 +75,50 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
-**Now (2026-11-02):** PROD `PL_MainExecution` has not run since 10-12 (last 5 runs failed, schedule OFF); PROD tables hold 10-12 data (AX09 enriched 32 tables/242M rows, CVR 2.24M, Curated 29 tables/70M). The 10-12 failure was the semantic model only: the RecId 5638443880 row is still in `fact.CampaignForecasts` in TEST and PROD; TEST survives because its model has `Forecast Quantity` as `double` (= git), PROD had `decimal`. PROD model `09692cc9` patched to `double` via updateDefinition 11-02 16:16 UTC (only that file differs; backup `prodmodel_backup_20261102` in session scratchpad). Manual PROD run blocked for Claude by auto mode; Niels starts it. Delivery progress page judgement (`Fabric-ETL/MetaAtomic/design/stream_matrix_data.json`, dated 09-09) still says steps 3-5 PROD pending.
+**GO-LIVE HANDOFF (2026-11-12 22:20 UTC) - read this first.** Niels: "everything in PROD now". State per stream:
+- **AX09** (fixes `7731f19`: raw soft-delete of rows deleted in AX, `NB_Refresh_SqlEndpoint` before enriched): DEV + TEST done
+  (TEST raw = landing on 90 tables, row check 29/29). PROD deploy started 22:12 (see below). The first PROD run after it flags
+  ~1M deleted rows (CUSTTRANSOPEN 269,852; LEDGERTRANS 419,947 = the double 2026 GL opening balances; INVENTTRANS 163,033).
+- **Float cast** (`ba3454d`, ForecastQuantity + Volume_WmsLocation): needed by Direct Lake. A deploy cannot ALTER the column, so
+  the two derived tables are DROPPED first, then the deploy creates them, then `EXEC dimtransform.sp_CreateDimTableAsSelect
+  'WarehouseLocation'` + `EXEC facttransform.sp_CreateFactTableAsSelect 'CampaignForecasts'`. TEST done 22:10 (86,828 /
+  1,159,116). **PROD: deploy Succeeded ~22:26; both tables rebuilt 22:28 as float, 86,828 / 1,160,353 (= before).** Helper: scratchpad `wh_sql.py <ws> <wh> "<sql>"`;
+  PROD Fabric-ETL ws `cf1a5ca2-2475-41d0-b9f4-dcd408f6f145`, Warehouse_Curated `d06b6bde-1f63-4087-847c-b690f1de2307`.
+- **GTM** (`ddd5f03` enriched, `90f9d27` curated fact.GtmEvents/dim.GtmEvent): DEV + TEST loaded (TEST 23.7M). PROD after the
+  deploy: run `PL_Transform_Enriched_GTM`, then the two CTAS procs for GtmEvent / GtmEvents. Connections DEV `c8c82a0d...`, PROD
+  `6bd53ad8...` (groups added by Niels). **PROD done 22:30:** `PL_Transform_Enriched_GTM` run `79c80dd3` Completed;
+  dim.GtmEvent 48, fact.GtmEvents 14,513,420 (2026-09-08 to 2026-11-12). From now the scheduled chain keeps it.
+- **CVR**: done. `PL_Ingest_CVR` in Landingzone-Code-DEV, daily 04:00 UTC, SPN; landing 2,280,914 rows (was 2026-05-07). Check
+  after next PROD run: raw current = landing, enriched MAX(NameEffectiveFrom) > 2026-05-07.
+- **Marketo inbound**: code pushed (Landingzone-ETL `7827488`), schedule `fc919162...` still OFF until Impact (Benno) agrees 150
+  MB/day. Data stale since 2026-08-20.
+- **Model_OneLake (Direct Lake, decided 11-12)**: DEV + TEST live, parity no defects. Semantic-Model main `aa871c8` (double types).
+  **PROD Model_OneLake = `0abb3f3f-67c4-46df-bd46-97e4dbe845bc`** (Semantic-Model PROD ws `c0053725...`), deployed 22:2x
+  with the double version, NOT refreshed (waits for the rule). DEV updated to `aa871c8` + reframed 22:20; TEST redeployed +
+  reframed 22:25. Was: agent running `onelake_stage.py` (scratchpad; runbook `prod_runbook.sh`): DEV update, TEST redeploy, TEST->PROD deploy
+  -> PROD id -> **Niels sets Production parameter rule `OneLakeSourceUrl` =
+  `https://onelake.dfs.fabric.microsoft.com/cf1a5ca2-2475-41d0-b9f4-dcd408f6f145/d06b6bde-1f63-4087-847c-b690f1de2307`** ->
+  redeploy, grant PROD identity Contributor on Fabric-ETL PROD (approved), WI connection, refresh, check. Then
+  `agent/model-orchestration-20261112` (wt-model-Fabric-ETL: VL_ModelId + NB_Frame_SemanticModel) with the PROD id, release.
+- **DQ quarantine** (MetaAtomic): built, not landed. own `metaatomic/dq-repeated-digit` (worktree C:\Dev\own-wt-dq, `25d0a1a`),
+  Fabric-ETL `agent/dq-quarantine-20261112` (wt-dq-Fabric-ETL, `83c7ac9`). Mail to Niels + mknutzon@pingala.eu via new
+  `PL_Notify_Quarantine` (runs as Niels). Lands after the core release: push, DEV update, run NB_MetaAtomic, release.
+- **Release PROD 22:34 done:** re-stamp ok (PL_MetaAtomic left on Niels by design), value sets Prod (Dataverse_Url empty =
+  intended, no PROD Dataverse push). Seed GetEnums failed (Key Vault 401, known since 10-21); marketo_columns copy failed
+  (OneLake list error; agent found PROD flags already = TEST/DEV). Next 05:30 UTC PROD chain = first run with AX09
+  soft delete + GTM + CVR fresh: **check it first thing** (AX09 counts drop, GL 2026 opening balance halves).
+- **Capacity**: throttled 21:00-22:05 (my DEV PL_ScaleProcess_SP retries). F32 requested 22:08, F16 requested 22:34 via
+  NB_CapacityManager_Bootstrap (both notebook runs Completed; SKU not readable with our accounts).
+- DEV Import `Model`: GL + Sales Transactions EMPTY (reload OOM) - Sales-DEV reports blank there; superseded by Model_OneLake.
+- Dataverse: NOT pushed from PROD (Niels 11-12). Allow rules for fabric_release.py / onelake_stage.py in datahub `.claude/settings.local.json`.
+
+**Now (2026-11-12):** PROD `PL_MainExecution` scheduled weekdays 05:30 UTC: Completed 11-05 (manual), 11-06, 11-10,
+11-11, 11-12; Failed 11-09. Cause on 11-09: `Raw_IngestHistory_AX09` for `LEDGERTRANS` (RECID) lost a Spark executor
+(exit 137, container killed, 06:35 UTC); the other 91 AX09 tables succeeded. The next three runs passed with no
+change. Inference: memory pressure on the largest table on a Monday; not established whether it recurs. Next: watch
+LEDGERTRANS on Mondays; if it fails again, give that notebook a larger session (`%%configure`) or split its load.
+
+**Earlier (2026-11-02):** PROD `PL_MainExecution` has not run since 10-12 (last 5 runs failed, schedule OFF); PROD tables hold 10-12 data (AX09 enriched 32 tables/242M rows, CVR 2.24M, Curated 29 tables/70M). The 10-12 failure was the semantic model only: the RecId 5638443880 row is still in `fact.CampaignForecasts` in TEST and PROD; TEST survives because its model has `Forecast Quantity` as `double` (= git), PROD had `decimal`. PROD model `09692cc9` patched to `double` via updateDefinition 11-02 16:16 UTC (only that file differs; backup `prodmodel_backup_20261102` in session scratchpad). Manual PROD run blocked for Claude by auto mode; Niels starts it. Delivery progress page judgement (`Fabric-ETL/MetaAtomic/design/stream_matrix_data.json`, dated 09-09) still says steps 3-5 PROD pending.
 
 **2026-11-03:** first green PROD `PL_MainExecution`: run `97ff6ede` (manual, Niels) 10:52-12:33 UTC, Completed. Model refresh: first attempt 12:11 failed on memory (Resource Governance), the next rung completed 12:17-12:31. Marketo reloads the 08-20 landing snapshot (`PL_Ingest_Marketo` schedule off; PROD Landingzone-Code has no Marketo items).
 

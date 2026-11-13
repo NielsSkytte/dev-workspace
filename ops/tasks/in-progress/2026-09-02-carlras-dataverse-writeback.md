@@ -41,8 +41,16 @@ value is not confirmed. Population (09-14) unchanged; fixes `e852ac4` / `54ffbda
 (`c23022f`, 09-14); `UpsertMultiple` and the Copy activity -> Web API `$batch`, which returns per-record
 status (09-02); custom tables -> the standard `account` / `contact` (Niels, 09-02).
 
+**2026-11-12:** `7d4a8ab` is on `origin/main` and DEV is updated from git to `2fa38fc`, so step 1 is done. Global
+discovery as `EXT_NSKC` lists two environments: `Carl Ras A/S (default)` `org4d514bd1.crm4` and `Cal Ras Dev`
+`carl-ras-dev.crm17`. `org8a074fed.crm4` (Dev value, loaded 09-14) is not listed for that user. No TEST or PROD
+environment is visible. **Niels (2026-11-12): no Dataverse push from PROD yet, and nothing is set up against a
+Test/Prod Dataverse.** Next step 2 below is on hold until he says otherwise. The same day, PROD `PL_Outbound_Dataverse` ran
+once as a dry run (`e27fa378`, Completed, nothing sent), and one auth-check run with filter keys that match no record
+(`82b3a86b`) was cancelled. No git change; the Prod value set stays empty.
+
 **Next:**
-1. Push `7d4a8ab`; Niels runs Update from git in DEV.
+1. ~~Push `7d4a8ab`; Niels runs Update from git in DEV.~~ done (see 2026-11-12).
 2. Test/Prod Dataverse URLs into the value sets; application user + least-privilege role (design
    section 10) in each environment.
 3. Schedule `PL_Outbound_Dataverse` after `PL_Transform_Curated_Outbound` in `PL_MainExecution`

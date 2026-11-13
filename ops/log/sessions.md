@@ -1746,3 +1746,9 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** none.
 - **Tasks:** `2026-09-21-matas-datacompare-production` log + Next updated; still in progress.
 - **Next:** owner adds users to the Prod group; two CNAMEs ordered from Matas IT (UAT -> zealous-rock, Prod -> salmon-grass), then custom domains on both SWAs and redirect URIs to Syed; outsider-refused check not done. Git Bash gotchas met: `az` resource ids need `MSYS_NO_PATHCONV=1`; Python-printed values carry `\r` into `az` args.
+
+## 2026-11-13 (SoWSkill: /fill-sow rebuilt, shared with the team; own git cleaned; session e7a5320e)
+- **Did:** The source of `~/.claude/tools/sow_fill.py` was gone (only the `.pyc` was left). Rebuilt it from the bytecode into `own/SoWSkill/sow_fill.py`, re-added the header `<Customer>/<Kunde>` sweep, and tested it on the EN template (Word opens it). The procedure was moved into `own/SoWSkill/skill/fill-sow/SKILL.md` (paths taken from the clone), and README + requirements.txt were added. `.claude/skills/fill-sow` is a pointer. Pushed to AAI and published to ADO Pingala Atomic Tools `FabricTools/SoWSkill` (`cd26bd1`); a real customer's SoW example and the old filled templates were left out. Lars is onboarded. Cleaned up own git: duplicate copies removed, master merged into the branch, leftover AtomicCortex/ProcessInsight work committed, `dq-fabric-store` deleted, master fast-forwarded. AtomicCortex INBOX was briefed to catalog SoWSkill.
+- **Decided:** SoWSkill lives in own/SoWSkill (git) and goes out to staff via Atomic Tools `FabricTools/SoWSkill`.
+- **Tasks:** none created or moved.
+- **Next:** first real SoW after the rebuild is the test; AtomicCortex catalog entry; `examples/CustomerX_Data_Platform_SoW_v2.*` is a real customer's SoW, so rename or anonymise it; `metaatomic/dq-repeated-digit` is unmerged (worktree own-wt-dq).

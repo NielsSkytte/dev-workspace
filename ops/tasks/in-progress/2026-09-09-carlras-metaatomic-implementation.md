@@ -21,7 +21,17 @@ document lives in `Fabric-ETL/MetaAtomic/design/`.
 
 ## Progress
 
-**Now (2026-10-25):** Pingala base `PL_UpdateLineage` runs end to end in Fabric (13:17-17:31, Completed): clone of AtomicBase via `GIT_PAT_FILE` (Lakehouse_Util `Files/MetaAtomic/git_pat.txt`, stopgap until SPN `d26a0ca0...` is in PingalaGlobal), lineage, DQ. Fixes on the way: publish copy falls back to `fs.put` when azcopy fails (`c52c741`), NB_MetaAtomic on 8 vCores via a first `%%configure` cell, the default node segfaulted (`b2b34ef`); AtomicBase `790a6a6`, `08aa5b4`. Next: SPN into PingalaGlobal then back to `GIT_SPN_SECRET`; Change buttons on CustTable.
+**Now (2026-11-12): MetaAtomic complete in Carl Ras PROD (Niels's go).** First green PROD `PL_MetaAtomic` run
+`fd5af7bb` (09:29-10:03 UTC: both notebooks, DQ mail). Earlier PROD runs failed: 11-01..11-03 `No module named
+'lineage_engine'`, 11-07 + 11-12 09:06 store login timeout HYT00 (all three stages on 11-07). Cause: the Fabric SQL
+`MetaAtomic_Store` pauses when idle and the first login during resume times out (TEST: first connect failed after 15 s,
+second ok). Fix: `NB_DataQuality` retries the store connect 6 x 30 s (Fabric-ETL `2fa38fc`, DEV updated from git,
+notebook deployed DEV -> TEST -> PROD as the SPN). PROD app item `39930bfa` https://lucky-yarn-cdf196f3e3-westeurope.webapp.fabricapps.net
+in `00 - Services/MetaAtomic` (store `09168520`, `PAGES_ROOT` = PROD Lakehouse_Util; own `fd5fde3`, `5d14f25`).
+Notebooks + pipeline equal in all three stages; Saturday 05:30 schedule on in DEV, TEST and PROD. Rayfin CLI now signed in
+to the Carl Ras tenant (Pingala cache copy `~/.rayfin/cache.bin.pingala-20261112`). Next: check the 11-14 05:30 runs.
+
+**Earlier (2026-10-25):** Pingala base `PL_UpdateLineage` runs end to end in Fabric (13:17-17:31, Completed): clone of AtomicBase via `GIT_PAT_FILE` (Lakehouse_Util `Files/MetaAtomic/git_pat.txt`, stopgap until SPN `d26a0ca0...` is in PingalaGlobal), lineage, DQ. Fixes on the way: publish copy falls back to `fs.put` when azcopy fails (`c52c741`), NB_MetaAtomic on 8 vCores via a first `%%configure` cell, the default node segfaulted (`b2b34ef`); AtomicBase `790a6a6`, `08aa5b4`. Next: SPN into PingalaGlobal then back to `GIT_SPN_SECRET`; Change buttons on CustTable.
 
 **Earlier (2026-10-23):** Carl Ras DEV on engine `dc73fff` (Fabric-ETL `9ed9ae0` pushed, Niels's go; DEV Lakehouse_Util;
 app redeployed). Lineage now sees sources in the same or another workspace (shortcuts with hot/cold schema, ingest
