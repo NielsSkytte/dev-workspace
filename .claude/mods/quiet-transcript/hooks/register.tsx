@@ -264,16 +264,30 @@ export const register: Register = (on, options) => {
     const text = e.props.text
     if (!text.includes('```')) return next(e)
     if (await read($, showCode)) return next(e)
+    // A plain click reaches the plugin only in the fullscreen terminal; on the main screen the
+    // terminal opens the link itself (a browser), so there the fold is plain text, not a link.
+    const clickable = e.surface !== 'terminal' || e.viewport?.isFullscreen === true
     const open = await read($, openCode)
     const hrefs: string[] = []
     const folded = text.replace(FENCE, (block: string, body: string) => {
       const href = CODE_HREF + hashOf(body)
+      const lines = body.replace(/\n$/, '').split('\n').length
+      if (!clickable) return `*▸ code hidden (${lines} lines), /code shows it*`
       hrefs.push(href)
       if (open[href]) return `[▾ hide code](${href})\n\n${block}`
-      const lines = body.replace(/\n$/, '').split('\n').length
       return `[▸ show code (${lines} lines)](${href})`
     })
     const { Box, Text, Markdown } = $.ui.resolve(e)
+    if (!clickable) {
+      return (
+        <Box flexDirection="row">
+          <Text>{e.props.isFirstOfReply ? '● ' : '  '}</Text>
+          <Box flexDirection="column" flexGrow={1}>
+            <Markdown text={folded} />
+          </Box>
+        </Box>
+      )
+    }
     return (
       <Box flexDirection="row">
         <Text>{e.props.isFirstOfReply ? '● ' : '  '}</Text>
@@ -309,8 +323,6 @@ export const register: Register = (on, options) => {
     const label = await read($, names)
     const finished = await read($, done)
     const before = await read($, carried)
-    const boards = await read($, board)
-    const thisTurn = await read($, turn)
     const now = await $.clock.now()
     const { Box, Text } = $.ui.resolve(e)
     const rowsLeft = Math.max(6, e.props.maxRows - 2)
@@ -329,29 +341,6 @@ export const register: Register = (on, options) => {
           <Text dimColor>{'░'.repeat(b.off)}</Text>
           <Text bold>{` ${String(pct).padStart(2)}%`}</Text>
           <Text dimColor>{` ${Math.round(secs)}s of ~${Math.round(j.est)}s`}</Text>
-        </Box>
-      )
-    }
-
-    // The control panel: next step, what waits for the user, what the user waits for. Flagged when no recent turn updated it.
-    const KIND: Record<string, string> = { approve: 'approve', do: 'do     ' }
-    const boardRows = (loop: string, b: Board | undefined, nowTurn: number, nowMs: number) => {
-      if (!b || (!b.next && b.you.length === 0 && b.claude.length === 0)) return null
-      const age = Math.max(0, Math.round((nowMs - b.at) / 60000))
-      const stale = nowTurn - b.turn >= 2
-      const room = Math.max(40, e.props.bodyColumns - 14)
-      const cut = (t: string) => (t.length > room ? t.slice(0, room - 1) + '…' : t)
-      used += (b.next ? 1 : 0) + b.you.length + b.claude.length + (stale ? 1 : 0)
-      return (
-        <Box key={`b-${loop}`} flexDirection="column">
-          {b.next ? <Text color="greenBright" bold>{`  ▶ Next   ${cut(b.next)}`}</Text> : null}
-          {b.you.map((a, i) => (
-            <Text key={`y${i}`} color="yellow" bold>{`  ▌ You ${KIND[a.kind] ?? a.kind}  ${cut(a.text)}`}</Text>
-          ))}
-          {b.claude.map((c, i) => (
-            <Text key={`c${i}`} color="cyan">{`  ◌ Me     ${cut(c)}`}</Text>
-          ))}
-          {stale ? <Text color="red">{`  ! board not updated for ${nowTurn - b.turn} turns (${age} min): ask for a refresh`}</Text> : null}
         </Box>
       )
     }
@@ -407,7 +396,6 @@ export const register: Register = (on, options) => {
               </Box>
             )
           })}
-          {boardRows(loop, boards[loop], thisTurn, now)}
           {mine.slice(0, 3).map(jobRow)}
         </Box>
       )

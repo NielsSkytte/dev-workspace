@@ -74,15 +74,22 @@ function agentState(info: AgentInfo | undefined): string {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'work', description: 'Open the work view: what Claude is doing, per thread and agent' })
+    await $.command.register({ name: 'work', description: 'Open or close the work view: what Claude is doing, per thread and agent' })
     await $.command.register({ name: 'work-code', description: 'Show or hide code and tool output in the transcript' })
-    void $.ui.open({ id: PANE, title: 'Work' })
+    // Opened only on /work: on the main screen (Orca) the pane sits inline and a click cannot close it.
     return next(e)
   })
 
+  let paneOpen = false
   on('command.run', { command: 'work' }, async $ => {
+    if (paneOpen) {
+      paneOpen = false
+      await $.ui.close({ id: PANE })
+      return { text: 'Work view closed. /work opens it again.' }
+    }
+    paneOpen = true
     await $.ui.open({ id: PANE, title: 'Work' })
-    return { text: 'Work view opened.' }
+    return { text: 'Work view opened. /work closes it (or Esc, then ctrl+x x).' }
   })
 
   on('command.run', { command: 'work-code' }, async $ => {
