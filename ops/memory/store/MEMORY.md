@@ -269,3 +269,4 @@ and the record shape live in [`../README.md`](../README.md).
 - [servicenow-sys-dictionary-read-role](servicenow-sys-dictionary-read-role.md) -- ServiceNow: integration user needs personalize_dictionary (or similar) to read sys_dictionary rows and filter on sys_updated_on; stats count still shows all rows
 - [aeven-system-tables-lakehouse-util](aeven-system-tables-lakehouse-util.md) -- Aeven/ServiceNow: sys_db_object, sys_choice, sys_dictionary fixed in code, loaded first into Lakehouse_Util; columns only in servicenow_columns
 - [aeven-prod-first-run-20261114](aeven-prod-first-run-20261114.md) -- Aeven PROD first run 11-13/14: models had pointed at DEV's warehouse; duplicate DimTasks key from count.json/total.json rows; ModelFrameMode=pipeline
+- [eval-2026-11-16-no-skill-or-value-issues](eval-2026-11-16-no-skill-or-value-issues.md) -- evaluative: W46 weighted numbers matched owner gut; no skill issues 11-13..16
