@@ -265,3 +265,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-12-writing-voice-teams](eval-2026-11-12-writing-voice-teams.md) -- evaluative: writing-voice did not fire for a customer Teams message
 - [eval-2026-11-13-own-repos-worktree-hook](eval-2026-11-13-own-repos-worktree-hook.md) -- AAI post-commit push fails from a git worktree (GIT_DIR); own-repos still lacks Atomic Tools
 - [sowskill-examples-not-anonymised](sowskill-examples-not-anonymised.md) -- SoWSkill CustomerX SoW_v2 + Data_Statement templates hold a real customer name; keep out of staff publishes
+- [aeven-prod-no-full-load-without-go](aeven-prod-no-full-load-without-go.md) -- Aeven PROD: no full ServiceNow load without Aeven's go; check with Niels what a run will load first
+- [servicenow-sys-dictionary-read-role](servicenow-sys-dictionary-read-role.md) -- ServiceNow: integration user needs personalize_dictionary (or similar) to read sys_dictionary rows and filter on sys_updated_on; stats count still shows all rows
+- [aeven-system-tables-lakehouse-util](aeven-system-tables-lakehouse-util.md) -- Aeven/ServiceNow: sys_db_object, sys_choice, sys_dictionary fixed in code, loaded first into Lakehouse_Util; columns only in servicenow_columns
+- [aeven-prod-first-run-20261114](aeven-prod-first-run-20261114.md) -- Aeven PROD first run 11-13/14: models had pointed at DEV's warehouse; duplicate DimTasks key from count.json/total.json rows; ModelFrameMode=pipeline

@@ -1752,3 +1752,15 @@ Chronological record of workspace sessions — what was done, decided, and what'
 - **Decided:** SoWSkill lives in own/SoWSkill (git) and goes out to staff via Atomic Tools `FabricTools/SoWSkill`.
 - **Tasks:** none created or moved.
 - **Next:** first real SoW after the rebuild is the test; AtomicCortex catalog entry; `examples/CustomerX_Data_Platform_SoW_v2.*` is a real customer's SoW, so rename or anonymise it; `metaatomic/dq-repeated-digit` is unmerged (worktree own-wt-dq).
+
+## 2026-11-13..15 (Aeven AtomicServiceNow: first production run, production fixes; session 9b6af283, written at /log 2026-11-16)
+- **Did:** First PROD run at Aeven (`ITSM-ETL-Prod`): connection workaround, PL_MainExecution failure fixed (`NB_Setup_Prod_ServiceNow` `rebuild` action, `5ad2ba6`), rebuild completed; PROD models repointed from DEV's warehouse to PROD's (`ee91c38`): report shows 70,391 tasks / 15,873 incidents. Process Insight cut by switching off Case to Resolution; models rebuilt/renamed for deployment rules (`660edc2`, `dcedec4`); markdown run report replaced by a `Log run` step writing `pipeline_activity_log`, plus per-table extraction numbers and `source_total` in `ingest_log` (`dcafc45`, `545d070`); AevenProd `ModelFrameMode = pipeline` (`1ee9d9e`); model load failure traced to a duplicate `DimTasks` key from count.json/total.json rows without sys_id, fixed (`a32b981`). First-run email drafted (`Aeven_Production_First_Run_email.md`), incl. 2,305 incidents resolved before opened.
+- **Decided:** no full load at Aeven production without Aeven's go (Niels's promise); Saturday full reload removed from config; `sys_dictionary` disabled at Aeven until then.
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` still in progress.
+- **Next:** see 2026-11-16.
+
+## 2026-11-16 (Aeven AtomicServiceNow: system tables in Lakehouse_Util, config cleanup, PDI proof; sessions 37ad8ee1, a5817e48)
+- **Did:** Delete script for the null-sys_id rows (`_local-backup/delete_null_sysid_rows.sql`). Redesign built: `sys_db_object`, `sys_choice`, `sys_dictionary` fixed in code, loaded first into Lakehouse_Util, not configurable; columns chosen only in `servicenow_columns` from `sys_dictionary`; `landed` mode, `fields`/`exclude_fields`, weekly full reload and one-off tools removed (~2,400 lines out, ~1,050 in). Room `5035d4a`..`60ce613` + `41d3ab2` pushed; dataaidemo `7b8281c` pushed. PDI proof: run `20261116T150218Z` full chain succeeded. `sys_dictionary` delta got 403 (svc_fabric_oauth could not read sys_dictionary rows or `sys_updated_on`); granted `personalize_dictionary` on the PDI; full + delta rerun of PL_Ingest started.
+- **Decided:** system tables live in Lakehouse_Util, fixed in code (decision in room `5041596`); Aeven's integration user needs a role that reads `sys_dictionary` (PDI: `personalize_dictionary`).
+- **Tasks:** `2026-09-12-aeven-atomic-servicenow-build` still in progress.
+- **Next:** check the PDI full + delta results; dry-run sync to aeven-repo, then Aeven push on Niels's go; add the sys_dictionary read role to the Aeven asks; Niels deploys the duplicate-key notebooks to PROD.
