@@ -227,6 +227,15 @@ Update from git is also **all-or-nothing across the branch**: you cannot update 
 And: commit is offered only to a **new branch** when the workspace is behind. That is normal
 Fabric behaviour, not a fault - stop investigating it.
 
+**DDL run by a notebook or pipeline does not show up until a manual refresh.** Aeven, 2026-11-17:
+the Enriched notebook created `enriched.CodeMap` (table with data, plus its view) and the panel
+said "nothing to commit"; the warehouse had shown no change since 2026-11-12 although views had
+been created and dropped since. A SQL database in the same workspace did appear. Clicking the
+**refresh icon in the Source control panel** made the warehouse appear and the commit worked.
+**Rule:** after any run that changes warehouse DDL, refresh the Source control panel before
+concluding there is nothing to commit. Ask for the refresh first; do not investigate the run,
+the repo or our sync tooling until the panel has been refreshed (we lost an hour to this).
+
 ### 8. The deployment-pipeline build cannot see a lakehouse's columns (`SQL71561` / `SQL71508`)
 
 **Symptom.** A deployment-pipeline deploy of a warehouse fails with `DmsImportDatabaseException
