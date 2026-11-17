@@ -259,6 +259,12 @@ change to source, target or deployer - why the tolerance changed is not establis
 2. No `*` over a lakehouse or other database - name the columns. `SELECT * FROM <cte in the same
    view>` and the `sp_Create*TableAsSelect` procs are fine.
 
+**A warehouse whose views a notebook generates is not deployed at all.** Aeven, 2026-11-17: the
+DEV to PROD deploy of `Warehouse_Enriched_ServiceNow` failed with ~150 `SQL71561`/`SQL71501`, even
+on single-source views with every column prefixed (`s.[code]` over `cmn_department`): the build
+knows no lakehouse columns at all. Those views are written by `NB_Transform_Enriched_ServiceNow`
+on every run, so PROD gets them from its own run; skip the warehouse in the deployment pipeline.
+
 **Check before push, not at deploy.** Carl Ras `tools/wh_rules.py` (sqlglot, offline, seconds)
 reproduces every AX09 failure of 2026-09-24/25 from the pre-fix commit and finds nothing on the
 fixed tree; it runs in the `Fabric-ETL` pre-push hook. Known gap: the Curated failures GEN-013
