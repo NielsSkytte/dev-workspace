@@ -264,6 +264,9 @@ export const register: Register = (on, options) => {
     const text = e.props.text
     if (!text.includes('```')) return next(e)
     if (await read($, showCode)) return next(e)
+    // Orca catches every link click itself (its open-in-browser menu), so a fold could never open
+    // there: in Orca the code is shown in full (2026-11-17).
+    if (e.surface === 'terminal' && (await $.env.get('TERM_PROGRAM')) === 'Orca') return next(e)
     // A plain click reaches the plugin only in the fullscreen terminal; on the main screen the
     // terminal opens the link itself (a browser), so there the fold is plain text, not a link.
     const clickable = e.surface !== 'terminal' || e.viewport?.isFullscreen === true
