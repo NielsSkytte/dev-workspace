@@ -270,3 +270,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [aeven-system-tables-lakehouse-util](aeven-system-tables-lakehouse-util.md) -- Aeven/ServiceNow: sys_db_object, sys_choice, sys_dictionary fixed in code, loaded first into Lakehouse_Util; columns only in servicenow_columns
 - [aeven-prod-first-run-20261114](aeven-prod-first-run-20261114.md) -- Aeven PROD first run 11-13/14: models had pointed at DEV's warehouse; duplicate DimTasks key from count.json/total.json rows; ModelFrameMode=pipeline
 - [eval-2026-11-16-no-skill-or-value-issues](eval-2026-11-16-no-skill-or-value-issues.md) -- evaluative: W46 weighted numbers matched owner gut; no skill issues 11-13..16
+- [fabric-workspace-identity-pipelines](fabric-workspace-identity-pipelines.md) -- Fabric pipelines on a workspace identity: what works (PDI 2026-11-16), Power BI REST 403 for a WI, refresh activity works, LSROBOTokenFailure fixed by re-save
+- [eval-2026-11-17-workspace-identity-session](eval-2026-11-17-workspace-identity-session.md) -- evaluative: fork died with session, resumed from transcript; tenant-setting claim retracted after docs check
