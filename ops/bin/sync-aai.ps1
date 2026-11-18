@@ -22,6 +22,8 @@
 
   Needs: git, python with git-filter-repo (pip install git-filter-repo), gh logged in.
   Work dir: %LOCALAPPDATA%\aai-sync (script-owned; AAI clone is reset to origin each run).
+  -Remote/-Root/-Work point it at another monorepo; give each remote its own -Work, since the
+  clone in a work dir is reused (sync-customers.ps1 does this for NielsSkytte/customers).
 #>
 [CmdletBinding(PositionalBinding = $false)]
 param(
@@ -31,7 +33,8 @@ param(
     [switch] $Pull,
     [string] $Branch,
     [string] $Remote = 'https://github.com/atompower4us/AAI.git',
-    [string] $Root = 'C:\Dev\own'
+    [string] $Root = 'C:\Dev\own',
+    [string] $Work = (Join-Path $env:LOCALAPPDATA 'aai-sync')
 )
 $ErrorActionPreference = 'Stop'
 
@@ -43,7 +46,7 @@ if ($List -or -not $Sources) {
     if (-not $Sources) { exit 0 }
 }
 
-$work = Join-Path $env:LOCALAPPDATA 'aai-sync'
+$work = $Work
 $aai = Join-Path $work 'AAI'
 New-Item -ItemType Directory -Force $work | Out-Null
 
