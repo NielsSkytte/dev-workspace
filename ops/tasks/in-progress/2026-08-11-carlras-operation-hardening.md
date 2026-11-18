@@ -84,7 +84,9 @@ up to date" OFF on PROD Model_OneLake + Web engagement. New users saw empty visu
 both PROD models bound to connection `CON-WI-OneLake-Warehouse_Curated_PROD-SemanticModel` (8756645d, workspace
 identity of Semantic-Model PROD, SSO off); that identity has Read + ReadAll on PROD Warehouse_Curated. Not verified with
 a non-admin user. DQ quarantine branch pushed (data-quality task). Near-real-time options: design/near-real-time-options.md.
-Next: check the 11-19 06:30 PROD run frames Model_OneLake; a new user confirms Salgsoverblik shows data. TEST done 11-18 (both models on
+Next: check the 11-19 06:30 PROD run frames Model_OneLake; a new user confirms Salgsoverblik shows data (Niels
+asks them). Run log per layer: decided as a MetaAtomic standard (own/MetaAtomic/design/atomic-run-log-review.md),
+built there first, Carl Ras DEV adopts it; nothing built here before that. PL_MetaAtomic failing since 10-27. TEST done 11-18 (both models on
 CON-WI-ADLS-OneLake-Warehouse_Curated_TEST a556a678, auto-update off); DEV unchanged. Older notes below.
 
 **GO-LIVE HANDOFF (2026-11-12 22:20 UTC) - read this first.** Niels: "everything in PROD now". State per stream:
