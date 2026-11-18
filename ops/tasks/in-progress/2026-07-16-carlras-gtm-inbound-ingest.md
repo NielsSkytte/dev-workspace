@@ -20,23 +20,42 @@ Fabric platform: new GTM source in the LandingZone (shortcut + ingest notebook â
 
 ## Progress
 
-**Now (2026-09-21):** Part 1 (landing) is live: `PL_Ingest_GTM` hourly, SPN-owned, 337,599,587 events on
-08-31. Part 2 is half done: `PL_Ingest_Lakehouse_Raw_GTM` exists and is registered in `PL_Execute_Raw`
-(08-11); PROD raw loaded 09-09. Still missing: `PL_Transform_Enriched_GTM`, its `PL_Execute_Enriched`
-entry, `NB_Table_PrimaryKeyMap_GTM` / `rawtablekeymap_gtm`, and GTM names in the variable libraries.
-`enriched.Events` has never been built â€” `Warehouse_Enriched_GTM` holds 0 rows in every environment.
-Part 3 (generated views) is not started.
+**Now (2026-11-17):** GTM runs landing -> Raw -> Enriched -> Curated in DEV, TEST and PROD, and the Process
+Insight "Web engagement" model (120 metrics, library M80) and report are live in all three. Rows 11-17:
+fact.GtmEvents DEV 147.2M / TEST 26.8M / PROD 15.5M; FactWebSessions DEV 5.90M / TEST 1.61M / PROD 1.11M.
+Measures valued (of 120): DEV 47, TEST 47, PROD 43, 0 errors; the rest blank by design (data not captured).
+PL_MainExecution now runs PL_PI_Main after Curated + Semantic Model (refreshes the model as the SPN via
+KeyVaultDataHub secrets DataHubSP-TenantId / DataHubSP-ClientId / DataHubServicePrincipal, VL_PI defaults).
+Schedules: PROD PL_MainExecution ON Mon-Fri 06:30 as SPN (id 9c0e992d; the PROD deploy had switched it off,
+re-enabled); DEV and TEST OFF. Model OneLakeSourceUrl deployment rules set by Niels and applied.
+Commits: Fabric-ETL bb3b677, d5e3421, 258cfec, caa253c, 9a7f3fc; Semantic-Model 6411f98, 6a3c2b2; reports
+332a822, 4648456; own fe3a582, e30fefb, e7576e5 + VL_PI keyvault from placement (11-17).
+Reports 11-17 (all in DEV/TEST/PROD): "Web engagement" restyled to the Carl Ras look (reports 8353a88);
+new "Webadfaerd og salg" (6 pages, reports 9444eb5) on the extended "Web engagement" model (Semantic-Model
+568cb84: + AX09 Date/Customer/Sales Channel/Sales Order/Sales Transactions, 49 measures; 48 valued, 0 errors
+per stage). GTM<->AX link is by date and segment only (no row key in GTM). Own: report style 559d0fc,
+model extension 133767b (side branch processinsight/model-extension, not yet in AAI: hook fetch failed).
+11-18: GTM row-level keys live DEV/TEST/PROD (Fabric-ETL d1a0df1, 9423ac8, 79041c8): Raw full history
+2024-03-20..; fact.GtmWebOrders 157,777, fact.GtmWebOrderItems 461,914; GtmEvents 147M. PROD from 2024-10:
+99.5% web orders found in AX09, 90.3% AX Internet+WebI found in GTM, items 100%. Before 2024-10 web order ids
+differ from AX. No e-mail/user_id carried. "Webadfaerd og salg" v4 (Semantic-Model 9622c82, reports 2fd49a3):
+pages Webordrer, Varer, Kunde-web, Segmenter og brancher, Salgskanaler; 87 measures, 0 errors per stage.
+PROD PL_MainExecution schedule id now 53502fbf. Open: session-level referrer (traffic source) needs a
+FactWebSessions column via own/ProcessInsight binding; Segmentdetalje back button points to a missing group;
+March 2025 GTM order value outlier (36.2M vs ~10M AX); 14 uncommitted non-GTM Warehouse_Curated edits in DEV.
+DEV Raw stall 09-23 -> 11-17 was the disabled DEV schedule; backfilled.
 
-**Tried and dropped:** GA4 -> BigQuery export as the source -> the Carl Ras-owned Event Hub landing, because
-the account-segment enrichment exists only there (07-03); moving GTM Raw onto the AutoLoader shell -> the
-bespoke polars notebook kept, wrapped in a pipeline (decided by 08-11).
+**Tried and dropped:** GA4 -> BigQuery export as the source (07-03); AutoLoader shell for GTM Raw (08-11);
+an event-grain Process Insight fact copying fact.GtmEvents (11-17: session-grain fact + reuse of fact.GtmEvents).
 
 **Next:**
-1. Build `PL_Transform_Enriched_GTM` (CTAS `enriched.Events`), register it in `PL_Execute_Enriched`, add the
-   key map and the variable-library names.
-2. Part 3 once the Marketo view generator has run for real (its DDL path is unproven).
-3. Later: curated `fact.GtmEvents` / `dim.GtmEvent` (13-month window), `Model_GTM` Direct Lake, freshness
-   report; swap the shortcut connection from Niels's guest account to WI/SPN.
+1. Check the first PROD 06:30 run with the PI step (11-18): PL_MainExecution Succeeded, pi_* rows moved.
+2. fabric_release.py: after a deploy of a scheduled pipeline, re-check its schedule is still enabled (PROD
+   deploy 11-17 switched PL_MainExecution's off).
+3. Carry the data gaps (coverage file `process-insight/design/gtm-metric-coverage.md`): ecommerce value/currency/
+   transaction_id, web-vital values, page_referrer + UTM, items[] - 56 metrics become possible.
+4. Decide where the single PL_Ingest_GTM lives (TEST copy failed hourly; schedule off in TEST via API only, git
+   .schedules still enabled because it also governs DEV).
 
 ## Needs from customer
 

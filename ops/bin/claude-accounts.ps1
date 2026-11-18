@@ -50,6 +50,14 @@ $ModsRoot = "C:\Dev\.claude\mods"
 $mods = @(Get-ChildItem $ModsRoot -Directory -ErrorAction SilentlyContinue |
   Where-Object { Test-Path (Join-Path $_.FullName ".claude-plugin\plugin.json") } |
   Sort-Object Name | ForEach-Object { $_.FullName })
+# Orca's agent-view plugin (Orca terminal app). Orca passes it in its own CLAUDE_CODE_PLUGIN_DIRS,
+# which the settings.json env replaces, so it is added here. The plugin does nothing outside Orca
+# (no ORCA_AGENT_HOOK_TOKEN). The hash folder changes with Orca updates: re-run this script then.
+$OrcaView = Join-Path $env:APPDATA "orca\claude-agent-view"
+$mods += @(Get-ChildItem $OrcaView -Directory -ErrorAction SilentlyContinue |
+  Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
+  ForEach-Object { Join-Path $_.FullName "orca-agent-view" } |
+  Where-Object { Test-Path (Join-Path $_ ".claude-plugin\plugin.json") })
 $mainSettings = Join-Path $Main "settings.json"
 if ($mods.Count -gt 0 -and (Test-Path $mainSettings)) {
   $value = ($mods -join ";").Replace("\", "\\")
@@ -82,20 +90,28 @@ if (-not (Test-Path $Bin)) { New-Item -ItemType Directory -Path $Bin | Out-Null 
 $exe = Join-Path $Bin "claude.exe"
 if (-not (Test-Path $exe)) { $exe = "claude" }
 
-$cmdShim = @(
-  '@echo off',
-  ('set "CLAUDE_CONFIG_DIR=%USERPROFILE%\' + $AltName + '"'),
-  ('"' + $exe + '" %*')
-) -join "`r`n"
-[IO.File]::WriteAllText((Join-Path $Bin "claude-priv.cmd"), $cmdShim + "`r`n", [Text.Encoding]::ASCII)
-
-$shShim = @(
-  '#!/bin/sh',
-  ('CLAUDE_CONFIG_DIR="$USERPROFILE\' + $AltName + '" exec "' + $exe.Replace([char]92,[char]47) + '" "$@"')
-) -join "`n"
-[IO.File]::WriteAllText((Join-Path $Bin "claude-priv"), $shShim + "`n", [Text.Encoding]::ASCII)
-Write-Host "shims   claude-priv(.cmd) -> $Alt"
+# c-w = enterprise, c-p = private. Each launcher sets the account explicitly, so an inherited
+# CLAUDE_CONFIG_DIR (e.g. a terminal app started from a private session) cannot pick the account.
+# c-w UNSETS the variable rather than pointing it at ~\.claude: unset keeps .claude.json in
+# %USERPROFILE%, where the enterprise login lives. The exe is called by full path, past any wrapper.
+$shExe = $exe.Replace([char]92,[char]47)
+$launchers = @(
+  @{ Name = "c-w"; Cmd = 'set "CLAUDE_CONFIG_DIR="'; Sh = 'unset CLAUDE_CONFIG_DIR' },
+  @{ Name = "c-p"; Cmd = ('set "CLAUDE_CONFIG_DIR=%USERPROFILE%\' + $AltName + '"'); Sh = ('export CLAUDE_CONFIG_DIR="$USERPROFILE\' + $AltName + '"') }
+)
+foreach ($l in $launchers) {
+  $cmdShim = @('@echo off', 'setlocal', $l.Cmd, ('"' + $exe + '" %*')) -join "`r`n"
+  [IO.File]::WriteAllText((Join-Path $Bin ($l.Name + ".cmd")), $cmdShim + "`r`n", [Text.Encoding]::ASCII)
+  $shShim = @('#!/bin/sh', $l.Sh, ('exec "' + $shExe + '" "$@"')) -join "`n"
+  [IO.File]::WriteAllText((Join-Path $Bin $l.Name), $shShim + "`n", [Text.Encoding]::ASCII)
+}
+# the old claude-priv launcher is replaced by c-p
+foreach ($old in @("claude-priv", "claude-priv.cmd")) {
+  $p = Join-Path $Bin $old
+  if (Test-Path $p) { Remove-Item $p -Force; Write-Host "removed $old" }
+}
+Write-Host "shims   c-w(.cmd) -> enterprise ($Main), c-p(.cmd) -> private ($Alt)"
 
 Write-Host ""
-Write-Host "Next: run 'claude-priv' in a NEW terminal, then /login with the private account."
+Write-Host "Next: open a NEW terminal; c-w starts enterprise, c-p starts private."
 Write-Host "Check which account a session is on with /status."

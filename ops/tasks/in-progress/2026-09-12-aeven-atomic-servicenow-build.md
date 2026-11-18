@@ -20,7 +20,7 @@ to raw, then curated layer and semantic model. Single activity for all project w
 
 ## Progress
 
-**Now (2026-11-17):** Aeven PROD live since the first delta run 2026-11-14 (Completed, 37 min); `52fdfe3` (system tables in Lakehouse_Util) and `a689974` (Process Insight fix) not deployed to PROD. Aeven DEV on MasterDataPlan `a689974`: the 11-16 18:34Z run (`system_full = sys_dictionary`) passed Ingest, so DEV has its one full `sys_dictionary` load, and failed at Enriched (LSROBOTokenFailure / AADSTS53000) and ran after a re-save; a full default `PL_MainExecution` was started 2026-11-16 evening, result not read. Workspace-identity run mode built (room `b50a34f`): PDI `PL_MainExecution` job `7d6a2eca` Completed fully as the workspace identity; Aeven set to `wi_model_step: user`, not switched on, waits for Aeven's connections.
+**Now (2026-11-18):** Canonical status / priority / resolution codes come from `SQL_Util.servicenow_code_map` (`enriched.CodeMap`), labels from `sys_choice` (readable on both instances: test 17,981 rows, prod 17,144). Aeven `main` at `9b01e26`; DEV and PROD run with the code-map Curated views (PROD: bootstrap `248ee77` altered 6 views 2026-11-17 21:55Z). Case to Resolution removed (room `ebd83cf`, Aeven `9b01e26`), `pi_` dropped DEV + PROD; only `Model_ServiceNow` (Task). DEV and PROD runs started 11-17 evening after the drop, results not read.
 
 **Tried and dropped:** Direct Lake on SQL -> Direct Lake on OneLake (SQL refuses the calculated
 measures table); a `paginationRules` block holding only `supportRFC5988` -> no rules on the count copy
@@ -28,14 +28,12 @@ measures table); a `paginationRules` block holding only `supportRFC5988` -> no r
 1900-01-01 / 0 in a Fabric warehouse).; a run-overlap lock file (`6ca7281`, reverted) -> pipeline Concurrency = 1; warehouse
 objects in git on a first sync (`DmsImportDatabaseException`) -> shell warehouses; Pingala ids as
 variable-library defaults -> UNSET defaults, one value set per environment; full loads stopping at
-the first empty page -> page to the stats count (inference: an ACL-emptied page can have readable rows after it).; Power BI REST from a workspace identity (403 on every `/v1.0/myorg` call, PDI 2026-11-16, tenant setting on) -> Fabric API for the model list, Semantic model refresh activity for the reframe.
+the first empty page -> page to the stats count (inference: an ACL-emptied page can have readable rows after it).; Power BI REST from a workspace identity (403 on every `/v1.0/myorg` call, PDI 2026-11-16, tenant setting on) -> Fabric API for the model list, Semantic model refresh activity for the reframe.; deployment-pipeline deploy of the warehouses (SQL71561 on lakehouse refs; MS docs: unsupported) -> `NB_Bootstrap` alters a changed Curated view; commit to a new branch (`temp`) on an Update DataLoss conflict -> the workspace's table DDL to `main`.
 
 **Next:**
-1. Read the DEV run result (`ingest_log`, `pipeline_activity_log`).
-2. Deploy `52fdfe3` + `a689974` DEV -> PROD; run PROD once with `tables = none`, `system_full = sys_dictionary`.
-3. Send `Aeven_Fabric_Workspace_Identity_email.md`; on the six connection ids per workspace: set them in AevenDev / AevenProd, `run_identity = workspace` on aeven-dev, sync, run in DEV first.
-4. When Aeven sends the two OAuth connection ids: set them in the AevenDev value set, `ServiceNow_Auth = oauth`, sync, run.
-5. When Aeven grants the sys_choice role: rerun, check ChoiceLabel and the sys_dictionary catalogue.
+1. Read the 11-17 evening DEV and PROD run results (first runs without `pi_`).
+2. Send `Aeven_Fabric_Workspace_Identity_email.md`; on the six connection ids per workspace: set them in AevenDev / AevenProd, `run_identity = workspace` on aeven-dev, sync, run in DEV first.
+3. When Aeven sends the two OAuth connection ids: set them in the AevenDev value set, `ServiceNow_Auth = oauth`, sync, run.
 Older steps (2026-10-23..28, not verified as landed):
 0. Send the traffic email; push `42305a8` to MasterDataPlan only after Aeven replies.
 1. When Aeven answers: in `ITSM-ETL-Dev` Update from git (`2e0020c`: paging + choice labels in Enriched), run `PL_MainExecution` with
@@ -47,8 +45,8 @@ Older steps (2026-10-23..28, not verified as landed):
 
 ## Needs from customer
 
-- **Aeven:** read on `sys_dictionary.internal_type`, query rights on `sys_updated_on`, `alm_asset`,
-  sys_audit / sys_audit_delete (`Aeven_ServiceNow_Query_Access_email.md`). Sent 2026-10-21.
+- **Aeven:** sys_audit / sys_audit_delete read: with Aeven's architecture board. `alm_asset` closed; `sys_choice` and
+  `sys_dictionary` readable (2026-11-17). Sent 2026-10-21 (`Aeven_ServiceNow_Query_Access_email.md`).
 - **Aeven:** say which empty fields on 13 tables are unreadable vs unused in test
   (`Aeven_ServiceNow_Field_Access_email.md`). Sent; first reply by 2026-10-23: many may be unused in test.
 - **Aeven:** production list. Answered: workspace `ITSM-ETL-Prod` and connection `ServiceNow_Prod_BasicAuth_http_v2` (`9d0cd0a3-...`), PROD live 2026-11-14.
@@ -77,3 +75,4 @@ a landing-zone workspace or directly into fabric-etl.
 - 2026-11-03 — project shared with Kresten via project-room/ (atompower4us/aeven-atomicservicenow-room, CI green); originals moved; OAuth room task taken by Niels
 - 2026-11-11 — aeven-dev connection named in environments.json (room 35eb6e7).
 - 2026-11-16 — workspace-identity run mode; PDI full run as WI (7d6a2eca); room b50a34f; WI email drafted (Aeven 46a97ac)
+- 2026-11-17 — code map live DEV+PROD (Aeven 709c692, 9cb1a23, 248ee77); Case to Resolution removed (9b01e26), pi_ dropped DEV+PROD; warehouse PROD route = bootstrap; Orca code-block fix

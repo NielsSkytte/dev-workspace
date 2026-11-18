@@ -272,3 +272,5 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-16-no-skill-or-value-issues](eval-2026-11-16-no-skill-or-value-issues.md) -- evaluative: W46 weighted numbers matched owner gut; no skill issues 11-13..16
 - [fabric-workspace-identity-pipelines](fabric-workspace-identity-pipelines.md) -- Fabric pipelines on a workspace identity: what works (PDI 2026-11-16), Power BI REST 403 for a WI, refresh activity works, LSROBOTokenFailure fixed by re-save
 - [eval-2026-11-17-workspace-identity-session](eval-2026-11-17-workspace-identity-session.md) -- evaluative: fork died with session, resumed from transcript; tenant-setting claim retracted after docs check
+- [fabric-warehouse-deploy-bootstrap](fabric-warehouse-deploy-bootstrap.md) -- warehouse views over a lakehouse cannot be deployed (SQL71561); Aeven PROD route = bootstrap CREATE OR ALTER on text diff; manual Source control refresh
+- [eval-2026-11-17-codemap-deploy-session](eval-2026-11-17-codemap-deploy-session.md) -- evaluative: fabric-warehouse-git gaps #7/#8 added; Warehouse_Curated deploy suggestion against runbook; Orca fold links fixed
