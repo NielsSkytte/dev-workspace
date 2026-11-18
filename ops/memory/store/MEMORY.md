@@ -274,3 +274,6 @@ and the record shape live in [`../README.md`](../README.md).
 - [eval-2026-11-17-workspace-identity-session](eval-2026-11-17-workspace-identity-session.md) -- evaluative: fork died with session, resumed from transcript; tenant-setting claim retracted after docs check
 - [fabric-warehouse-deploy-bootstrap](fabric-warehouse-deploy-bootstrap.md) -- warehouse views over a lakehouse cannot be deployed (SQL71561); Aeven PROD route = bootstrap CREATE OR ALTER on text diff; manual Source control refresh
 - [eval-2026-11-17-codemap-deploy-session](eval-2026-11-17-codemap-deploy-session.md) -- evaluative: fabric-warehouse-git gaps #7/#8 added; Warehouse_Curated deploy suggestion against runbook; Orca fold links fixed
+- [carlras-direct-lake-go-live](carlras-direct-lake-go-live.md) -- Carl Ras PROD Direct Lake: Model_OneLake had read TEST data; empty visuals fixed with workspace-identity connection; auto-update off, pipeline frames
+- [customer-repos-github-backup](customer-repos-github-backup.md) -- customer unit repos back up to private NielsSkytte/customers via sync-customers.ps1 -All at /log
+- [eval-2026-11-18-gtm-prod-session](eval-2026-11-18-gtm-prod-session.md) -- evaluative: per-stage source trap known but unchecked on the second model; Direct Lake viewer access added to fabric-deployment

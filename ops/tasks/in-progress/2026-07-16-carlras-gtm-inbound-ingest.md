@@ -9,6 +9,7 @@ blocked_by:
 activity:
 fno_task: CarlRData-258
 customer_ask: open
+waiting_on: Impact (Benno) - capture gaps, asked 2026-11-18
 source: session
 ---
 
@@ -20,51 +21,31 @@ Fabric platform: new GTM source in the LandingZone (shortcut + ingest notebook �
 
 ## Progress
 
-**Now (2026-11-17):** GTM runs landing -> Raw -> Enriched -> Curated in DEV, TEST and PROD, and the Process
-Insight "Web engagement" model (120 metrics, library M80) and report are live in all three. Rows 11-17:
-fact.GtmEvents DEV 147.2M / TEST 26.8M / PROD 15.5M; FactWebSessions DEV 5.90M / TEST 1.61M / PROD 1.11M.
-Measures valued (of 120): DEV 47, TEST 47, PROD 43, 0 errors; the rest blank by design (data not captured).
-PL_MainExecution now runs PL_PI_Main after Curated + Semantic Model (refreshes the model as the SPN via
-KeyVaultDataHub secrets DataHubSP-TenantId / DataHubSP-ClientId / DataHubServicePrincipal, VL_PI defaults).
-Schedules: PROD PL_MainExecution ON Mon-Fri 06:30 as SPN (id 9c0e992d; the PROD deploy had switched it off,
-re-enabled); DEV and TEST OFF. Model OneLakeSourceUrl deployment rules set by Niels and applied.
-Commits: Fabric-ETL bb3b677, d5e3421, 258cfec, caa253c, 9a7f3fc; Semantic-Model 6411f98, 6a3c2b2; reports
-332a822, 4648456; own fe3a582, e30fefb, e7576e5 + VL_PI keyvault from placement (11-17).
-Reports 11-17 (all in DEV/TEST/PROD): "Web engagement" restyled to the Carl Ras look (reports 8353a88);
-new "Webadfaerd og salg" (6 pages, reports 9444eb5) on the extended "Web engagement" model (Semantic-Model
-568cb84: + AX09 Date/Customer/Sales Channel/Sales Order/Sales Transactions, 49 measures; 48 valued, 0 errors
-per stage). GTM<->AX link is by date and segment only (no row key in GTM). Own: report style 559d0fc,
-model extension 133767b (side branch processinsight/model-extension, not yet in AAI: hook fetch failed).
-11-18: GTM row-level keys live DEV/TEST/PROD (Fabric-ETL d1a0df1, 9423ac8, 79041c8): Raw full history
-2024-03-20..; fact.GtmWebOrders 157,777, fact.GtmWebOrderItems 461,914; GtmEvents 147M. PROD from 2024-10:
-99.5% web orders found in AX09, 90.3% AX Internet+WebI found in GTM, items 100%. Before 2024-10 web order ids
-differ from AX. No e-mail/user_id carried. "Webadfaerd og salg" v4 (Semantic-Model 9622c82, reports 2fd49a3):
-pages Webordrer, Varer, Kunde-web, Segmenter og brancher, Salgskanaler; 87 measures, 0 errors per stage.
-PROD PL_MainExecution schedule id now 53502fbf. Open: session-level referrer (traffic source) needs a
-FactWebSessions column via own/ProcessInsight binding;
-March 2025 GTM order value outlier (36.2M vs ~10M AX); 14 uncommitted non-GTM Warehouse_Curated edits in DEV.
-DEV Raw stall 09-23 -> 11-17 was the disabled DEV schedule; backfilled.
-11-18: "Webadfaerd og salg" failed to load in all stages ("Unable to load report"): the Segmentdetalje back
-button had parentGroupName to a missing visual group. Found by DEV test copies one page each; fixed in reports
-4531011 (v4 otherwise unchanged), deployed DEV/TEST/PROD, all three open. PROD 06:30 run Succeeded.
-11-18 pm: Webordrer chart "fundet/ikke fundet i AX" replaced by "AX-webordrer, som GTM ikke saa, pr. segment"
-(report-level measure; reports 5a8834a..), live DEV/TEST/PROD. Finding: Kontant segment 81% seen in GTM vs 93-96%
-for business segments, 58% of all misses. Three GTM capture gaps in the landing zone itself (4-6 Nov 2025,
-30 Mar-7 Apr 2026, 5-9 Aug 2026; ~2,750 AX web orders missing); mail sent to Benno (Impact) asking cause,
-resend and alerting. Lessons written to skills fabric-deployment (failures 8-9 + references/powerbi-report-model.md),
-fabric-warehouse-git, fabric-pipeline-notebook; own ProcessInsight docs 07/08 (61c3812).
+**Now (2026-11-18):** GTM is live in PROD (Niels 11-18): landing -> Raw -> Enriched -> Curated in DEV/TEST/PROD with
+row-level order keys (Fabric-ETL d1a0df1, 9423ac8, 79041c8; fact.GtmWebOrders 157,777, fact.GtmWebOrderItems 461,914).
+Process Insight "Web engagement" model and reports "Web engagement" + "Webadfaerd og salg" v4 open in all stages
+(reports 4531011 load fix, 5a8834a.. segment chart). PROD PL_MainExecution Mon-Fri 06:30 as SPN (schedule 53502fbf).
+GTM sees 92-95% of AX web orders outside three landing-zone capture gaps (4-6 Nov 2025, 30 Mar-7 Apr 2026, 5-9 Aug
+2026; ~2,750 orders); Kontant segment 81%. Mail to Benno sent 11-18, Impact researching. Lessons: skills df384f8,
+own ProcessInsight docs 61c3812 (side branch processinsight/gtm-existing-source).
 
 **Tried and dropped:** GA4 -> BigQuery export as the source (07-03); AutoLoader shell for GTM Raw (08-11);
 an event-grain Process Insight fact copying fact.GtmEvents (11-17: session-grain fact + reuse of fact.GtmEvents).
 
 **Next:**
-1. Benno's answer on the capture gaps; if Impact can resend the events, reload those days.
+0. Time: when 11-18 is finalized, split session 1a6805df's CarlRData-555 line: work up to 18:34 UTC is GTM
+   (CarlRData-258, Niels 11-18), work after it is operation hardening (model refresh, Direct Lake access) and
+   stays on CarlRData-555. 11-17 already retagged; rollup reads the heartbeats, not session-lines.md.
+1. Impact's answer on the capture gaps; if they can resend the events, reload those days.
 2. fabric_release.py: after a deploy of a scheduled pipeline, re-check its schedule is still enabled (PROD
    deploy 11-17 switched PL_MainExecution's off).
 3. Carry the data gaps (coverage file `process-insight/design/gtm-metric-coverage.md`): ecommerce value/currency/
    transaction_id, web-vital values, page_referrer + UTM, items[] - 56 metrics become possible.
 4. Decide where the single PL_Ingest_GTM lives (TEST copy failed hourly; schedule off in TEST via API only, git
    .schedules still enabled because it also governs DEV).
+5. Leftovers: session-level referrer column in FactWebSessions (own/ProcessInsight binding); March 2025 GTM order
+   value outlier (36.2M vs ~10M AX); 14 uncommitted non-GTM Warehouse_Curated edits in DEV; own 133767b and 61c3812
+   side branches into AAI.
 
 ## Needs from customer
 
@@ -184,3 +165,4 @@ removed from git. Until then, the first CTAS of `enriched.Events` must be follow
   been started.
 - 2026-09-16 — brought onto the Progress shape (Progress + Needs from customer, `fno_task` / `customer_ask` set, `activity` blanked per CLAUDE.md task-always rule); no facts changed. Card: `customers/Carl-Ras/datahub/CONTEXT.md`.
 - 2026-09-25 — decided: after Part 3, `Warehouse_Enriched_GTM` is never committed from the workspace (same as Marketo); until then `enriched.Events` needs a matching `Tables/Events.sql`
+- 2026-11-18 - GTM live in PROD: report load fix (4531011), segment chart, capture-gap mail to Benno, lessons into skills (df384f8) and ProcessInsight docs (61c3812); parked waiting on Impact

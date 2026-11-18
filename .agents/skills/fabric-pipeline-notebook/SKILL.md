@@ -18,6 +18,28 @@ A notebook behaves differently when triggered by a pipeline vs run interactively
 ### SQL Endpoint is Read-Only
 The Fabric Lakehouse SQL analytics endpoint is read-only over the Delta tables: no INSERT, UPDATE, DELETE or MERGE, and no table DDL. Data changes go through a notebook or pipeline activity. You *can* create views, functions and stored procedures on the endpoint. Verified 2026-10-05: https://learn.microsoft.com/fabric/data-engineering/lakehouse-sql-analytics-endpoint
 
+### Refresh the SQL endpoint before reading a lakehouse through it
+A lakehouse's SQL analytics endpoint syncs Delta metadata with a lag. A pipeline step that reads Raw
+through the endpoint right after a notebook wrote it (a warehouse view over the lakehouse, a CTAS)
+can read the previous load and still succeed. Carl Ras `PL_Transform_Enriched_GTM` built Enriched
+from yesterday's Raw this way (fixed 2026-11-17 by a `NB_Refresh_SqlEndpoint` step first, the same
+defect AX09 had). Put an endpoint refresh between the write and the first SQL read.
+
+### "Not in Raw" is not "not sent"
+Before telling anyone a source lacks a field, read the landing payload itself, not the Raw table.
+Raw holds only what our ingest notebook extracts. At Carl Ras the GTM key fields (`transaction_id`,
+`value`, `user_properties.customerID`, `items[]`) had been in the landing JSON all along; Raw
+flattened 21 fields, two report versions were built on date-only joins, and the reload took a night.
+
+### Python-notebook JSON with polars
+- `str.json_decode` needs an explicit `dtype` in current polars; a vectorised decode fails on
+  mixed shapes (`error deserializing value "Object(...)" as string`). Decode once per batch with a
+  declared schema and fall back per row for the rejects.
+- Declare id columns as strings; an id that is numeric in one batch and text in the next breaks the
+  Delta write.
+- Reading Delta from outside Fabric: use the OneLake **DFS** endpoint; the blob endpoint returned 400
+  on `_delta_log/_last_checkpoint`.
+
 ### Spark Cold Start
 Session start depends on the pool (verified 2026-10-05, https://learn.microsoft.com/fabric/data-engineering/spark-compute#starter-pools):
 - **Starter pool, no custom libraries or Spark properties:** typically 5-10 seconds. Best effort — when prewarmed capacity is not available (high regional demand) Fabric falls back to on-demand, 2-5 minutes.

@@ -10,7 +10,9 @@ description: >
   new workspace and before the first push to a customer repo; for variable libraries and per-stage
   value sets; for portability review (hardcoded ids, a notebook writing to the wrong workspace, a
   missing seeded table); and for item ownership and scheduled runs that stop when an account is
-  disabled. It owns deployment mechanics and failure modes. Delivery architecture (workspaces,
+  disabled; for a report or semantic model that deploys cleanly and then does not work ("Unable to
+  load report", a broken visual, PROD model reading TEST data, deployment rules); for schedules that
+  a deploy switched off, recreated or copied into the wrong stage. It owns deployment mechanics and failure modes. Delivery architecture (workspaces,
   branch model, the git-not-fab-import rule) is `pingala-fabric-platform`; a warehouse schema change
   through git is `fabric-warehouse-git`; renaming an item is `fabric-rename-entity`; data
   reconciliation is `medallion-migration-validation`.
@@ -260,6 +262,41 @@ an empty workspace syncs git -> workspace.
 
 **Rule.** "It runs in DEV" is not "it deploys". A first deploy is its own test.
 
+### 8. A report or model deploys cleanly and does not work
+
+**Symptom.** Update from git and the deployment pipeline both succeed, but the report shows "Unable
+to load report" in every stage, a visual fails, or the model in PROD reads TEST's data. Nothing in
+the service, the console or the validator names the cause.
+
+**Cause.** A deployment checks that a report definition parses, not that it renders, and it copies
+the source stage's model parameters. Seen at Carl Ras (2026-11-17/18): a dangling
+`parentGroupName` killed the whole report in DEV, TEST and PROD; a report-level measure without
+`"Schema": "extension"` broke one visual; PROD's model arrived with TEST's `OneLakeSourceUrl`.
+
+**Cure and diagnosis.** `references/powerbi-report-model.md`: the defects seen, the bisection with
+test copies that found the fatal one, the per-stage parameter rule (portal only, no API), and how to
+render-check when export-to-image and Desktop are not available.
+
+**Rule.** A report is not promoted until someone has opened the changed pages in DEV in the browser,
+signed in as the customer account. Then open TEST and PROD once after the deploy.
+
+### 9. Schedules after a deploy: switched off, recreated, or copied where they should not run
+
+**Symptom.** (a) The PROD schedule of a deployed pipeline is disabled after the deploy. (b) Code that
+stored a schedule id fails with `ScheduleNotFound` after a re-stamp. (c) A pipeline in TEST fails
+every hour ("Failed to get User Auth access token", 728 runs at Carl Ras) although nobody scheduled it
+there.
+
+**Cause.** (a) The deploy rewrote the item's schedule state. (b) Re-stamping an item to the SPN
+recreates its schedule with a new id (five ids in one day at Carl Ras). (c) The item's `.schedules`
+file in git has `enabled: true`; the deployment copies an enabled schedule into every stage.
+
+**Cure.** After every deploy, list the schedules of each deployed pipeline per stage and compare with
+the intended state (which stage runs, as whom, when). Look schedules up by item and job type, never by
+a stored id. Keep `enabled: false` in git for anything that must run in one stage only and switch it
+on in that stage after the deploy; switching it off by API in the wrong stage is the stop-gap.
+Re-stamping prints a harmless 400 "The requesting user is already the identity of the artifact".
+
 ---
 
 ## Pre-flight: before promoting anything
@@ -276,6 +313,10 @@ an empty workspace syncs git -> workspace.
 6. **Is the target workspace empty or new?** Then run the first-deploy design check: shell
    warehouses, value sets, regenerated shortcuts and model path, a bootstrap pipeline, a
    preflight access/size run (failure 7).
+7. **Is it a report or a semantic model?** Open the changed pages in DEV in the browser as the
+   customer account; for a model, check the per-stage parameter rules exist (failure 8).
+8. **Does it carry a `.schedules` file?** Check `enabled` against the stages it should run in
+   (failure 9).
 
 ## Post-deploy: what to check before promoting further
 
@@ -283,7 +324,9 @@ an empty workspace syncs git -> workspace.
   resolvable by the principal that will run the job (`GET /connections/{id}` - 200 usable,
   403 exists but no role, 404 not present in this tenant; back off on 429 rather than report a
   false negative).
-- Identity re-stamped.
+- Identity re-stamped, then the schedules of each deployed pipeline per stage listed and compared
+  with the intended state (failure 9).
+- Reports: TEST and PROD opened once in the browser (failure 8).
 - One smoke run of the deployed item, and check *where* it wrote, not just that it succeeded.
 
 ## Audit before you write

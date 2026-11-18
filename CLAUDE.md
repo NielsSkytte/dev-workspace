@@ -34,7 +34,11 @@ backslash paths. A command that truly needs PowerShell is wrapped: `! powershell
 login`, `fab auth`, an expired token), run the sign-in command yourself at once; never ask Niels
 to type it. Tell him which account to pick in the browser: `nchristensen@pingala.eu` for the
 Pingala tenant `5e8d3c87-f9c4-4575-a670-d76860aa43e2`, the customer's account for a customer
-tenant. Memory record `feedback-start-sign-in-yourself`.
+tenant. **Customer / non-default tenant (2026-11-11): always `az login --tenant <id>
+--use-device-code`**, in the background with output to a file; give Niels the URL, the code and
+the account in "Next for you". A browser sign-in never signs in the CLI. Before saying "signed in"
+(or acting on his "I'm signed in"), check `az account list --query "[?tenantId=='<id>']"`; empty
+means the CLI has no token: re-show the code. Memory record `feedback-start-sign-in-yourself`.
 
 **Facts only — never imply.** State what the evidence shows; label inference explicitly as
 inference. Word choices must not suggest more than the evidence supports (see memory record
@@ -94,7 +98,7 @@ The memory substrate lives at `ops/memory/` (see `AGENTS.md` > *Memory*). Claude
 - **`track_time.py` also runs on `PreToolUse`/`PostToolUse` with matcher `AskUserQuestion` (added 2026-08-31):** a turn stays open while a question is unanswered, so without it the wait is billed (2026-08-20: 310 of a 325-minute heartbeat). The matcher is load-bearing — it keeps the hook to one process per question instead of one per tool call.
 - **Hook registration is dual (fixed 2026-07-28):** `track_time.py`, `capture_turn.py` + `session_task.py` are registered in both `.claude/settings.json` (workspace) **and** the user-level `~/.claude/settings.json` — settings don't cascade, so only the user-level registration reaches sessions rooted below `C:\Dev` (project/customer sessions). The scripts self-guard to cwds under `C:\Dev`; Claude Code deduplicates the identical command strings, so **keep them byte-identical (load-bearing)**. The `SessionStart` *snapshot* hook (`session-start.ps1`) stays workspace-root-only by design; the `SessionStart` *task* hook (`session_task.py`) is dual-registered, since it must fire in project sessions.
 - **Time attribution is task-first (ADR-003, 2026-07-28):** the active task decides the project, cwd is the fallback, capped to the same customer, with a session-scoped marker. Don't reintroduce cwd-first logic. Hook output is ASCII-sanitised on purpose — task titles carry non-cp1252 characters and a Windows encode error would be swallowed by the fail-silent guard.
-- **Two accounts (2026-09-16):** default `~/.claude` = enterprise (Pingala AS); `claude-priv` (on PATH) launches the private account from `~/.claude-priv` via `CLAUDE_CONFIG_DIR`. Re-sync with `ops/bin/claude-accounts.ps1` after changing user settings. The workspace harness and `ops/` substrate are cwd-scoped, so neither account changes time tracking, memory or the session log. Full rationale in `AGENTS.md` > *Conventions*.
+- **Two accounts (2026-09-16):** `~/.claude` = enterprise (Pingala AS), `~/.claude-priv` = private. Launch with `c-w` (enterprise, unsets `CLAUDE_CONFIG_DIR`) or `c-p` (private, sets it); both on PATH in `~/.local/bin`, work from any folder and ignore an inherited `CLAUDE_CONFIG_DIR` (2026-11-17: Orca terminals opened plain `claude` on the private account). Re-sync with `ops/bin/claude-accounts.ps1` after changing user settings. The workspace harness and `ops/` substrate are cwd-scoped, so neither account changes time tracking, memory or the session log. Full rationale in `AGENTS.md` > *Conventions*.
 - **Compaction nudge (2026-09-16):** `session_task.py` is also registered for `SessionStart` source `compact` (matcher `startup|resume|compact`, both settings files). After a compaction it prints one line naming this session's task and the date of its Progress block, so the session writes progress then (the `/handoff` task step) instead of losing it at session end. It skips the task selection and the day brief on that path.
 - **Attribution drift is reported, not corrected (added 2026-09-21):** `track_time.py` says so
   when a turn is about to produce an F&O line that cannot be entered — no work-task held on a

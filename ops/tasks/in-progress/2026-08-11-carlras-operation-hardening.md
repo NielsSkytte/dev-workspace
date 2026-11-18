@@ -75,6 +75,18 @@ is the model owner's decision. Do not change Curated column types unilaterally.
 
 ## Progress
 
+**Now (2026-11-18):** PROD models refresh by the pipeline only. Fabric-ETL main 87190db: `PL_Update_SemanticModel` ->
+`NB_Frame_SemanticModel` (frame + retry) on `VL_ModelId` = Model_OneLake; deployed DEV/TEST/PROD 11-18 (runs DEV
+e7d02e96, TEST a00047eb Completed); the Import `Model` 09692cc9 is no longer refreshed from the 11-19 run. PROD
+Model_OneLake read TEST data (OneLakeSourceUrl -> Fabric-ETL-TEST): repointed to PROD Warehouse_Curated 19:24, counts =
+Import model (Sales Transactions 6,901,515, Customer 243,500); Niels set the PROD parameter rule. "Keep Direct Lake data
+up to date" OFF on PROD Model_OneLake + Web engagement. New users saw empty visuals (SSO: viewers lacked ReadAll):
+both PROD models bound to connection `CON-WI-OneLake-Warehouse_Curated_PROD-SemanticModel` (8756645d, workspace
+identity of Semantic-Model PROD, SSO off); that identity has Read + ReadAll on PROD Warehouse_Curated. Not verified with
+a non-admin user. DQ quarantine branch pushed (data-quality task). Near-real-time options: design/near-real-time-options.md.
+Next: check the 11-19 06:30 PROD run frames Model_OneLake; a new user confirms Salgsoverblik shows data. TEST done 11-18 (both models on
+CON-WI-ADLS-OneLake-Warehouse_Curated_TEST a556a678, auto-update off); DEV unchanged. Older notes below.
+
 **GO-LIVE HANDOFF (2026-11-12 22:20 UTC) - read this first.** Niels: "everything in PROD now". State per stream:
 - **AX09** (fixes `7731f19`: raw soft-delete of rows deleted in AX, `NB_Refresh_SqlEndpoint` before enriched): DEV + TEST done
   (TEST raw = landing on 90 tables, row check 29/29). PROD deploy started 22:12 (see below). The first PROD run after it flags
@@ -267,3 +279,6 @@ classes will keep recurring until they are closed deliberately.
 - 2026-09-24 - CVR employee band. Report "Omsaetning pr. stoerrelse" shows the raw codes (ANTAL_20_49) and two (Tom) bars. Cause: the enriched CVR view has passed employees_interval through unchanged since 500acb5 (2026-05-07); a decode existed only as DEV drift on 08-12 and was erased when the view was rebuilt from git. The two (Tom) bars are data, not a visual setting: NULL (142,630 customers with no CVR row) and '' (11,192 matched with a blank band) both render as (Tom). Fixed in Fabric-ETL d659a2e/3db439b [GEN-012] - decode to Antal-prefixed band labels in viewtransform.CentralCompanyRegister, both empties collapse to one Unknown. Committed, NOT pushed; needs push + Update from git (Niels).
 - 2026-09-24 - time to split at the review gate. This session is tagged here, but part of it was work in own/MetaAtomic (the consistency.sort_order_single DQ rule, commit 8cc1224) - an internal product change, not Carl Ras delivery. The CVR band fix and the DEV transform/model runs belong here; the MetaAtomic rule does not. Split it out of this task's line when 2026-09-24 is rolled up.
 - 2026-09-25 — Curated table DDL matched to its views, Curated deployed to TEST; Enriched_AX09 deploy-build rejects fixed (GEN-014/015, `8ed2333`), wh_rules.py in pre-push; AX09 deploy pending
+- 2026-11-18 - model-orchestration branch: PROD Model_OneLake id filled, rebased, pushed for review; DQ quarantine branch pushed
+- 2026-11-18 - model-orchestration merged to main (87190db), DEV updated from git and run green; Warehouse_Curated DEV edits committed (195f689)
+- 2026-11-18 - PROD Direct Lake: Model_OneLake repointed from TEST to PROD data, auto-update off, both PROD models on a workspace-identity connection (empty visuals for new users), refresh change deployed to PROD
