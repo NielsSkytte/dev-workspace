@@ -22,6 +22,8 @@ import {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// A day that is not finalized has no value record until /log runs value.py (2026-11-18).
+const notDerivedDay = html`<span class="muted" title="derived at /log, after the rollup">not derived yet</span>`;
 const pad = n => String(n).padStart(2, '0');
 
 /* Field-wise, never through Date(string) — that reads the date as UTC and shifts it. */
@@ -1420,6 +1422,8 @@ function Evidence({ D, w, onReassign }) {
     : html` <span class="muted">${Math.round(100 * e / v)}%</span>`);
   const ofEntry = (x, e) => ((!e || !x) ? null
     : html` <span class="muted">${Math.round(100 * x / e)}%</span>`);
+  // A live day has no value record until /log runs value.py: show that, not a 0 (2026-11-18).
+  const notDerived = html`<span class="muted" title="derived at /log, after the rollup">not derived yet</span>`;
   const lineRow = l => html`
     <tr key=${l.date + l.project + l.activity + l.fno_task}>
       <td>${shortDay(l.date)}</td>
@@ -1430,14 +1434,14 @@ function Evidence({ D, w, onReassign }) {
       <td class="muted">${l.proj_id}</td>
       <td>${l.activity || html`<span class="muted">–</span>`}</td>
       <td>${l.fno_task || html`<span class="muted">–</span>`}</td>
-      <td class="r">${auN(l.keyboard)}${ofEntry(l.keyboard, entryOf(l))}</td>
+      <td class="r">${l.live ? notDerived : html`${auN(l.keyboard)}${ofEntry(l.keyboard, entryOf(l))}`}</td>
       <td class="r">${auN(l.measured)}${l.shared
         ? html` <span class="muted"
                 title="a correction moved this line after the day was written, so the evidence was recorded against another dimension of the same project. It is split across that project's lines in proportion to their hours -- a share of the day, not this line's own measurement.">\u2248</span>`
         : null}</td>
       <td class="r">${auN(l.claimed)}${ctrl(l)}</td>
-      <td class="r"><b>${auN(entryOf(l))}</b>${ofValue(entryOf(l), l.weighted)}</td>
-      <td class="r">${auN(l.weighted)}${ofEntry(l.weighted, entryOf(l))}</td>
+      <td class="r"><b>${auN(entryOf(l))}</b>${l.live ? null : ofValue(entryOf(l), l.weighted)}</td>
+      <td class="r">${l.live ? notDerived : html`${auN(l.weighted)}${ofEntry(l.weighted, entryOf(l))}`}</td>
       <td class="r muted">${l.turns}/${l.stretches}</td>
       <td class="r muted">${l.files || '–'}</td>
       <td class="r">${l.t5 ? html`<b class="accentink">${l.t5}</b>` : '–'}</td>
@@ -1593,9 +1597,9 @@ function Evidence({ D, w, onReassign }) {
             || d.status === 'today').map(d => html`
             <tr key=${d.date} class=${d.workday ? '' : 'wk'}>
               <td>${shortDay(d.date)} <span class="muted">${d.dow}</span></td>
-              <td class="r">${auN(d.keyboard)}</td>
-              <td class="r">${auN(d.weighted)}</td>
-              <td class="r muted">${auX(d.weighted, d.keyboard)}</td>
+              <td class="r">${d.status === 'live' || d.status === 'today' ? notDerivedDay : auN(d.keyboard)}</td>
+              <td class="r">${d.status === 'live' || d.status === 'today' ? notDerivedDay : auN(d.weighted)}</td>
+              <td class="r muted">${d.status === 'live' || d.status === 'today' ? '–' : auX(d.weighted, d.keyboard)}</td>
               <td class="r">${auN(d.measured)}</td>
               <td class="r"><b>${auN(d.claimed)}</b></td>
               <td class="r">${d.topup ? html`<span class="okink">+${hrs(d.topup)}</span>` : auN(0)}</td>

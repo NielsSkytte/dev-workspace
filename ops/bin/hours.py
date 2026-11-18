@@ -104,26 +104,38 @@ def _attach_fno(rows, start, end):
 
 
 def table(rows, key, label):
-    agg = {}
+    """A live (not finalized) day has no value record yet, so its keyboard and weighted hours are
+    not 0 but not derived: a group of only live rows says so, and the weighted share is taken over
+    the registered hours of derived rows only (2026-11-18, Niels: today's 0 read as a defect)."""
+    agg, live = {}, {}
     for r in rows:
         k = key(r)
-        a = agg.setdefault(k, dict.fromkeys(FIELDS, 0.0))
+        a = agg.setdefault(k, dict.fromkeys(FIELDS + ("derived",), 0.0))
         for f in FIELDS:
             a[f] += r[f]
+        if not r["live"]:
+            a["derived"] += r["claimed"]
+        live[k] = live.get(k, True) and r["live"]
     out = ["| %s | Keyboard h | Measured h | Registered h | Weighted h (of registered) | F&O entry h | In F&O h |"
            % label, "|---" * (label.count("|") + 7) + "|"]
-    tot = dict.fromkeys(FIELDS, 0.0)
+    tot = dict.fromkeys(FIELDS + ("derived",), 0.0)
+
+    def kb_w(a, all_live):
+        if all_live:
+            return "not derived yet", "not derived yet"
+        ratio = "%d%%" % round(100 * a["weighted"] / a["derived"]) if a["derived"] else "-"
+        return "%.2f" % a["keyboard"], "%.2f (%s)" % (a["weighted"], ratio)
     for k in sorted(agg):
         a = agg[k]
-        for f in FIELDS:
+        for f in tot:
             tot[f] += a[f]
-        ratio = "%d%%" % round(100 * a["weighted"] / a["claimed"]) if a["claimed"] else "-"
-        out.append("| %s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
-                   % (k, a["keyboard"], a["measured"], a["claimed"], a["weighted"], ratio, a["entry"], a["fno"]))
-    ratio = "%d%%" % round(100 * tot["weighted"] / tot["claimed"]) if tot["claimed"] else "-"
+        kb, w = kb_w(a, live[k])
+        out.append("| %s | %s | %.2f | %.2f | %s | %.2f | %.2f |"
+                   % (k, kb, a["measured"], a["claimed"], w, a["entry"], a["fno"]))
     pad = " |" * label.count("|")
-    out.append("| **Total**%s | %.2f | %.2f | %.2f | %.2f (%s) | %.2f | %.2f |"
-               % (pad, tot["keyboard"], tot["measured"], tot["claimed"], tot["weighted"], ratio, tot["entry"], tot["fno"]))
+    kb, w = kb_w(tot, all(live.values()))
+    out.append("| **Total**%s | %s | %.2f | %.2f | %s | %.2f | %.2f |"
+               % (pad, kb, tot["measured"], tot["claimed"], w, tot["entry"], tot["fno"]))
     return "\n".join(out)
 
 
@@ -148,7 +160,8 @@ def main(argv):
     else:
         print(table(rows, lambda r: "%s | %s" % (r["project"], task(r)), "Project | Task"))
     if any(r["live"] for r in rows):
-        print("\nIncludes a day not finalized yet (live): its numbers move until the rollup.")
+        print("\nIncludes a day not finalized yet (live): its keyboard and weighted hours are not derived "
+              "until the rollup and value.py run, so the weighted share counts finalized days only.")
     return 0
 
 
