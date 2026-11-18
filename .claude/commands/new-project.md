@@ -115,12 +115,18 @@ If the owner says skip, move on. Never push.
    workspace root, so without this a session rooted at the project has no `/log`, no domain skills,
    and cannot spawn `M`/`Q`/`sentinel`. Verify with `Get-Item <path>\.claude\agents` → `Junction`.
 
+   **Customer project: back it up.** Commit the new files in the customer unit repo
+   (`C:\Dev\customers\<Client>`), then run
+   `powershell -NoProfile -File C:\Dev\ops\bin\sync-customers.ps1 <Client>`. A new customer becomes a
+   new folder in the private `NielsSkytte/customers`; a new project of an existing one rides along.
+
 7. Confirm in one block:
    ```
    Project scaffolded: [path]
    Type/scale/focus: [type] / [scale] / [focus]
    Task added: Claude · [path]
    Harness linked: commands + skills + agents + settings.json
+   Backup: NielsSkytte/customers/<Client> (customer projects)
    Open via: Ctrl+Shift+P → Run Task → Claude · [path]
    ```
    Note: time for this project is tracked automatically once you open sessions rooted at its folder

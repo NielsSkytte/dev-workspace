@@ -11,9 +11,16 @@
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(ValueFromRemainingArguments = $true)] [string[]] $Customers,
-    [switch] $NoPush
+    [switch] $NoPush,
+    [switch] $All
 )
 $ErrorActionPreference = 'Stop'
+if ($All) {
+    $Customers = @(Get-ChildItem 'C:\Dev\customers' -Directory | Where-Object {
+        ($_.Name -notlike '.*') -and (Test-Path (Join-Path $_.FullName '.git')) -and
+        ((& git -C $_.FullName rev-parse -q --verify HEAD 2>$null) -ne $null)
+    } | ForEach-Object { $_.Name })
+}
 if (-not $Customers) { throw 'name one or more folders under C:\Dev\customers' }
 $a = @{
     Remote = 'https://github.com/NielsSkytte/customers.git'
