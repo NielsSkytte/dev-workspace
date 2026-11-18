@@ -41,15 +41,24 @@ model extension 133767b (side branch processinsight/model-extension, not yet in 
 differ from AX. No e-mail/user_id carried. "Webadfaerd og salg" v4 (Semantic-Model 9622c82, reports 2fd49a3):
 pages Webordrer, Varer, Kunde-web, Segmenter og brancher, Salgskanaler; 87 measures, 0 errors per stage.
 PROD PL_MainExecution schedule id now 53502fbf. Open: session-level referrer (traffic source) needs a
-FactWebSessions column via own/ProcessInsight binding; Segmentdetalje back button points to a missing group;
+FactWebSessions column via own/ProcessInsight binding;
 March 2025 GTM order value outlier (36.2M vs ~10M AX); 14 uncommitted non-GTM Warehouse_Curated edits in DEV.
 DEV Raw stall 09-23 -> 11-17 was the disabled DEV schedule; backfilled.
+11-18: "Webadfaerd og salg" failed to load in all stages ("Unable to load report"): the Segmentdetalje back
+button had parentGroupName to a missing visual group. Found by DEV test copies one page each; fixed in reports
+4531011 (v4 otherwise unchanged), deployed DEV/TEST/PROD, all three open. PROD 06:30 run Succeeded.
+11-18 pm: Webordrer chart "fundet/ikke fundet i AX" replaced by "AX-webordrer, som GTM ikke saa, pr. segment"
+(report-level measure; reports 5a8834a..), live DEV/TEST/PROD. Finding: Kontant segment 81% seen in GTM vs 93-96%
+for business segments, 58% of all misses. Three GTM capture gaps in the landing zone itself (4-6 Nov 2025,
+30 Mar-7 Apr 2026, 5-9 Aug 2026; ~2,750 AX web orders missing); mail sent to Benno (Impact) asking cause,
+resend and alerting. Lessons written to skills fabric-deployment (failures 8-9 + references/powerbi-report-model.md),
+fabric-warehouse-git, fabric-pipeline-notebook; own ProcessInsight docs 07/08 (61c3812).
 
 **Tried and dropped:** GA4 -> BigQuery export as the source (07-03); AutoLoader shell for GTM Raw (08-11);
 an event-grain Process Insight fact copying fact.GtmEvents (11-17: session-grain fact + reuse of fact.GtmEvents).
 
 **Next:**
-1. Check the first PROD 06:30 run with the PI step (11-18): PL_MainExecution Succeeded, pi_* rows moved.
+1. Benno's answer on the capture gaps; if Impact can resend the events, reload those days.
 2. fabric_release.py: after a deploy of a scheduled pipeline, re-check its schedule is still enabled (PROD
    deploy 11-17 switched PL_MainExecution's off).
 3. Carry the data gaps (coverage file `process-insight/design/gtm-metric-coverage.md`): ecommerce value/currency/
