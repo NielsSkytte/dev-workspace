@@ -53,6 +53,7 @@ New-Item -ItemType Directory -Force $work | Out-Null
 if (-not (Test-Path (Join-Path $aai '.git'))) {
     Invoke-Git clone -q $Remote $aai
 }
+Invoke-Git -C $aai config core.longpaths true
 Invoke-Git -C $aai fetch -q origin
 $hasMain = (& git -C $aai ls-remote --heads origin main)
 if ($hasMain) { Invoke-Git -C $aai checkout -q -B main origin/main }
@@ -110,7 +111,7 @@ foreach ($spec in $Sources) {
 
     $tmp = Join-Path $work "src-$target"
     if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
-    Invoke-Git clone -q --no-local --single-branch $top $tmp
+    Invoke-Git -c core.longpaths=true clone -q -c core.longpaths=true --no-local --single-branch $top $tmp
 
     if ($prefix) {
         $filter = @('--path', $prefix)
