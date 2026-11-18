@@ -62,6 +62,32 @@ Interim fix: `Default.UpdateParameters` on the target model after the deploy. Du
 sets a parameter rule per stage once, in the deployment pipeline UI. Check the target model's
 parameter values after every model deploy until the rules exist.
 
+## 4b. Direct Lake in production: viewers see empty visuals
+
+**Symptom.** Report owners and the team see data; new business users with Read (+Build) on the model and
+the report see every visual empty. Evidence: Carl Ras 2026-11-18, first users after the move from Import to
+Direct Lake on OneLake.
+
+**Cause.** A Direct Lake model with no bound connection reads OneLake as the viewer (SSO). Workspace
+Contributors and higher have ReadAll; everyone else needs Read + ReadAll on the source warehouse or
+lakehouse ([Direct Lake security](https://learn.microsoft.com/fabric/fundamentals/direct-lake-security-integration)).
+An Import model never needed this, so the gap only shows at go-live.
+
+**Fix used (fixed identity, no secret).** (1) Share the source item with the model workspace's
+workspace identity: Read + "Read all OneLake data (ReadAll)", notification off. (2) `POST /v1/connections`
+ShareableCloud, type and creationMethod `AzureDataLakeStorage`, parameters `server` =
+`onelake.dfs.fabric.microsoft.com`, `path` = `/<ws>/<item>/`, credentials `WorkspaceIdentity`,
+`singleSignOnType: None`. (3) `POST /v1/workspaces/<ws>/semanticModels/<id>/bindConnection` with that
+connection id and the full `https://onelake...` path. (4) Refresh. Check with `GET datasets/<id>/datasources`
+(datasourceId = the connection id). A service-principal connection works too but stores a secret.
+
+**Also check at go-live:**
+- The model's source parameter per stage (`OneLakeSourceUrl`): PROD `Model_OneLake` read TEST data for a
+  week because the per-stage rule existed for one model and not the other (section 4).
+- Turn "Keep your Direct Lake data up to date" off (model settings > Refresh, portal only, not in TMDL)
+  when the pipeline frames the model after the build; automatic framing fires during drop + CTAS and
+  fails with `DirectLake_TableNotFound`.
+
 ## 5. You cannot see the report, so test it this way
 
 - Export-to-image can be disabled tenant-wide (`Export report to image is disabled on tenant level`,
