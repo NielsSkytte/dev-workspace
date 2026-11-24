@@ -27,6 +27,40 @@ def _has_identity(d):
     return any(os.path.isfile(os.path.join(d, n)) for n in ("AGENTS.md", "CLAUDE.md"))
 
 
+def _worktree_home(c):
+    """A path inside a git worktree -> the same path in its MAIN checkout (added 2026-11-24).
+    Orca (and `git worktree add`) put a worktree outside the repo folder, so cwd-based
+    attribution saw a path outside the workspace and dropped the session. The worktree's
+    .git FILE names <main>/.git/worktrees/<name>; the project is wherever <main> is.
+    Anything that is not such a worktree (plain repo, submodule, no .git) returns c unchanged."""
+    try:
+        d = c
+        while True:
+            g = os.path.join(d, ".git")
+            if os.path.isfile(g):
+                with open(g, encoding="utf-8", errors="replace") as f:
+                    line = f.readline().strip()
+                if not line.lower().startswith("gitdir:"):
+                    return c
+                gd = os.path.normpath(line.split(":", 1)[1].strip())
+                parent = os.path.dirname(gd)
+                if os.path.basename(parent).lower() != "worktrees":
+                    return c
+                main = os.path.dirname(os.path.dirname(parent))   # <main>/.git/worktrees/x -> <main>
+                rel = os.path.relpath(c, d)
+                out = main if rel == "." else os.path.join(main, rel)
+                return os.path.realpath(out)
+            if os.path.isdir(g):
+                return c
+            up = os.path.dirname(d)
+            if up == d:
+                return c
+            d = up
+    except Exception:
+        return c
+
+
+
 def project_from_cwd(cwd):
     """Session working dir -> project key, anchored at the workspace root.
     Mirrors capture_turn.scope_from_cwd. Any depth below a project rolls up to
@@ -44,6 +78,7 @@ def project_from_cwd(cwd):
         return None
     root = os.path.realpath(DEV_WORKSPACE)
     c = os.path.realpath(cwd)
+    c = _worktree_home(c)
     if os.path.normcase(c) == os.path.normcase(root):
         return "Dev"
     if not os.path.normcase(c).startswith(os.path.normcase(root) + os.sep):
