@@ -20,8 +20,8 @@ description: "Pingala's Entra tenant is 5e8d3c87-f9c4-4575-a670-d76860aa43e2 (nc
   only when it has no subscriptions). Scripts that read two tenants pass one subscription id each
   (leita.dk `acc765f5-...`, Pingala `cbe55770-...`), so the default account does not matter.
 - **90-day inactivity** kills both the az and the fab refresh token (AADSTS700082). Fix: one
-  interactive `az login --tenant <t> --allow-no-subscriptions`; when the WAM account picker is
-  cancelled or hidden, add `--use-device-code`. A fresh `az login` becomes the default account.
+  interactive `az login --tenant <t> --allow-no-subscriptions`; never `--use-device-code`
+  (Niels 2026-11-19: it almost never works). A fresh `az login` becomes the default account.
 - Pingala Fabric for product tests: workspace `NielsWorkspace_Dev`
   `027b8a56-3500-4600-a9be-6876bc8a4540`, capacity F8 `msfabricpingala`, West Europe.
 

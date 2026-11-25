@@ -20,7 +20,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-act-then-report](feedback-act-then-report.md) — if you can do it, do it, then report; the ask line is blast radius (7-rung ladder), never difficulty; a proven fix is a reason to act, not to ask (convention canonical in AGENTS.md)
 - [feedback-closed-questions](feedback-closed-questions.md) — when a question IS warranted: recommendation first, named options with concrete values, state what a bare "yes" triggers (convention canonical in AGENTS.md)
 - [feedback-bang-commands-are-bash](feedback-bang-commands-are-bash.md) — commands Niels runs with `!` are Git Bash: /c/... paths, &&, VAR=value cmd; never $env: or backslash paths (rule in CLAUDE.md)
-- [feedback-start-sign-in-yourself](feedback-start-sign-in-yourself.md) — az login / fab auth / expired token: start the sign-in yourself, tell Niels which account to pick (Pingala: nchristensen@pingala.eu) (rule in CLAUDE.md)
+- [feedback-start-sign-in-yourself](feedback-start-sign-in-yourself.md) — az login / fab auth / expired token: start the sign-in yourself, tell Niels which account to pick (Pingala: nchristensen@pingala.eu); browser flow, never device code (rule in CLAUDE.md)
 
 ## Project
 - [workspace-design](workspace-design.md) — two buckets (own/customers), two types (content/function), focus field, scale
@@ -201,7 +201,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [feedback-product-not-oneoff](feedback-product-not-oneoff.md) -- build products, not one-offs: customer facts are examples of configuration; plans split product from customer config
 - [eval-20261015-capture-stale-pairing-recurs](eval-20261015-capture-stale-pairing-recurs.md) -- Sentinel 10-13/14: capture_turn stale pairing recurred (~40 records, 4 inverted); hook fixed 2026-10-15 (turn-anchored reader, per-session state)
 - [link-to-fabric-late-tables-and-endpoint-lag](link-to-fabric-late-tables-and-endpoint-lag.md) -- Link to Fabric: late change-tracked tables need Manage tables + Refresh Fabric tables; SQL endpoint lags OneLake (refreshMetadata); renew tokens on long OneLake copies
-- [az-cli-account-by-subscription-pingala-tenant](az-cli-account-by-subscription-pingala-tenant.md) -- Pingala tenant 5e8d3c87 (not fb4a802d); az --tenant uses the current account, select by --subscription; 90-day refresh expiry, device-code login
+- [az-cli-account-by-subscription-pingala-tenant](az-cli-account-by-subscription-pingala-tenant.md) -- Pingala tenant 5e8d3c87 (not fb4a802d); az --tenant uses the current account, select by --subscription; 90-day refresh expiry, browser login (never device code)
 - [carlras-process-insight-phase1-20261016](carlras-process-insight-phase1-20261016.md) -- process-insight phase 1 done: onboarding, DAX (162 run live), config/overlay + deploy_check, test source in Pingala NielsWorkspace_Dev; phase 2 next
 - [eval-20261016-pingala-connection-not-in-a-skill](eval-20261016-pingala-connection-not-in-a-skill.md) -- Pingala's own Fabric connection: wrong tenant guessed, fabric-project-access did not help; fact was in memory tenant-scoped-cli-auth
 - [eval-20261016-capture-assistant-mojibake](eval-20261016-capture-assistant-mojibake.md) -- Sentinel 10-15/16: assistant bodies mojibake (cp1252 inference); pasted password captured verbatim, redacted at /log
@@ -277,3 +277,7 @@ and the record shape live in [`../README.md`](../README.md).
 - [carlras-direct-lake-go-live](carlras-direct-lake-go-live.md) -- Carl Ras PROD Direct Lake: Model_OneLake had read TEST data; empty visuals fixed with workspace-identity connection; auto-update off, pipeline frames
 - [customer-repos-github-backup](customer-repos-github-backup.md) -- customer unit repos back up to private NielsSkytte/customers via sync-customers.ps1 -All at /log
 - [eval-2026-11-18-gtm-prod-session](eval-2026-11-18-gtm-prod-session.md) -- evaluative: per-stage source trap known but unchecked on the second model; Direct Lake viewer access added to fabric-deployment
+- [carlras-prep-for-ai-lsdl-custominstructions](carlras-prep-for-ai-lsdl-custominstructions.md) — Prep for AI AI instructions are stored as CustomInstructions in definition/cultures/<culture>.tmdl linguisticMetadata JSON; the file only appears after Prep for AI is set once; replacing that one valu
+- [data-agent-eval-noise-and-layers](data-agent-eval-noise-and-layers.md) — Fabric data agent eval: identical config varies by about 3 of 34 run to run; compare layers on 3-run means with a 10 min settle after deploy; on Carl Ras the agent instructions gave the lift, Prep for
+- [carlras-ado-wp-sync-before-task](carlras-ado-wp-sync-before-task.md) — Carl Ras ADO: create the Work Package with SyncToPingala, wait until the sync stamps its D365Activity, then create the booking Task; a Task created seconds after the WP gets no D365Task until SyncToPi
+- [eval-2026-11-25-dataagent-skills](eval-2026-11-25-dataagent-skills.md) — fabric-data-agent skill (prep-for-ai-vs-agent reference) was read by hand and correct on the two-layer rule; its LSDL note lacked the exact CustomInstructions location; no skill covered the PR-merge-u
