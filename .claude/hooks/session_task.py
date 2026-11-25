@@ -78,7 +78,10 @@ def open_tasks_for(project):
             if hit:
                 out.append({"slug": os.path.basename(path)[:-3], "state": state,
                             "project": tproj, "title": field(path, "title")})
-    return out
+    # A project with tasks of its own offers only those; the customer-wide list is for the
+    # node and for a project that has none yet.
+    own = [t for t in out if t["project"] == project]
+    return own or out
 
 
 def unfinalized_days():
