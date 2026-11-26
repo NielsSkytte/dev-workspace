@@ -19,6 +19,6 @@ do not survive. The timesheet is corrected by hand; note the decision in Verdict
 | `2026-11-03/e62e6265/09:50:49Z` | 2026-11-03 | e62e6265 | 10:50 | 1.04 | 13.9 | 54 | 1.00 | - || **Waiting** (owner, 2026-11-03): the 54 min gap 10:55-11:48 ended with a `!` command from the owner; nothing ran in it. Count the busy time, 0.25 h, not 1.00 h. Applied 2026-11-05: datahub line that day 2.75 -> 2.00 h. |
 | `2026-11-24/78a9d947/19:26:41Z` | 2026-11-24 | 78a9d947 | 20:26 | 1.51 | 44.0 | 36 | 1.00 | - | |
 | `2026-11-25/b05a9093/15:36:11Z` | 2026-11-25 | b05a9093 | 16:36 | 1.35 | 27.9 | 19 | 1.00 | - | |
-| `2026-11-25/78a9d947/18:30:53Z` | 2026-11-25 | 78a9d947 | 19:30 | 2.21 | 57.5 | 48 | 1.00 | - | |
-| `2026-11-25/78a9d947/20:49:45Z` | 2026-11-25 | 78a9d947 | 21:49 | 1.10 | 11.8 | 60 | 1.00 | - | |
-| `2026-11-25/78a9d947/22:02:18Z` | 2026-11-25 | 78a9d947 | 23:02 | 1.05 | 11.9 | 52 | 1.00 | - | |
+| `2026-11-25/78a9d947/18:30:53Z` | 2026-11-25 | 78a9d947 | 19:30 | 2.21 | 57.5 | 48 | 1.00 | - | **Working - ProcessInsight** (owner, 2026-11-26): scripted fresh-deploy runs to Atomic-PI-Dev with fixes between runs; counted at the measured spans (2.21 + 1.10 + 1.05 h), timesheet 11-25 own/ProcessInsight 7.75 -> 9.00 h. |
+| `2026-11-25/78a9d947/20:49:45Z` | 2026-11-25 | 78a9d947 | 21:49 | 1.10 | 11.8 | 60 | 1.00 | - | **Working - ProcessInsight** (owner, 2026-11-26): scripted fresh-deploy runs to Atomic-PI-Dev with fixes between runs; counted at the measured spans (2.21 + 1.10 + 1.05 h), timesheet 11-25 own/ProcessInsight 7.75 -> 9.00 h. |
+| `2026-11-25/78a9d947/22:02:18Z` | 2026-11-25 | 78a9d947 | 23:02 | 1.05 | 11.9 | 52 | 1.00 | - | **Working - ProcessInsight** (owner, 2026-11-26): scripted fresh-deploy runs to Atomic-PI-Dev with fixes between runs; counted at the measured spans (2.21 + 1.10 + 1.05 h), timesheet 11-25 own/ProcessInsight 7.75 -> 9.00 h. |
