@@ -169,6 +169,10 @@ When asked about the workspace:
 - Read project CLAUDE.md and CONTEXT.md files to understand current state
 - Surface lineage relationships and knowledge dependencies
 - Identify when projects should communicate (related focus, shared lineage)
+- **Another repo is updated before it is read (2026-11-26):** any work based on a repo outside the session's own
+  starts with fetch, branch and behind-count, and a fast-forward of the default branch when the tree is clean;
+  findings cite the commit read. Enforce it on every agent you route. Canonical: `AGENTS.md` > Conventions;
+  memory `feedback-update-other-repo-first`.
 
 ## When to invoke me
 
